@@ -31,7 +31,7 @@ export default function Landing() {
         <nav className="cc-desktop-nav" aria-label="Main navigation">
           <a href="#services">Our services</a><a href="#how-it-works">How it works</a><a href="#privacy">Our approach</a>
         </nav>
-        <div className="flex items-center gap-4 text-sm">{isAuthenticated ? <Link to={getHome(user)}>My dashboard</Link> : <><Link to="/login">Log in</Link><Link className="cc-button" to="/signup">Sign up</Link></>}</div>
+        <div className="flex items-center gap-4 text-sm">{isAuthenticated ? <Link to="/app">My dashboard</Link> : <><Link to="/login">Log in</Link><Link className="cc-button" to="/signup">Sign up</Link></>}</div>
         <button className="cc-menu-toggle" type="button" aria-label={menuOpen ? "Close navigation" : "Open navigation"} aria-expanded={menuOpen} aria-controls="home-navigation" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X /> : <Menu />}</button>
       </header>
       {menuOpen && <nav id="home-navigation" className="cc-mobile-nav cc-container" aria-label="Mobile navigation">{[["#services", "Our services"], ["#how-it-works", "How it works"], ["#privacy", "Our approach"]].map(([href, label]) => <a key={href} href={href} onClick={() => setMenuOpen(false)}>{label}<ArrowUpRight size={16} /></a>)}</nav>}
@@ -78,7 +78,7 @@ export default function Landing() {
           <div><p className="cc-eyebrow">A LITTLE PREPARATION GOES A LONG WAY</p><h2 id="guide-title">Make space for<br /><em>the conversation.</em></h2><p>Knowing what you want to discuss helps you get more from your time together.</p></div>
           <div className="cc-guide-panel">
             <div className="cc-service-switch" role="group" aria-label="Consultation guide">{services.map(({ id }) => <button key={id} type="button" aria-pressed={selected === id} onClick={() => setSelected(id)}>{id === "medical" ? "Doctor consultation" : "Lawyer consultation"}</button>)}</div>
-            <div className="cc-guide-content" aria-live="polite"><ServiceIcon size={28} strokeWidth={1.5} /><h3>{selected === "medical" ? "Before you speak with a doctor" : "Before you speak with a lawyer"}</h3><ul>{(selected === "medical" ? ["Write down the concerns you want to discuss.", "Have relevant reports and medication details ready.", "Choose a quiet place for your conversation."] : ["Summarise the question you need help with.", "Gather relevant documents and important dates.", "Note the outcome you would like to work towards."]).map((item) => <li key={item}><Check size={16} /><span>{item}</span></li>)}</ul><p className="cc-launch-note">Online booking is coming soon. Explore the consultation journey above.</p></div>
+            <div className="cc-guide-content" aria-live="polite"><ServiceIcon size={28} strokeWidth={1.5} /><h3>{selected === "medical" ? "Before you speak with a doctor" : "Before you speak with a lawyer"}</h3><ul>{(selected === "medical" ? ["Write down the concerns you want to discuss.", "Have relevant reports and medication details ready.", "Choose a quiet place for your conversation."] : ["Summarise the question you need help with.", "Gather relevant documents and important dates.", "Note the outcome you would like to work towards."]).map((item) => <li key={item}><Check size={16} /><span>{item}</span></li>)}</ul><p className="cc-launch-note">Explore the booking journey with sample professionals and a mock payment.</p></div>
           </div>
         </section>
 

@@ -1,5 +1,9 @@
 # Consultation authentication integration
 
+Current frontend mode: always signed in with synthetic workspaces, as requested.
+See FRONTEND-PREVIEW.md for the implemented local flow. The authentication API
+contract below describes future backend integration and is not active in App.jsx.
+
 This repository implements the frontend flow. No backend was provided, and live authentication has not been verified.
 
 Configure VITE_API_BASE_URL for the API. Requests use cookie credentials.
