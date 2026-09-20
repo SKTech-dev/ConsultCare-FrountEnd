@@ -26,9 +26,9 @@ export const logoutUser = createAsyncThunk(
 );
 
 const initialState = {
-  user: { id: "patient-1", name: "Alex Morgan", role: "user" },
-  loading: false,
-  isAuthenticated: true,
+  user: null,
+  loading: true,
+  isAuthenticated: false,
 };
 
 const authSlice = createSlice({

@@ -1,62 +1,32 @@
 import axios from "axios";
-import { store } from "../store/store";
-import { clearAuthUser } from "../features/auth/authSlice";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL;
-
-// Create axios instance
-const axiosInstance = axios.create({
-  baseURL: BASE_URL,
-  timeout: 10000,
+export const apiClient = axios.create({
+  baseURL: import.meta.env?.VITE_API_BASE_URL || "/api",
+  timeout: 15000,
   withCredentials: true,
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
-axiosInstance.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    const status = error?.response?.status;
-    const requestUrl = error?.config?.url || "";
-
-    if (status === 401 && !["/auth/login", "/auth/register"].includes(requestUrl)) {
-      store.dispatch(clearAuthUser());
-
-    }
-
-    return Promise.reject(error);
+apiClient.interceptors.request.use((config) => {
+  const token = document.cookie.split("; ").find((item) => item.startsWith("cc_csrf="))?.split("=")[1];
+  if (token && !["get", "head", "options"].includes(config.method?.toLowerCase())) {
+    config.headers["X-CSRF-Token"] = decodeURIComponent(token);
   }
-);
+  return config;
+});
 
-/**
- * Common API function
- * @param {string} method - GET | POST | PUT | DELETE
- * @param {string} endpoint - API endpoint (ex: /users)
- * @param {object} data - request body (optional)
- * @param {object} params - query params (optional)
- */
-export const callApi = async (
-  method,
-  endpoint,
-  data = null,
-  params = null,
-  config = {}
-) => {
+apiClient.interceptors.response.use((response) => response, (error) => {
+  if (error.response?.status === 401 && error.config?.url !== "/auth/login") {
+    window.dispatchEvent(new Event("auth:expired"));
+  }
+  return Promise.reject(error);
+});
+
+export async function callApi(method, endpoint, data = null, params = null, config = {}) {
   try {
-    const response = await axiosInstance({
-      method,
-      url: endpoint,
-      data,
-      params,
-      ...config,
-    });
-
-    return response.data;
+    return (await apiClient({ method, url: endpoint, data, params, ...config })).data;
   } catch (error) {
-    console.error("API Error:", error);
-
-    // Optional: return backend error message if exists
-    throw error?.response?.data || error.message;
+    const payload = error.response?.data;
+    const fields = Array.isArray(payload?.errors) ? payload.errors.slice(0, 3).map((e) => e.field + ": " + e.message).join(" ") : "";
+    throw new Error(fields || payload?.message || (error.response ? "Request failed. Please try again." : "Cannot reach the server. Check that the backend is running."));
   }
-};
+}

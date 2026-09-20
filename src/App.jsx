@@ -1,4 +1,12 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { useEffect } from "react";
+import { useDispatch } from "react-redux";
+import { clearAuthUser, fetchCurrentUser } from "./features/auth/authSlice";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
+import PublicRoute from "./components/auth/PublicRoute";
+import Login from "./pages/authPages/Login";
+import Setup from "./pages/authPages/Setup";
+import AccessDenied from "./pages/AccessDenied";
 import Home from "./pages/Home";
 import Workspace, { Empty } from "./components/workspace/Workspace";
 import Overview from "./pages/workspace/Overview";
@@ -9,11 +17,23 @@ import Profile from "./pages/workspace/Profile";
 import Room from "./pages/workspace/Room";
 import { AdminPeople, AdminIssues } from "./pages/workspace/Admin";
 
-// Frontend-only prototype: the workspace is always signed in.
-// No authentication or API calls run until a real backend is integrated.
 export default function App() {
+  const dispatch = useDispatch();
+  useEffect(() => {
+    const expired = () => dispatch(clearAuthUser());
+    window.addEventListener("auth:expired", expired);
+    dispatch(fetchCurrentUser());
+    return () => window.removeEventListener("auth:expired", expired);
+  }, [dispatch]);
   return <BrowserRouter><Routes>
     <Route path="/" element={<Home />} />
+    <Route path="/access-denied" element={<AccessDenied />} />
+    <Route element={<PublicRoute />}>
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Setup />} />
+      <Route path="/setup" element={<Setup />} />
+    </Route>
+    <Route element={<ProtectedRoute />}>
     <Route element={<Workspace />}>
       <Route path="/app" element={<Overview />} />
       <Route path="/consult/doctors" element={<Directory key="doctors" profession="doctor" />} />
@@ -30,6 +50,7 @@ export default function App() {
       <Route path="/app/issues" element={<AdminIssues />} />
       <Route path="*" element={<Empty title="Page not found">Use the workspace navigation to continue.</Empty>} />
     </Route>
-    {["/login", "/signup", "/setup", "/dashboard", "/doctor/dashboard", "/lawyer/dashboard", "/admin/dashboard"].map((path) => <Route key={path} path={path} element={<Navigate to="/app" replace />} />)}
+    {["/dashboard", "/doctor/dashboard", "/lawyer/dashboard", "/admin/dashboard"].map((path) => <Route key={path} path={path} element={<Navigate to="/app" replace />} />)}
+    </Route>
   </Routes></BrowserRouter>;
 }

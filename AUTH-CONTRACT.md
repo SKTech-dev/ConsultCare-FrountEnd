@@ -1,28 +1,25 @@
-# Consultation authentication integration
+# Authentication contract
 
-Current frontend mode: always signed in with synthetic workspaces, as requested.
-See FRONTEND-PREVIEW.md for the implemented local flow. The authentication API
-contract below describes future backend integration and is not active in App.jsx.
+The Python backend in ../backEnd is the authority for users, roles, verification,
+and consultation ownership. All endpoints are prefixed with /api.
 
-This repository implements the frontend flow. No backend was provided, and live authentication has not been verified.
+- POST /auth/register: { name, email, password, role }. Roles: user, doctor, lawyer.
+  Password length: 12–128 characters. Admin registration is rejected.
+- POST /auth/login: { email, password }. Establishes an HttpOnly cc_session cookie
+  and a readable cc_csrf cookie; returns { data: user, csrfToken }.
+- GET /auth/me: { data: { id, name, email, role, verificationStatus } } or 401.
+- POST /auth/logout: revokes the session and clears both cookies.
 
-Configure VITE_API_BASE_URL for the API. Requests use cookie credentials.
+Authenticated writes require the cc_csrf value in X-CSRF-Token. Every write also
+requires an allowed Origin. The Axios client handles credentials, CSRF, session expiry,
+and structured error messages. No authentication token or private workspace data is
+persisted in browser storage.
 
-## Required endpoints
+Use same-origin /api routing in production (and the configured Vite proxy locally).
+Role guards only improve navigation; API endpoints enforce all permissions.
+Missing/unknown roles fail closed. Doctors and lawyers begin pending verification.
+Admin accounts are created using the backend's interactive management command.
 
-- POST /auth/register accepts { name, email, password, role }. Public roles: user, doctor, lawyer. Reject admin and all unknown roles server-side. Registration does not imply login. Doctor and lawyer accounts require verification.
-- POST /auth/login accepts { email, password } and establishes a server session.
-- GET /auth/me returns { data: { id, name, email, role, verificationStatus } }. role is user, doctor, lawyer, or admin. verificationStatus for professionals is pending, verified, or suspended. Unauthenticated requests return 401.
-- POST /auth/logout invalidates the server session.
-
-Login resolves identity through /auth/me, not through a role selected in the browser. Admin accounts must be provisioned privately. Unknown roles fail closed. Both /signup and the existing /setup route show registration.
-
-The API must enforce roles, professional approval/suspension, and per-record ownership on every request. React route guards only control navigation; they are not a security boundary. Use secure HttpOnly session cookies and appropriate CSRF protection. The API must check passwords and validate all registration fields independently.
-
-## Current screens
-
-Public consultation entry pages: /consult/doctors and /consult/lawyers.
-Dashboards: /dashboard, /doctor/dashboard, /lawyer/dashboard, /admin/dashboard.
-These dashboards are role-specific entry screens, not completed booking, queue, or administration tools.
-
-Legacy chatbot routes remain in the code and are restricted to admins; they are not linked from consultation navigation.
+Email changes and automated password recovery are not exposed until a verified
+recovery service is implemented. Account passwords are never repurposed database
+credentials.

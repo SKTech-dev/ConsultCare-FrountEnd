@@ -13,8 +13,3 @@ export const store = configureStore({
     consultations: consultationReducer,
   },
 });
-
-store.subscribe(() => {
-  try { localStorage.setItem("consultcare.workspace.v1", JSON.stringify(store.getState().consultations)); }
-  catch { /* The current in-memory workspace remains usable if storage is full. */ }
-});

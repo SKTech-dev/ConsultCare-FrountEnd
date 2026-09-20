@@ -1,8 +1,10 @@
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { CalendarDays, FileText, HeartPulse, LayoutDashboard, Scale, ShieldCheck, UserRound, Users, Menu, X } from "lucide-react";
-import { useState } from "react";
-import { switchWorkspace } from "../../features/consultations/consultationSlice";
+import { useEffect, useState } from "react";
+import GlobalLoader from "../ui/GlobalLoader";
+import { logoutUser } from "../../features/auth/authSlice";
+import { fetchWorkspace, clearWorkspaceError } from "../../features/consultations/consultationSlice";
 import "./workspace.css";
 
 export function useWorkspace() { return useSelector((s) => s.consultations); }
@@ -19,6 +21,16 @@ export default function Workspace() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    dispatch(fetchWorkspace());
+    const timer = setInterval(() => { if (!document.hidden) dispatch(fetchWorkspace()); }, 5000);
+    return () => clearInterval(timer);
+  }, [dispatch]);
+  const signOut = async () => {
+    const action = await dispatch(logoutUser());
+    if (!action.error) navigate("/login", { replace: true });
+  };
+  if (!state.loaded) return state.error ? <div className="p-12"><p role="alert">{state.error}</p><button className="underline mr-5" onClick={() => dispatch(fetchWorkspace())}>Retry</button><button className="underline" onClick={signOut}>Sign out</button></div> : <GlobalLoader fullPage message="Loading your workspace..." />;
   const professional = state.professionals.find((p) => p.id === state.professionalId);
   const name = state.role === "user" ? state.patient.name : state.role === "admin" ? "Platform administrator" : professional.name;
   const links = state.role === "user" ? [
@@ -37,7 +49,9 @@ export default function Workspace() {
     </aside>
     <div className="ws-body">
       <header className="ws-topbar"><button className="ws-menu" aria-label="Toggle navigation" onClick={() => setOpen(!open)}>{open ? <X /> : <Menu />}</button><div><span className="ws-eyebrow">WELCOME BACK</span><p>{name}</p></div><div className="ws-identity"><span className="ws-avatar">{name.split(" ").map((w) => w[0]).slice(0, 2).join("")}</span></div></header>
-      <div className="ws-preview"><div><strong>Frontend preview</strong><span> Always signed in · synthetic data · mock payments</span></div><label>View as <select aria-label="Preview workspace" value={state.role === "user" ? state.patient.id : ["doctor", "lawyer"].includes(state.role) ? state.professionalId : state.role} onChange={(e) => { const p = state.professionals.find((p) => p.id === e.target.value); const patient = state.patients.find((p) => p.id === e.target.value); dispatch(switchWorkspace({ role: patient ? "user" : p?.role || e.target.value, id: patient?.id || p?.id })); navigate("/app"); setOpen(false); }}>{state.patients.map((p) => <option key={p.id} value={p.id}>{p.name} (patient / client)</option>)}{state.professionals.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.role})</option>)}<option value="admin">Administrator</option></select></label></div>
+      <div className="ws-preview"><div><strong>{state.role === "user" ? "Patient / client" : state.role} workspace</strong><span> · Connected to your account{state.mockPayments ? " · Test payments enabled" : ""}</span></div><button className="underline font-semibold" onClick={signOut}>Sign out</button></div>
+      {state.error && <div className="ws-notice mx-6" role="alert">{state.error}<button className="underline ml-4" onClick={() => dispatch(clearWorkspaceError())}>Dismiss</button></div>}
+      {state.pending > 0 && <GlobalLoader fullPage message="Saving changes..." />}
       <main className="ws-main"><Outlet /></main>
     </div>
   </div>;

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { getHome } from "../features/auth/roles";
 import { ArrowDown, ArrowRight, ArrowUpRight, CalendarDays, Check, FileText, HeartPulse, Menu, Scale, ShieldCheck, Video, X } from "lucide-react";
 import "./landing.css";
 
@@ -17,7 +16,7 @@ const steps = [
 ];
 
 export default function Landing() {
-  const { user, isAuthenticated } = useSelector((state) => state.auth);
+  const { isAuthenticated } = useSelector((state) => state.auth);
   const [menuOpen, setMenuOpen] = useState(false);
   const [selected, setSelected] = useState("medical");
   const service = services.find((item) => item.id === selected);
@@ -78,7 +77,7 @@ export default function Landing() {
           <div><p className="cc-eyebrow">A LITTLE PREPARATION GOES A LONG WAY</p><h2 id="guide-title">Make space for<br /><em>the conversation.</em></h2><p>Knowing what you want to discuss helps you get more from your time together.</p></div>
           <div className="cc-guide-panel">
             <div className="cc-service-switch" role="group" aria-label="Consultation guide">{services.map(({ id }) => <button key={id} type="button" aria-pressed={selected === id} onClick={() => setSelected(id)}>{id === "medical" ? "Doctor consultation" : "Lawyer consultation"}</button>)}</div>
-            <div className="cc-guide-content" aria-live="polite"><ServiceIcon size={28} strokeWidth={1.5} /><h3>{selected === "medical" ? "Before you speak with a doctor" : "Before you speak with a lawyer"}</h3><ul>{(selected === "medical" ? ["Write down the concerns you want to discuss.", "Have relevant reports and medication details ready.", "Choose a quiet place for your conversation."] : ["Summarise the question you need help with.", "Gather relevant documents and important dates.", "Note the outcome you would like to work towards."]).map((item) => <li key={item}><Check size={16} /><span>{item}</span></li>)}</ul><p className="cc-launch-note">Explore the booking journey with sample professionals and a mock payment.</p></div>
+            <div className="cc-guide-content" aria-live="polite"><ServiceIcon size={28} strokeWidth={1.5} /><h3>{selected === "medical" ? "Before you speak with a doctor" : "Before you speak with a lawyer"}</h3><ul>{(selected === "medical" ? ["Write down the concerns you want to discuss.", "Have relevant reports and medication details ready.", "Choose a quiet place for your conversation."] : ["Summarise the question you need help with.", "Gather relevant documents and important dates.", "Note the outcome you would like to work towards."]).map((item) => <li key={item}><Check size={16} /><span>{item}</span></li>)}</ul><p className="cc-launch-note">Choose a professional and an available session to begin your consultation journey.</p></div>
           </div>
         </section>
 

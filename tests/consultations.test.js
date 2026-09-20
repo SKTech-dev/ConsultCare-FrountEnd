@@ -1,95 +1,58 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import reducer, { book, pay, transition, switchWorkspace, saveNotes, message, moderate, refund, toggleSession, saveProfile } from "../src/features/consultations/consultationSlice.js";
-import { seedState, queueFor, canRead } from "../src/features/consultations/model.js";
-const act = (s, role, id) => reducer(s, switchWorkspace({ role, id }));
-function reserve(s, id, professionalId = "d1") {
-  s = reducer(s, book({ id, professionalId, sessionId: "s" + professionalId, reason: "" }));
-  return reducer(s, pay({ id, success: true }));
-}
+import { configureStore } from "@reduxjs/toolkit";
+import { apiClient } from "../src/api/apiClient.js";
+import reducer, { fetchWorkspace, book, pay } from "../src/features/consultations/consultationSlice.js";
 
-test("payment joins only the assigned queue; failed payment can be retried", () => {
-  let s = reducer(seedState(), book({ id: "a", professionalId: "d1", sessionId: "sd1" }));
-  s = reducer(s, pay({ id: "a", success: false }));
-  assert.equal(queueFor(s, "d1").length, 0);
-  s = reducer(s, pay({ id: "a", success: true }));
-  assert.equal(s.bookings[0].status, "NEXT");
-  assert.equal(queueFor(s, "d2").length, 0);
-  s = reducer(s, book({ id: "duplicate", professionalId: "d1", sessionId: "sd1" }));
-  assert.equal(s.bookings.length, 1);
+globalThis.document = { cookie: "cc_csrf=test-csrf" };
+globalThis.window = { dispatchEvent() {} };
+const snapshot = { role: "user", professionalId: null, patient: { id: "real-user" },
+  patients: [], professionals: [], sessions: [], bookings: [], issues: [], mockPayments: true };
+const store = () => configureStore({ reducer: { consultations: reducer } });
+
+test("workspace loads from the API without creating a demo identity", async () => {
+  const s = store();
+  assert.equal(s.getState().consultations.role, null);
+  apiClient.defaults.adapter = async (config) => ({ status: 200, config, headers: {}, data: { data: snapshot } });
+  await s.dispatch(fetchWorkspace()).unwrap();
+  assert.equal(s.getState().consultations.patient.id, "real-user");
+  assert.equal(s.getState().consultations.loaded, true);
 });
 
-test("multiple patients advance in order and other professionals remain independent", () => {
-  let s = reserve(seedState(), "a");
-  s = reserve(act(s, "user", "patient-2"), "b");
-  s = reserve(s, "c", "d2");
-  assert.deepEqual(queueFor(s, "d1").map((b) => b.status), ["NEXT", "WAITING"]);
-  s = act(s, "doctor", "d1");
-  s = reducer(s, transition({ id: "b", status: "IN CONSULTATION" }));
-  assert.equal(s.bookings[1].status, "WAITING");
-  s = reducer(s, transition({ id: "a", status: "IN CONSULTATION" }));
-  s = reducer(s, saveNotes({ id: "a", notes: "Shared note", privateNotes: "Private", followUp: "Follow-up" }));
-  s = reducer(s, transition({ id: "a", status: "COMPLETED" }));
-  assert.equal(s.bookings[0].notes, "Shared note");
-  assert.equal(s.bookings[1].status, "NEXT");
-  assert.equal(s.bookings[2].status, "NEXT");
+test("booking uses server identity and fee, includes CSRF, and refreshes state", async () => {
+  const requests = [];
+  apiClient.defaults.adapter = async (config) => {
+    requests.push(config);
+    return { status: 200, config, headers: {}, data: { data: config.method === "get" ? snapshot : { id: "server-booking" } } };
+  };
+  const s = store();
+  const value = await s.dispatch(book({ id: "client-id", professionalId: "forged", fee: 1, sessionId: "session-id", reason: "Question" })).unwrap();
+  assert.equal(value.id, "server-booking");
+  assert.deepEqual(JSON.parse(requests[0].data), { sessionId: "session-id", reason: "Question" });
+  assert.equal(requests[0].headers["X-CSRF-Token"], "test-csrf");
+  assert.equal(requests[1].url, "/workspace");
+  assert.equal(s.getState().consultations.pending, 0);
 });
 
-test("unrelated roles cannot read or modify a consultation", () => {
-  let s = reserve(seedState(), "a");
-  s = act(s, "user", "patient-2");
-  assert.equal(canRead(s, s.bookings[0]), false);
-  s = act(s, "doctor", "d2");
-  assert.equal(canRead(s, s.bookings[0]), false);
-  s = reducer(s, transition({ id: "a", status: "IN CONSULTATION" }));
-  s = reducer(s, message({ id: "a", text: "unauthorised", messageId: "x" }));
-  assert.equal(s.bookings[0].status, "NEXT");
-  assert.equal(s.bookings[0].messages.length, 0);
-  s = act(s, "admin");
-  assert.equal(canRead(s, s.bookings[0]), false);
+test("failed server changes expose errors without optimistic success", async () => {
+  apiClient.defaults.adapter = async () => { throw { response: { status: 409, data: { message: "Session is full." } } }; };
+  const s = store();
+  const action = await s.dispatch(pay({ id: "booking", success: true }));
+  assert.ok(action.error);
+  assert.equal(s.getState().consultations.error, "Session is full.");
+  assert.equal(s.getState().consultations.bookings.length, 0);
+  assert.equal(s.getState().consultations.pending, 0);
 });
 
-test("cancelled paid bookings request refunds and advance the queue", () => {
-  let s = reserve(seedState(), "a");
-  s = reserve(act(s, "user", "patient-2"), "b");
-  s = act(s, "user", "patient-1");
-  s = reducer(s, transition({ id: "a", status: "CANCELLED" }));
-  assert.equal(s.bookings[0].payment, "refund requested");
-  assert.equal(s.bookings[1].status, "NEXT");
-  s = reducer(act(s, "admin"), refund("a"));
-  assert.equal(s.bookings[0].payment, "refunded (mock)");
-});
-
-test("unverified and suspended professionals cannot accept new bookings", () => {
-  let s = seedState();
-  s = reducer(s, book({ id: "a", professionalId: "d3", sessionId: "sd3" }));
-  assert.equal(s.bookings.length, 0);
-  s = reducer(act(s, "admin"), moderate({ id: "d1", status: "suspended" }));
-  s = reserve(act(s, "user"), "b");
-  assert.equal(s.bookings.length, 0);
-});
-
-test("an offline session cannot call a patient; a no-show promotes the next", () => {
-  let s = reserve(seedState(), "a");
-  s = reserve(act(s, "user", "patient-2"), "b");
-  s = act(s, "doctor", "d1");
-  s = reducer(s, toggleSession("sd1"));
-  s = reducer(s, transition({ id: "a", status: "IN CONSULTATION" }));
-  assert.equal(s.bookings[0].status, "NEXT");
-  s = reducer(s, transition({ id: "a", status: "NO-SHOW" }));
-  assert.equal(s.bookings[1].status, "NEXT");
-});
-
-test("patient profile changes survive workspace switches and stay separate", () => {
-  let s = reducer(seedState(), saveProfile({ name: "Edited name" }));
-  s = act(s, "user", "patient-2");
-  assert.equal(s.patient.name, "Sam Taylor");
-  s = act(s, "user", "patient-1");
-  assert.equal(s.patient.name, "Edited name");
-});
-
-test("changing credentials resets professional approval", () => {
-  let s = act(seedState(), "doctor", "d1");
-  s = reducer(s, saveProfile({ registration: "Changed", qualifications: "MBBS" }));
-  assert.equal(s.professionals[0].status, "pending");
+test("logout clears private workspace data and ignores in-flight responses", async () => {
+  const s = store();
+  let resolve;
+  apiClient.defaults.adapter = (config) => new Promise((done) => { resolve = () => done({ status: 200, config, headers: {}, data: { data: snapshot } }); });
+  const pending = s.dispatch(fetchWorkspace());
+  await new Promise((r) => setTimeout(r, 0));
+  s.dispatch({ type: "auth/clearAuthUser" });
+  resolve();
+  await pending;
+  assert.equal(s.getState().consultations.loaded, false);
+  assert.equal(s.getState().consultations.role, null);
 });
