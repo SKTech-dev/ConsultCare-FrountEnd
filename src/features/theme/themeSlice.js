@@ -3,36 +3,36 @@ import { createSlice } from "@reduxjs/toolkit";
 const initialState = {
   colors : {
 
-    primary: '#EA580C',
-    secondary: '#181E4B', 
+    primary: '#12355B',
+    secondary: '#1E293B', 
 
-    accent: '#F97316',
-    secondAccent: '#d3d006ff',
+    accent: '#0F766E',
+    secondAccent: '#B7791F',
 
-    background: '#FAFBFB',
+    background: '#F4F7FB',
     outerBackground: '#FFFFFF',
 
-    textPrimary:'#14183E',
-    textSecondary:'#5E6282',
+    textPrimary:'#0F172A',
+    textSecondary:'#475569',
     textMuted: '#64748B',
-    border: '#9CA3AF',
-    gradientStart: '#FED7AA',
-    gradientMid: '#DBEAFE',
-    gradientEnd: '#E9D5FF',
-    appBg: '#FFF7ED',
-    footerText: '#64748B',
-    sectionBg: 'rgba(255, 255, 255, 0.8)',
-    footerBg: '#FFFFFF',
+    border: '#CBD5E1',
+    gradientStart: '#DBEAFE',
+    gradientMid: '#CCFBF1',
+    gradientEnd: '#FEF3C7',
+    appBg: '#EEF4FA',
+    footerText: '#475569',
+    sectionBg: 'rgba(255, 255, 255, 0.88)',
+    footerBg: '#F8FAFC',
 
-    error: "#DC2626",
-    success: "#16A34A", 
+    error: "#B91C1C",
+    success: "#15803D", 
 
     cardBg: "#FFFFFF",
-    overlay: "rgba(0,0,0,0.40)",
-    textMain: "#1F2937",
+    overlay: "rgba(15, 23, 42, 0.48)",
+    textMain: "#0F172A",
     textMuted: "#64748B", // tailwind: slate-500
     textInverse: "#FFFFFF",
-    primaryHover: "#166534",
+    primaryHover: "#0B5E56",
   }
 };
 
