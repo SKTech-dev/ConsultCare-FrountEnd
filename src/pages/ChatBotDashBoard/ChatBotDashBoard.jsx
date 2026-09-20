@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
-import Navbar from "../../components/ChatBotDashBoard/NavBar";
+import Navbar from "../../components/ChatBotDashBoard/Navbar";
 import Sidebar from "../../components/ChatBotDashBoard/Sidebar";
 
 export default function ChatBotDashboard() {

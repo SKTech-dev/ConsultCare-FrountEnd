@@ -20,12 +20,9 @@ axiosInstance.interceptors.response.use(
     const status = error?.response?.status;
     const requestUrl = error?.config?.url || "";
 
-    if (status === 401 && requestUrl !== "/auth/login") {
+    if (status === 401 && !["/auth/login", "/auth/register"].includes(requestUrl)) {
       store.dispatch(clearAuthUser());
 
-      if (window.location.pathname !== "/login") {
-        window.location.replace("/login");
-      }
     }
 
     return Promise.reject(error);

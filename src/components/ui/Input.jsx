@@ -8,7 +8,9 @@ export default function Input({
   onChange,
   placeholder,
   required = false,
-  error // <-- new prop
+  error,
+  id,
+  ...props
 }) {
   const colors = useSelector((state) => state.theme.colors);
 
@@ -16,6 +18,7 @@ export default function Input({
     <div>
       {/* LABEL */}
       <label
+        htmlFor={id || name}
         className="block text-sm font-medium mb-2"
         style={{ color: colors.secondary }}
       >
@@ -24,6 +27,10 @@ export default function Input({
 
       {/* INPUT */}
       <input
+        {...props}
+        id={id || name}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${id || name}-error` : undefined}
         type={type}
         name={name}
         value={value}
@@ -40,7 +47,7 @@ export default function Input({
 
       {/* ERROR MESSAGE */}
       {error && (
-        <p className="text-[10px] font-bold text-red-500 mt-1 ml-1 uppercase">
+        <p id={`${id || name}-error`} className="text-xs text-red-500 mt-1">
           {error}
         </p>
       )}

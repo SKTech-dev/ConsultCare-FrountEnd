@@ -18,7 +18,10 @@ import Overview from "./pages/ChatBotDashBoard/Overview";
 import TestChat from "./pages/ChatBotDashBoard/TestChat";
 import WhatsAppConfig from "./pages/ChatBotDashBoard/WhatsAppConfig";
 import CreateChatBot from "./pages/bots/CreateChatBot";
-import Payment from "./pages/pay/payment";
+import Payment from "./pages/pay/Payment";
+import Consultation from "./pages/Consultation";
+import RoleDashboard from "./pages/RoleDashboard";
+import AccessDenied from "./pages/AccessDenied";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import PublicRoute from "./components/auth/PublicRoute";
 import { fetchCurrentUser } from "./features/auth/authSlice";
@@ -34,16 +37,25 @@ export default function App() {
     <Router>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/consult/doctors" element={<Consultation profession="doctor" />} />
+        <Route path="/consult/lawyers" element={<Consultation profession="lawyer" />} />
+        <Route path="/access-denied" element={<AccessDenied />} />
+        {Object.entries({ user: "/dashboard", doctor: "/doctor/dashboard", lawyer: "/lawyer/dashboard", admin: "/admin/dashboard" }).map(([role, path]) => (
+          <Route key={role} element={<ProtectedRoute roles={[role]} />}>
+            <Route path={path} element={<RoleDashboard />} />
+          </Route>
+        ))}
 
         <Route element={<PublicRoute />}>
           <Route path="/setup" element={<Setup />} />
+          <Route path="/signup" element={<Setup />} />
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgetPassword />} />
           <Route path="/verify-otp" element={<VerifyOTP />} />
           <Route path="/change-password" element={<ChangePassword />} />
         </Route>
 
-        <Route element={<ProtectedRoute />}>
+        <Route element={<ProtectedRoute roles={["admin"]} />}>
           <Route path="/chatBots" element={<ChatBots />} />
           <Route path="/createChatBot" element={<CreateChatBot />} />
           <Route path="/editChatBot/:botId" element={<CreateChatBot />} />

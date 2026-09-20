@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { getHome } from "../features/auth/roles";
 import { ArrowDown, ArrowRight, ArrowUpRight, CalendarDays, Check, FileText, HeartPulse, Menu, Scale, ShieldCheck, Video, X } from "lucide-react";
 import "./landing.css";
 
@@ -14,6 +17,7 @@ const steps = [
 ];
 
 export default function Landing() {
+  const { user, isAuthenticated } = useSelector((state) => state.auth);
   const [menuOpen, setMenuOpen] = useState(false);
   const [selected, setSelected] = useState("medical");
   const service = services.find((item) => item.id === selected);
@@ -27,7 +31,7 @@ export default function Landing() {
         <nav className="cc-desktop-nav" aria-label="Main navigation">
           <a href="#services">Our services</a><a href="#how-it-works">How it works</a><a href="#privacy">Our approach</a>
         </nav>
-        <a className="cc-header-cta" href="#services">Find your consultation <ArrowUpRight size={16} /></a>
+        <div className="flex items-center gap-4 text-sm">{isAuthenticated ? <Link to={getHome(user)}>My dashboard</Link> : <><Link to="/login">Log in</Link><Link className="cc-button" to="/signup">Sign up</Link></>}</div>
         <button className="cc-menu-toggle" type="button" aria-label={menuOpen ? "Close navigation" : "Open navigation"} aria-expanded={menuOpen} aria-controls="home-navigation" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X /> : <Menu />}</button>
       </header>
       {menuOpen && <nav id="home-navigation" className="cc-mobile-nav cc-container" aria-label="Mobile navigation">{[["#services", "Our services"], ["#how-it-works", "How it works"], ["#privacy", "Our approach"]].map(([href, label]) => <a key={href} href={href} onClick={() => setMenuOpen(false)}>{label}<ArrowUpRight size={16} /></a>)}</nav>}
@@ -37,7 +41,7 @@ export default function Landing() {
             <p className="cc-eyebrow"><span /> A good conversation changes things</p>
             <h1>Life has questions.<br />Find your<br /><em>way forward.</em></h1>
             <p className="cc-intro">For your health. For your peace of mind. Connect with doctors and lawyers for thoughtful guidance, wherever you are.</p>
-            <div className="cc-hero-actions"><a href="#services" className="cc-button">Find the right support <ArrowUpRight size={19} /></a><a href="#how-it-works" className="cc-text-link">How it works <ArrowDown size={16} /></a></div>
+            <div className="cc-hero-actions"><Link to="/consult/doctors" className="cc-button">Consult a doctor <ArrowUpRight size={19} /></Link><Link to="/consult/lawyers" className="cc-text-link">Consult a lawyer <ArrowUpRight size={16} /></Link></div>
             <div className="cc-hero-note"><span className="cc-note-line" /><span>Real conversations.<br /><strong>With people who understand.</strong></span></div>
           </div>
           <div className="cc-hero-art">
@@ -59,7 +63,7 @@ export default function Landing() {
               <h3>{title.split("\n").map((line, i) => <span key={line}>{i > 0 && <br />}{line}</span>)}</h3>
               <p>{description}</p>
               <ul className="cc-tags">{tags.map((tag) => <li key={tag}>{tag}</li>)}</ul>
-              <a className="cc-service-link" href="#consultation-guide" onClick={() => setSelected(id)}>{action}<ArrowUpRight size={21} /></a>
+              <Link className="cc-service-link" to={id === "medical" ? "/consult/doctors" : "/consult/lawyers"}>{action}<ArrowUpRight size={21} /></Link>
             </article>
           ))}</div>
         </section>

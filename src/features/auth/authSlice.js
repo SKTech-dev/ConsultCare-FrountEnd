@@ -53,7 +53,7 @@ const authSlice = createSlice({
       })
       .addCase(fetchCurrentUser.fulfilled, (state, action) => {
         state.user = action.payload;
-        state.isAuthenticated = true;
+        state.isAuthenticated = Boolean(action.payload);
         state.loading = false;
       })
       .addCase(fetchCurrentUser.rejected, (state) => {
@@ -67,8 +67,7 @@ const authSlice = createSlice({
         state.loading = false;
       })
       .addCase(logoutUser.rejected, (state) => {
-        state.user = null;
-        state.isAuthenticated = false;
+        // Keep the current session visible so the user can retry logout.
         state.loading = false;
       });
   },
