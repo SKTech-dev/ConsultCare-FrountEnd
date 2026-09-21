@@ -11,15 +11,14 @@ export function PatientContext({ booking }) {
   const today = booking.completedAt ? sriLankanDate(Date.parse(booking.completedAt)) : sriLankanDate();
   const age = context.dob ? Number(today.slice(0, 4)) - Number(context.dob.slice(0, 4)) - (today.slice(5) < context.dob.slice(5) ? 1 : 0) : null;
   return <Panel title={context.profession === "doctor" ? "Patient information" : "Client information"}>
-    <h3>{context.name || booking.patientName}</h3>
-    <p>{booking.contextCaptured ? "Information saved for this consultation." : "Current profile information."}</p>
-    <dl className="consultation-facts">
-      {context.profession === "doctor" && <><dt>Age at consultation</dt><dd>{age === null || age < 0 ? "Not provided" : age + " years"}</dd><dt>Weight</dt><dd>{context.weightKg == null ? "Not provided" : context.weightKg + " kg"}</dd><dt>Emergency contact</dt><dd>{context.emergency || "Not provided"}</dd></>}
-      <dt>Contact number</dt><dd>{context.phone || "Not provided"}</dd>
-    </dl>
-    <h3>Relevant {context.profession === "doctor" ? "medical" : "legal"} information</h3><p className="whitespace-pre-wrap">{context.information || "No information provided."}</p>
-    {context.details && <><h3 className="mt-4">General consultation information</h3><p className="whitespace-pre-wrap">{context.details}</p></>}
-    <h3 className="mt-4">What would you like to discuss?</h3><p className="whitespace-pre-wrap">{booking.reason || "No booking note provided."}</p>
+    <div className="consultation-context-heading"><div><h3>{context.name || booking.patientName}</h3><p>{booking.contextCaptured ? "Information saved for this consultation." : "Current profile information."}</p></div></div>
+    <div className="consultation-context-grid"><section className="consultation-facts">
+      {context.profession === "doctor" && <><div><span>Age at consultation</span><strong>{age === null || age < 0 ? "Not provided" : age + " years"}</strong></div><div><span>Weight</span><strong>{context.weightKg == null ? "Not provided" : context.weightKg + " kg"}</strong></div><div><span>Emergency contact</span><strong>{context.emergency || "Not provided"}</strong></div></>}
+      <div><span>Contact number</span><strong>{context.phone || "Not provided"}</strong></div>
+    </section><section className="consultation-context-details"><div><h3>Relevant {context.profession === "doctor" ? "medical" : "legal"} information</h3><p className="whitespace-pre-wrap">{context.information || "No information provided."}</p></div>
+      {context.details && <div><h3>General consultation information</h3><p className="whitespace-pre-wrap">{context.details}</p></div>}
+      <div><h3>What would you like to discuss?</h3><p className="whitespace-pre-wrap">{booking.reason || "No booking note provided."}</p></div>
+    </section></div>
   </Panel>;
 }
 
