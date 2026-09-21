@@ -1,0 +1,30 @@
+.earnings-months{display:grid;gap:25px}
+.earnings-summary{display:flex;align-items:center;gap:20px;cursor:pointer;list-style:none}
+.earnings-summary::-webkit-details-marker{display:none}
+.earnings-summary>div{flex:1;min-width:0}
+.earnings-summary h2,.earnings-month-link h2{margin:0 0 5px}
+.earnings-summary>strong,.earnings-month-link>strong{color:var(--ws-primary);font-size:19px;white-space:nowrap}
+.earnings-summary>svg{flex-shrink:0;color:var(--ws-accent);transition:transform .2s}
+details[open]>.earnings-summary>svg{transform:rotate(180deg)}
+.earnings-summary:focus-visible,.earnings-month-link:focus-visible{outline:2px solid var(--ws-accent);outline-offset:5px;border-radius:6px}
+.earnings-groups{display:grid;gap:18px;margin-top:24px}
+.earnings-group{border:1px solid var(--ws-border);border-radius:10px;padding:18px}
+.earnings-professionals{margin-top:15px}
+.earnings-professional{display:flex;flex-wrap:wrap;align-items:center;gap:16px;border-top:1px solid var(--ws-border);padding:18px 0}
+.earnings-professional>div{flex:1;min-width:150px}
+.earnings-empty{padding-top:18px}
+.earnings-month-link{display:flex;align-items:center;flex-wrap:wrap;gap:20px}
+.earnings-month-link>div{flex:1;min-width:160px}
+.earnings-month-link>svg,.earnings-open{color:var(--ws-accent)}
+.earnings-open{font-weight:600;font-size:12px}
+.earnings-back{display:inline-flex;align-items:center;gap:8px;margin-bottom:22px}
+.earnings-totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.earnings-totals .ws-panel>strong{font-size:27px;display:block;color:var(--ws-primary);overflow-wrap:anywhere}
+.earnings-status-paid{color:var(--ws-success);border:1px solid currentColor}
+.earnings-status-failed{color:var(--ws-error)}
+.earnings-pay{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;padding:20px 0;margin-bottom:20px}
+.earnings-pay h3{font-weight:600}.earnings-pay p{font-size:13px;color:var(--ws-textSecondary)}
+.earnings-table{min-width:660px}.earnings-table td:last-child,.earnings-table th:last-child{text-align:right;white-space:nowrap}
+.earnings-table tfoot{border-top:2px solid var(--ws-border);font-weight:600}
+.earnings-pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:20px;font-size:12px}
+@media(max-width:900px){.earnings-totals{grid-template-columns:1fr}.earnings-summary{flex-wrap:wrap;gap:12px}.earnings-summary>strong{font-size:16px}}

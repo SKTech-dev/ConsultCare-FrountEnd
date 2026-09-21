@@ -36,9 +36,9 @@ export default function Workspace() {
   const links = state.role === "user" ? [
     ["/app", "Overview", LayoutDashboard], ["/consult/doctors", "Find a doctor", HeartPulse], ["/consult/lawyers", "Find a lawyer", Scale], ["/app/bookings", "My consultations", CalendarDays], ["/app/history", "My history", FileText], ["/app/profile", "My profile", UserRound],
   ] : state.role === "admin" ? [
-    ["/app", "Overview", LayoutDashboard], ["/app/admin", "People & verification", Users], ["/app/payments", "Payments & refunds", ShieldCheck],
+    ["/app", "Overview", LayoutDashboard], ["/app/admin", "People & verification", Users], ["/app/settlements", "Monthly settlements", CalendarDays], ["/app/payments", "Payments & refunds", ShieldCheck],
   ] : [
-    ["/app", "Overview", LayoutDashboard], ["/app/queue", "Consultation queue", Users], ["/app/sessions", "My sessions", CalendarDays], ["/app/history", "Consultation history", FileText], ["/app/profile", "Professional profile", UserRound],
+    ["/app", "Overview", LayoutDashboard], ["/app/queue", "Consultation queue", Users], ["/app/sessions", "My sessions", CalendarDays], ["/app/earnings", "My earnings", ShieldCheck], ["/app/history", "Consultation history", FileText], ["/app/profile", "Professional profile", UserRound],
   ];
   return <div className="ws" style={Object.fromEntries(Object.entries(colors).map(([key, value]) => [`--ws-${key}`, value]))}>
     <aside className={"ws-sidebar " + (open ? "ws-sidebar-open" : "")}>

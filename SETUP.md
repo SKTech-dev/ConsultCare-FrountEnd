@@ -24,3 +24,24 @@ The frontend defaults to /api and Vite proxies to localhost:8000. No database
 passwords or other secrets belong in VITE_ environment variables.
 
 Checks: node --test tests/*.test.js and npm.cmd run build.
+
+## Monthly settlements and professional earnings
+
+Admin: open **Monthly settlements** (`/app/settlements`). Expand a month, then
+Doctors or Lawyers. Each level shows its total; select a professional to see the
+patient/client payments behind that month.
+
+Doctor/lawyer: open **My earnings** (`/app/earnings`) and select a month to view
+payment dates, times, names and amounts. Only your own earnings are accessible.
+
+Months follow consultation completion in Sri Lanka time. The institution takes
+no commission. Reports currently show simulated patient payments, clearly labeled.
+The **Pay professional** button is a placeholder: no money moves and the month
+stays unpaid. Integrating a payout provider is a separate next step.
+
+Apply backend migrations before running the updated app:
+
+```powershell
+cd ..\backEnd
+.\.venv\Scripts\python.exe -m alembic upgrade head
+```
