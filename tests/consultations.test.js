@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { configureStore } from "@reduxjs/toolkit";
 import { apiClient } from "../src/api/apiClient.js";
-import reducer, { fetchWorkspace, book, pay } from "../src/features/consultations/consultationSlice.js";
+import reducer, { fetchWorkspace, book, pay, moderate } from "../src/features/consultations/consultationSlice.js";
 
 globalThis.document = { cookie: "cc_csrf=test-csrf" };
 globalThis.window = { dispatchEvent() {} };
@@ -55,6 +55,15 @@ test("failed server changes expose errors without optimistic success", async () 
   assert.equal(s.getState().consultations.error, "Session is full.");
   assert.equal(s.getState().consultations.bookings.length, 0);
   assert.equal(s.getState().consultations.pending, 0);
+});
+
+test("admin moderation can use one contextual error instead of a duplicate global popup", async () => {
+  apiClient.defaults.adapter = async () => { throw { response: { status: 409, data: { message: "Complete credentials first." } } }; };
+  const s = store();
+  const action = await s.dispatch(moderate({ id: "professional", status: "verified", localFeedback: true }));
+  assert.ok(action.error);
+  assert.equal(s.getState().consultations.error, "Complete credentials first.");
+  assert.equal(s.getState().consultations.feedback, null);
 });
 
 test("logout clears private workspace data and ignores in-flight responses", async () => {

@@ -20,7 +20,7 @@ export function AdminPeople() {
 
   async function confirmModeration() {
     setSubmitting(true);
-    const action = await dispatch(moderate(pending));
+    const action = await dispatch(moderate({ ...pending, localFeedback: true }));
     setSubmitting(false);
     setPending(null);
     if (action.error) setError({ title: pending.status === "verified" ? "Cannot approve professional" : "Could not update account", text: action.payload || "The account status could not be updated. Please try again." });
@@ -48,7 +48,7 @@ export function AdminPersonDetails() {
 
   async function confirmModeration() {
     setSubmitting(true);
-    const action = await dispatch(moderate(pending));
+    const action = await dispatch(moderate({ ...pending, localFeedback: true }));
     setSubmitting(false);
     setPending(null);
     if (action.error) setError({ title: pending.status === "verified" ? "Cannot approve professional" : "Could not update account", text: action.payload || "The account status could not be updated. Please try again." });
