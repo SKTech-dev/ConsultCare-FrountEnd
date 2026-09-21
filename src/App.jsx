@@ -15,7 +15,7 @@ import { Bookings, BookingDetails } from "./pages/workspace/Bookings";
 import { Queue, Sessions } from "./pages/workspace/Professional";
 import Profile from "./pages/workspace/Profile";
 import Room from "./pages/workspace/Room";
-import { AdminPeople, AdminIssues } from "./pages/workspace/Admin";
+import { AdminPeople, AdminPersonDetails, AdminIssues } from "./pages/workspace/Admin";
 
 export default function App() {
   const dispatch = useDispatch();
@@ -47,6 +47,7 @@ export default function App() {
       <Route path="/app/sessions" element={<Sessions />} />
       <Route path="/app/profile" element={<Profile />} />
       <Route path="/app/admin" element={<AdminPeople />} />
+      <Route path="/app/admin/person/:type/:id" element={<AdminPersonDetails />} />
       <Route path="/app/issues" element={<AdminIssues />} />
       <Route path="*" element={<Empty title="Page not found">Use the workspace navigation to continue.</Empty>} />
     </Route>
