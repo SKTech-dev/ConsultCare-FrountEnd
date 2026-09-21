@@ -21,7 +21,7 @@ export function isBookableSession(session, at = Date.now()) {
 }
 
 export function sortUpcomingSessions(sessions) {
-  return sessions.filter(isBookableSession).slice().sort((a, b) =>
+  return sessions.filter((session) => isBookableSession(session)).slice().sort((a, b) =>
     Date.parse(a.startsAt || `${a.date}T${a.start}:00+05:30`) - Date.parse(b.startsAt || `${b.date}T${b.start}:00+05:30`)
   );
 }
