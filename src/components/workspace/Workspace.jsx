@@ -1,6 +1,6 @@
 import { Link, NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { CalendarDays, FileText, HeartPulse, LayoutDashboard, Scale, ShieldCheck, UserRound, Users, Menu, X } from "lucide-react";
+import { CalendarDays, FileText, HeartPulse, LayoutDashboard, Scale, ShieldCheck, UserRound, Users, Menu, X, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import GlobalLoader from "../ui/GlobalLoader";
 import { logoutUser } from "../../features/auth/authSlice";
@@ -23,6 +23,7 @@ export default function Workspace() {
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [onboardingNotice, setOnboardingNotice] = useState(null);
   const onboardingStep = useRef(null);
   useEffect(() => {
@@ -61,13 +62,14 @@ export default function Workspace() {
     ["/app", "Overview", LayoutDashboard], ["/app/queue", "Consultation queue", Users], ["/app/sessions", "My sessions", CalendarDays], ["/app/earnings", "My earnings", ShieldCheck], ["/app/history", "Consultation history", FileText], ["/app/profile", "Professional profile", UserRound],
   ];
   return <div className="ws" style={Object.fromEntries(Object.entries(colors).map(([key, value]) => [`--ws-${key}`, value]))}>
-    <aside className={"ws-sidebar " + (open ? "ws-sidebar-open" : "")}>
+    <aside className={"ws-sidebar " + (open ? "ws-sidebar-open " : "") + (sidebarCollapsed ? "ws-sidebar-collapsed" : "")}>
       <Link className="ws-brand" to="/"><ShieldCheck />consultcare<span>.</span></Link>
       <p className="ws-eyebrow ws-nav-label">{state.role === "user" ? "PATIENT & CLIENT" : state.role.toUpperCase()} WORKSPACE</p>
       <nav aria-label="Workspace">{links.map(([to, label, Icon]) => <NavLink key={to} to={to} end onClick={() => setOpen(false)}><Icon size={18} />{label}</NavLink>)}</nav>
-      <div className="ws-sidebar-bottom"><ShieldCheck size={23} /><h3>A little clarity.<br />A better next step.</h3><p>Your conversations, all in one place.</p><Link to="/">Back to home →</Link></div>
+      <div className="ws-sidebar-bottom"><ShieldCheck size={23} /><h3>A little clarity.<br />A better next step.</h3><p>Your conversations, all in one place.</p><div className="ws-sidebar-footer"><Link to="/">Back to home →</Link><button className="ws-sidebar-toggle" type="button" aria-label="Hide sidebar" title="Hide sidebar" onClick={() => window.matchMedia("(max-width: 760px)").matches ? setOpen(false) : setSidebarCollapsed(true)}><PanelLeftClose size={16} /></button></div></div>
     </aside>
-    <div className="ws-body">
+    <div className={"ws-body " + (sidebarCollapsed ? "ws-body-expanded" : "")}>
+      {sidebarCollapsed && <button className="ws-sidebar-restore" type="button" aria-label="Show sidebar" title="Show sidebar" onClick={() => setSidebarCollapsed(false)}><PanelLeftOpen size={18} /></button>}
       <header className="ws-topbar"><button className="ws-menu" aria-label="Toggle navigation" onClick={() => setOpen(!open)}>{open ? <X /> : <Menu />}</button><div><span className="ws-eyebrow">WELCOME BACK</span><p>{name}</p></div><div className="ws-identity"><span className="ws-avatar">{name.split(" ").map((w) => w[0]).slice(0, 2).join("")}</span></div></header>
       <div className="ws-preview"><div><strong>{state.role === "user" ? "Patient / client" : state.role} workspace</strong><span> · Connected to your account{state.mockPayments ? " · Test payments enabled" : ""}</span></div><button className="underline font-semibold" onClick={signOut}>Sign out</button></div>
       {state.error && <div className="ws-notice mx-6" role="alert">{state.error}<button className="underline ml-4" onClick={() => dispatch(clearWorkspaceError())}>Dismiss</button></div>}
