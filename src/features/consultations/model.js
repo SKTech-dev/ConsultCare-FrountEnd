@@ -12,6 +12,14 @@ export function sessionEndsAt(session) {
   return Date.parse(session.endsAt || `${session.date}T${session.end}:00+05:30`);
 }
 
+export function sessionStartsAt(session) {
+  return Date.parse(session.startsAt || `${session.date}T${session.start}:00+05:30`);
+}
+
+export function isSessionLive(session, at = Date.now()) {
+  return Boolean(session && sessionStartsAt(session) <= at && at < sessionEndsAt(session));
+}
+
 export function isUpcomingSession(session, at = Date.now()) {
   return Boolean(session?.date && session.date >= sriLankanDate(at) && sessionEndsAt(session) > at);
 }
