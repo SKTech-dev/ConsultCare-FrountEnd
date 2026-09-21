@@ -32,6 +32,7 @@ export const pay = command("pay", (p) => ["POST", "/bookings/" + p.id + "/paymen
 export const transition = command("transition", (p) => ["PATCH", "/bookings/" + p.id + "/status", { status: p.status }]);
 export const message = command("message", (p) => ["POST", "/bookings/" + p.id + "/messages", { text: p.text }]);
 export const saveNotes = command("saveNotes", ({ id, ...p }) => ["PUT", "/bookings/" + id + "/notes", p]);
+export const sendPrescription = command("sendPrescription", ({ id, text }) => ["PUT", "/bookings/" + id + "/prescription", { text }]);
 export const moderate = command("moderate", (p) => ["PATCH", "/admin/users/" + p.id, { status: p.status }]);
 export const refund = command("refund", (id) => ["POST", "/admin/bookings/" + id + "/refund-simulation"]);
 

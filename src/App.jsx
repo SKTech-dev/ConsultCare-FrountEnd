@@ -15,6 +15,7 @@ import { Bookings, BookingDetails, ProfessionalSessionHistory } from "./pages/wo
 import { Queue, Sessions } from "./pages/workspace/Professional";
 import Profile from "./pages/workspace/Profile";
 import Room from "./pages/workspace/Room";
+import IncomingConsultation from "./components/workspace/IncomingConsultation";
 import { AdminPeople, AdminPersonDetails, AdminPayments } from "./pages/workspace/Admin";
 import { MonthlyEarnings, MonthlyEarningsDetails } from "./pages/workspace/Settlements";
 
@@ -26,7 +27,7 @@ export default function App() {
     dispatch(fetchCurrentUser());
     return () => window.removeEventListener("auth:expired", expired);
   }, [dispatch]);
-  return <BrowserRouter><Routes>
+  return <BrowserRouter><IncomingConsultation /><Routes>
     <Route path="/" element={<Home />} />
     <Route path="/access-denied" element={<AccessDenied />} />
     <Route element={<PublicRoute />}>
