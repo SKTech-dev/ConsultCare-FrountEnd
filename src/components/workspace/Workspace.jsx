@@ -1,10 +1,11 @@
-import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { CalendarDays, FileText, HeartPulse, LayoutDashboard, Scale, ShieldCheck, UserRound, Users, Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import GlobalLoader from "../ui/GlobalLoader";
 import { logoutUser } from "../../features/auth/authSlice";
-import { fetchWorkspace, clearWorkspaceError } from "../../features/consultations/consultationSlice";
+import { fetchWorkspace, clearWorkspaceError, clearFeedback } from "../../features/consultations/consultationSlice";
+import { MessageOverlay } from "../ui/MessageBox";
 import "./workspace.css";
 
 export function useWorkspace() { return useSelector((s) => s.consultations); }
@@ -20,11 +21,10 @@ export default function Workspace() {
   const colors = useSelector((s) => s.theme.colors);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
   useEffect(() => {
     dispatch(fetchWorkspace());
-    const timer = setInterval(() => { if (!document.hidden) dispatch(fetchWorkspace()); }, 5000);
-    return () => clearInterval(timer);
   }, [dispatch]);
   const signOut = async () => {
     const action = await dispatch(logoutUser());
@@ -52,7 +52,11 @@ export default function Workspace() {
       <div className="ws-preview"><div><strong>{state.role === "user" ? "Patient / client" : state.role} workspace</strong><span> · Connected to your account{state.mockPayments ? " · Test payments enabled" : ""}</span></div><button className="underline font-semibold" onClick={signOut}>Sign out</button></div>
       {state.error && <div className="ws-notice mx-6" role="alert">{state.error}<button className="underline ml-4" onClick={() => dispatch(clearWorkspaceError())}>Dismiss</button></div>}
       {state.pending > 0 && <GlobalLoader fullPage message="Saving changes..." />}
-      <main className="ws-main"><Outlet /></main>
+      {state.feedback && <MessageOverlay type={state.feedback.type} text={state.feedback.text} onClose={() => dispatch(clearFeedback())} />}
+      <main className="ws-main">
+        {state.onboarding && <div className="ws-notice">{state.onboarding === "profile" ? "Welcome. Complete your required profile details to continue." : "Next, add at least one weekly session to finish your professional setup."}</div>}
+        {state.onboarding && location.pathname !== "/app/" + state.onboarding ? <Navigate to={"/app/" + state.onboarding} replace /> : <Outlet />}
+      </main>
     </div>
   </div>;
 }

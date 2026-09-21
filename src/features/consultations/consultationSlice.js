@@ -5,6 +5,7 @@ const empty = {
   role: null, professionalId: null, patient: {}, patients: [], professionals: [],
   sessions: [], weeklyAvailability: [], bookings: [], loaded: false, loading: false,
   pending: 0, error: "", requestId: null, mockPayments: false,
+  feedback: null, liveConnected: false, familyProfessionalIds: [],
 };
 
 export const fetchWorkspace = createAsyncThunk("consultations/fetch", async (_, { rejectWithValue }) => {
@@ -24,6 +25,7 @@ function command(name, request) {
 }
 
 export const saveProfile = command("saveProfile", (p) => ["PUT", "/profile", p]);
+export const saveFamily = command("saveFamily", ({ id, saved }) => ["PUT", "/family-professionals/" + id, { saved }]);
 export const addSession = command("addSession", ({ id, ...p }) => ["POST", "/sessions", p]);
 export const toggleSession = command("toggleSession", (id, state) => ["PATCH", "/sessions/" + id, { online: !state.sessions.find((s) => s.id === id)?.online }]);
 export const saveWeeklyAvailability = command("saveWeeklyAvailability", (days) => ["PUT", "/weekly-availability", { days }]);
@@ -38,7 +40,15 @@ export const refund = command("refund", (id) => ["POST", "/admin/bookings/" + id
 
 const slice = createSlice({
   name: "consultations", initialState: empty,
-  reducers: { clearWorkspaceError: (state) => { state.error = ""; } },
+  reducers: {
+    clearWorkspaceError: (state) => { state.error = ""; },
+    clearFeedback: (state) => { state.feedback = null; },
+    liveStatus: (state, action) => { state.liveConnected = action.payload; },
+    liveTick: (state) => { state.liveUpdatedAt = Date.now(); },
+    receiveWorkspace: (state, action) => {
+      Object.assign(state, action.payload, { loaded: true, loading: false, requestId: null });
+    },
+  },
   extraReducers: (builder) => {
     builder.addCase("auth/clearAuthUser", () => ({ ...empty }))
       .addCase("auth/logoutUser/fulfilled", () => ({ ...empty }))
@@ -56,8 +66,14 @@ const slice = createSlice({
       .addMatcher((action) => action.type.startsWith("consultations/") && !action.type.startsWith("consultations/fetch") && /\/(fulfilled|rejected)$/.test(action.type), (state, action) => {
         state.pending = Math.max(0, state.pending - 1);
         if (action.type.endsWith("/rejected")) state.error = action.payload || "Could not save changes.";
+        const name = action.type.split("/")[1];
+        if (action.type.endsWith("/rejected")) state.feedback = { type: "error", text: String(action.payload || "Could not save changes.") };
+        else if (name !== "message") {
+          const messages = { book: "Booking reserved. Continue with payment to join the queue.", saveProfile: "Your profile has been saved.", saveWeeklyAvailability: "Your weekly sessions have been saved.", saveFamily: "Your family professionals have been updated.", transition: action.meta.arg.status === "CANCELLED" ? "Consultation cancelled." : "Consultation status updated.", pay: "Payment status updated.", saveNotes: "Notes saved.", sendPrescription: "Prescription sent to the patient." };
+          state.feedback = { type: "success", text: messages[name] || "Changes saved successfully." };
+        }
       });
   },
 });
-export const { clearWorkspaceError } = slice.actions;
+export const { clearWorkspaceError, clearFeedback, liveStatus, liveTick, receiveWorkspace } = slice.actions;
 export default slice.reducer;

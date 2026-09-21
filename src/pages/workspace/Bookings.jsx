@@ -7,10 +7,12 @@ import { pay, transition } from "../../features/consultations/consultationSlice"
 import Button from "../../components/ui/Button";
 import { MessageOverlay } from "../../components/ui/MessageBox";
 import { Documents } from "./Room";
+import PatientQueues from "./PatientQueues";
 import { PatientContext, ChatMessages, Prescription } from "./ConsultationRecord";
 
 export function Bookings({ history = false }) {
   const s = useWorkspace();
+  if (!history && s.role === "user") return <PatientQueues />;
   if (history && ["doctor", "lawyer"].includes(s.role)) return <ProfessionalHistory />;
   const list = s.bookings.filter((b) => canRead(s, b) && (history ? ["COMPLETED", "CANCELLED", "NO-SHOW"].includes(b.status) : !["COMPLETED", "CANCELLED", "NO-SHOW"].includes(b.status)));
   return <><PageHeading title={history ? "Your consultation history." : "Your upcoming conversations."}>{history ? "Revisit consultation records, shared notes, and professional documents." : "Follow your booking from payment to the waiting room."}</PageHeading>{list.length ? <Panel>{list.slice().reverse().map((b) => <div className="ws-row" key={b.id}><div><h3>{s.professionals.find((p) => p.id === b.professionalId)?.name}</h3><p>{s.role !== "user" && b.patientName + " · "}{s.sessions.find((x) => x.id === b.sessionId)?.date} · {money(b.fee)}</p></div><Status>{b.status}</Status><Link className="ws-link secondary" to={"/app/booking/" + b.id}>View record →</Link></div>)}</Panel> : <Empty title={history ? "No past consultations yet" : "No bookings yet"}>Your consultations will appear here as you work through the booking flow.</Empty>}</>;
