@@ -1,7 +1,7 @@
-import { Link, NavLink, Outlet, useNavigate, useLocation, Navigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { CalendarDays, FileText, HeartPulse, LayoutDashboard, Scale, ShieldCheck, UserRound, Users, Menu, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import GlobalLoader from "../ui/GlobalLoader";
 import { logoutUser } from "../../features/auth/authSlice";
 import { fetchWorkspace, clearWorkspaceError, clearFeedback } from "../../features/consultations/consultationSlice";
@@ -23,9 +23,29 @@ export default function Workspace() {
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  const [onboardingNotice, setOnboardingNotice] = useState(null);
+  const onboardingStep = useRef(null);
   useEffect(() => {
     dispatch(fetchWorkspace());
   }, [dispatch]);
+  useEffect(() => {
+    if (!state.loaded || !state.onboarding) return;
+    const destination = "/app/" + state.onboarding;
+    if (location.pathname === destination) {
+      onboardingStep.current = state.onboarding;
+      return;
+    }
+    const enteringStep = onboardingStep.current !== state.onboarding;
+    onboardingStep.current = state.onboarding;
+    if (enteringStep) {
+      navigate(destination, { replace: true });
+      return;
+    }
+    setOnboardingNotice(state.onboarding === "profile"
+      ? { title: "Complete your profile first", text: "Please finish the required details in My Profile before continuing to other pages." }
+      : { title: "Set your weekly sessions first", text: "Please add and save at least one weekly session before continuing to other pages." });
+    navigate(destination, { replace: true });
+  }, [state.loaded, state.onboarding, location.pathname, navigate]);
   const signOut = async () => {
     const action = await dispatch(logoutUser());
     if (!action.error) navigate("/login", { replace: true });
@@ -53,9 +73,10 @@ export default function Workspace() {
       {state.error && <div className="ws-notice mx-6" role="alert">{state.error}<button className="underline ml-4" onClick={() => dispatch(clearWorkspaceError())}>Dismiss</button></div>}
       {state.pending > 0 && <GlobalLoader fullPage message="Saving changes..." />}
       {state.feedback && <MessageOverlay type={state.feedback.type} text={state.feedback.text} onClose={() => dispatch(clearFeedback())} />}
+      {onboardingNotice && <MessageOverlay type="error" title={onboardingNotice.title} text={onboardingNotice.text} onClose={() => setOnboardingNotice(null)} />}
       <main className="ws-main">
         {state.onboarding && <div className="ws-notice">{state.onboarding === "profile" ? "Welcome. Complete your required profile details to continue." : "Next, add at least one weekly session to finish your professional setup."}</div>}
-        {state.onboarding && location.pathname !== "/app/" + state.onboarding ? <Navigate to={"/app/" + state.onboarding} replace /> : <Outlet />}
+        <Outlet />
       </main>
     </div>
   </div>;
