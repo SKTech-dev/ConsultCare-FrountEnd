@@ -36,6 +36,7 @@ export function Prescription({ booking }) {
   const [busy, setBusy] = useState(false);
   if (booking.patientContext?.profession !== "doctor") return null;
   async function download() {
+    setBusy(true); setError("");
     try {
       const response = await apiClient.get("/bookings/" + booking.id + "/prescription.pdf", { responseType: "blob" });
       const url = URL.createObjectURL(response.data);
@@ -43,9 +44,10 @@ export function Prescription({ booking }) {
       link.href = url; link.download = "prescription-" + booking.id + ".pdf"; link.click();
       setTimeout(() => URL.revokeObjectURL(url), 10000);
     } catch { setError("Could not download the prescription. Please try again."); }
+    finally { setBusy(false); }
   }
   return <Panel title="Prescription">
-    {booking.prescription ? <><p className="whitespace-pre-wrap">{booking.prescription}</p><p className="mt-3">Sent {new Date(booking.prescribedAt).toLocaleString()}</p><button className="ws-link mt-4" onClick={download}>Download prescription PDF</button></> : state.role === "doctor" && booking.status === "IN CONSULTATION" ? <form onSubmit={async (event) => {
+    {booking.prescription ? <><p className="whitespace-pre-wrap">{booking.prescription}</p><p className="mt-3">Sent {new Date(booking.prescribedAt).toLocaleString()}</p><button className="ws-link mt-4" disabled={busy} aria-busy={busy} onClick={download}>{busy ? "Downloading prescription..." : "Download prescription PDF"}</button></> : state.role === "doctor" && booking.status === "IN CONSULTATION" ? <form onSubmit={async (event) => {
       event.preventDefault(); setBusy(true); setError("");
       const action = await dispatch(sendPrescription({ id: booking.id, text }));
       if (action.error) setError(action.payload || "Could not send prescription.");

@@ -33,26 +33,30 @@ export function Documents({ booking }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [privateNote, setPrivateNote] = useState(false);
+  const [downloading, setDownloading] = useState(null);
+  const [notice, setNotice] = useState("");
   if (!canRead(s, booking)) return null;
   async function upload(event) {
     const file = event.target.files[0];
     event.target.value = "";
     if (!file) return;
     if (!["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024) { setError("Choose a PDF, JPEG, PNG, or WebP file under 5 MB."); return; }
-    setError(""); setBusy(true);
+    setError(""); setNotice(""); setBusy(true);
     try {
       await saveFile(booking.id, file, privateNote);
-      await dispatch(fetchWorkspace()).unwrap();
-    } catch (failure) { setError(failure.message); }
+      const refresh = await dispatch(fetchWorkspace());
+      setNotice(refresh.error ? "Document saved, but the list could not refresh. Reload to see it; do not upload it again." : "Document uploaded successfully.");
+    } catch (failure) { setError(failure.message || "Could not upload the document. Please try again."); }
     finally { setBusy(false); }
   }
   return <Panel title="Reports, images & documents">
     <p>Shared attachments are available to both participants. Private attachments are visible only to the professional.</p>
     {!booking.files.length && <div className="room-documents-empty"><FileText size={22} /><span>No attachments yet. Reports and note images will appear here.</span></div>}
-    {booking.files.map((file) => <div className="ws-row" key={file.id}>{file.type.startsWith("image/") ? <DocumentImage file={file} /> : <FileText size={18} />}<div className="flex-1 min-w-0"><h3 className="break-words">{file.name}</h3><p>{file.private ? "Private note attachment" : file.kind} · {Math.round(file.size / 1024)} KB</p></div><button className="ws-link secondary" onClick={async () => { try { await downloadFile(file.id, file.name); } catch (e) { setError(e.message); } }}>Download</button></div>)}
+    {booking.files.map((file) => <div className="ws-row" key={file.id}>{file.type.startsWith("image/") ? <DocumentImage file={file} /> : <FileText size={18} />}<div className="flex-1 min-w-0"><h3 className="break-words">{file.name}</h3><p>{file.private ? "Private note attachment" : file.kind} · {Math.round(file.size / 1024)} KB</p></div><button className="ws-link secondary" disabled={downloading !== null} aria-busy={downloading === file.id} onClick={async () => { setDownloading(file.id); setError(""); try { await downloadFile(file.id, file.name); } catch (e) { setError(e.message); } finally { setDownloading(null); } }}>{downloading === file.id ? "Downloading..." : "Download"}</button></div>)}
     {s.role !== "user" && ACTIVE.includes(booking.status) && <label className="room-privacy"><input type="checkbox" checked={privateNote} disabled={busy} onChange={(event) => setPrivateNote(event.target.checked)} /><ShieldCheck size={20} /><span><strong>Keep this attachment private</strong><small>Visible only to you in your professional notes.</small></span></label>}
     {ACTIVE.includes(booking.status) && <label className="room-upload"><UploadCloud size={26} /><span>{busy ? "Saving document…" : "Add a report, image or document"}</span><small>PDF, JPEG, PNG or WebP · Up to 5 MB</small><input aria-label="Upload consultation document" type="file" disabled={busy} accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={upload} className="block mt-3 text-xs w-full" /></label>}
-    {error && <p role="alert" className="ws-error">{error}</p>}
+    {notice && <MessageOverlay type="success" text={notice} onClose={() => setNotice("")} />}
+    {error && <MessageOverlay type="error" text={error} onClose={() => setError("")} />}
   </Panel>;
 }
 

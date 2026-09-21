@@ -18,7 +18,9 @@ function command(name, request) {
     try {
       const [method, url, body] = request(payload, context.getState().consultations);
       const response = await callApi(method, url, body);
-      await context.dispatch(fetchWorkspace()).unwrap();
+      // A failed refresh must not report an already-committed write as failed.
+      const refresh = await context.dispatch(fetchWorkspace());
+      if (refresh.error) context.dispatch(refreshWarning());
       return response.data || response;
     } catch (e) { return context.rejectWithValue(e.message || e); }
   });
@@ -26,8 +28,6 @@ function command(name, request) {
 
 export const saveProfile = command("saveProfile", (p) => ["PUT", "/profile", p]);
 export const saveFamily = command("saveFamily", ({ id, saved }) => ["PUT", "/family-professionals/" + id, { saved }]);
-export const addSession = command("addSession", ({ id, ...p }) => ["POST", "/sessions", p]);
-export const toggleSession = command("toggleSession", (id, state) => ["PATCH", "/sessions/" + id, { online: !state.sessions.find((s) => s.id === id)?.online }]);
 export const saveWeeklyAvailability = command("saveWeeklyAvailability", (days) => ["PUT", "/weekly-availability", { days }]);
 export const book = command("book", (p) => ["POST", "/bookings", { sessionId: p.sessionId, reason: p.reason || "" }]);
 export const pay = command("pay", (p) => ["POST", "/bookings/" + p.id + "/payment-simulation", { success: p.success }]);
@@ -43,6 +43,7 @@ const slice = createSlice({
   reducers: {
     clearWorkspaceError: (state) => { state.error = ""; },
     clearFeedback: (state) => { state.feedback = null; },
+    refreshWarning: (state) => { state.error = "Your changes were saved, but the page could not refresh. Reload to see the latest information."; },
     liveStatus: (state, action) => { state.liveConnected = action.payload; },
     liveTick: (state) => { state.liveUpdatedAt = Date.now(); },
     receiveWorkspace: (state, action) => {
@@ -62,7 +63,7 @@ const slice = createSlice({
         if (state.requestId !== action.meta.requestId) return;
         state.loading = false; state.error = action.payload || "Could not load workspace.";
       })
-      .addMatcher((action) => action.type.startsWith("consultations/") && !action.type.startsWith("consultations/fetch") && action.type.endsWith("/pending"), (state) => { state.pending += 1; state.error = ""; })
+      .addMatcher((action) => action.type.startsWith("consultations/") && !action.type.startsWith("consultations/fetch") && action.type.endsWith("/pending"), (state) => { state.pending += 1; state.error = ""; state.feedback = null; })
       .addMatcher((action) => action.type.startsWith("consultations/") && !action.type.startsWith("consultations/fetch") && /\/(fulfilled|rejected)$/.test(action.type), (state, action) => {
         state.pending = Math.max(0, state.pending - 1);
         if (action.type.endsWith("/rejected")) state.error = action.payload || "Could not save changes.";
@@ -75,5 +76,5 @@ const slice = createSlice({
       });
   },
 });
-export const { clearWorkspaceError, clearFeedback, liveStatus, liveTick, receiveWorkspace } = slice.actions;
+export const { clearWorkspaceError, clearFeedback, refreshWarning, liveStatus, liveTick, receiveWorkspace } = slice.actions;
 export default slice.reducer;

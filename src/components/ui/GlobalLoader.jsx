@@ -1,4 +1,3 @@
-import React from "react";
 import { Loader2 } from "lucide-react";
 import { useSelector } from "react-redux";
 
@@ -11,6 +10,9 @@ const GlobalLoader = ({ fullPage = false, message = "Loading..." }) => {
 
   return (
     <div
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
       className={containerClass}
       style={{
         backgroundColor: fullPage ? colors.overlay : "transparent",
@@ -27,7 +29,7 @@ const GlobalLoader = ({ fullPage = false, message = "Loading..." }) => {
       {message && (
         <p
           className="mt-4 text-sm font-medium animate-pulse"
-          style={{ color: colors.textMuted }}
+          style={{ color: colors.textPrimary }}
         >
           {message}
         </p>

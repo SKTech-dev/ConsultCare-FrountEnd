@@ -26,6 +26,7 @@ export default function Workspace() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [onboardingNotice, setOnboardingNotice] = useState(null);
   const onboardingStep = useRef(null);
+  const redirectedLocation = useRef(null);
   useEffect(() => {
     dispatch(fetchWorkspace());
   }, [dispatch]);
@@ -34,8 +35,12 @@ export default function Workspace() {
     const destination = "/app/" + state.onboarding;
     if (location.pathname === destination) {
       onboardingStep.current = state.onboarding;
+      redirectedLocation.current = null;
       return;
     }
+    const redirectKey = location.key + ":" + state.onboarding;
+    if (redirectedLocation.current === redirectKey) return;
+    redirectedLocation.current = redirectKey;
     const enteringStep = onboardingStep.current !== state.onboarding;
     onboardingStep.current = state.onboarding;
     if (enteringStep) {
@@ -46,7 +51,7 @@ export default function Workspace() {
       ? { title: "Complete your profile first", text: "Please finish the required details in My Profile before continuing to other pages." }
       : { title: "Set your weekly sessions first", text: "Please add and save at least one weekly session before continuing to other pages." });
     navigate(destination, { replace: true });
-  }, [state.loaded, state.onboarding, location.pathname, navigate]);
+  }, [state.loaded, state.onboarding, location.pathname, location.key, navigate]);
   const signOut = async () => {
     const action = await dispatch(logoutUser());
     if (!action.error) navigate("/login", { replace: true });
@@ -78,7 +83,7 @@ export default function Workspace() {
       {onboardingNotice && <MessageOverlay type="error" title={onboardingNotice.title} text={onboardingNotice.text} onClose={() => setOnboardingNotice(null)} />}
       <main className="ws-main">
         {state.onboarding && <div className="ws-notice">{state.onboarding === "profile" ? "Welcome. Complete your required profile details to continue." : "Next, add at least one weekly session to finish your professional setup."}</div>}
-        <Outlet />
+        {(!state.onboarding || location.pathname === "/app/" + state.onboarding) ? <Outlet /> : <GlobalLoader message="Opening your required setup page..." />}
       </main>
     </div>
   </div>;

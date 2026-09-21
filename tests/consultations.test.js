@@ -10,6 +10,19 @@ const snapshot = { role: "user", professionalId: null, patient: { id: "real-user
   patients: [], professionals: [], sessions: [], bookings: [], issues: [], mockPayments: true };
 const store = () => configureStore({ reducer: { consultations: reducer } });
 
+test("successful writes remain successful when refreshing the workspace fails", async () => {
+  apiClient.defaults.adapter = async (config) => {
+    if (config.method === "get") throw new Error("Network unavailable");
+    return { status: 200, config, headers: {}, data: { data: { id: "saved-booking" } } };
+  };
+  const s = store();
+  const result = await s.dispatch(book({ sessionId: "session" })).unwrap();
+  assert.equal(result.id, "saved-booking");
+  assert.equal(s.getState().consultations.feedback.type, "success");
+  assert.match(s.getState().consultations.error, /changes were saved/);
+  assert.equal(s.getState().consultations.pending, 0);
+});
+
 test("workspace loads from the API without creating a demo identity", async () => {
   const s = store();
   assert.equal(s.getState().consultations.role, null);
