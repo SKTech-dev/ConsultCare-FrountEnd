@@ -3,7 +3,7 @@ import { callApi } from "../../api/apiClient.js";
 
 const empty = {
   role: null, professionalId: null, patient: {}, patients: [], professionals: [],
-  sessions: [], bookings: [], issues: [], loaded: false, loading: false,
+  sessions: [], bookings: [], loaded: false, loading: false,
   pending: 0, error: "", requestId: null, mockPayments: false,
 };
 
@@ -32,8 +32,6 @@ export const transition = command("transition", (p) => ["PATCH", "/bookings/" + 
 export const message = command("message", (p) => ["POST", "/bookings/" + p.id + "/messages", { text: p.text }]);
 export const saveNotes = command("saveNotes", ({ id, ...p }) => ["PUT", "/bookings/" + id + "/notes", p]);
 export const moderate = command("moderate", (p) => ["PATCH", "/admin/users/" + p.id, { status: p.status }]);
-export const raiseIssue = command("raiseIssue", (p) => ["POST", "/issues", { bookingId: p.bookingId, text: p.text }]);
-export const resolveIssue = command("resolveIssue", (id) => ["PATCH", "/admin/issues/" + id + "/resolve"]);
 export const refund = command("refund", (id) => ["POST", "/admin/bookings/" + id + "/refund-simulation"]);
 
 const slice = createSlice({

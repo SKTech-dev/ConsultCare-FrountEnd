@@ -36,7 +36,7 @@ export default function Workspace() {
   const links = state.role === "user" ? [
     ["/app", "Overview", LayoutDashboard], ["/consult/doctors", "Find a doctor", HeartPulse], ["/consult/lawyers", "Find a lawyer", Scale], ["/app/bookings", "My consultations", CalendarDays], ["/app/history", "My history", FileText], ["/app/profile", "My profile", UserRound],
   ] : state.role === "admin" ? [
-    ["/app", "Overview", LayoutDashboard], ["/app/admin", "People & verification", Users], ["/app/issues", "Payments & support", ShieldCheck],
+    ["/app", "Overview", LayoutDashboard], ["/app/admin", "People & verification", Users], ["/app/payments", "Payments & refunds", ShieldCheck],
   ] : [
     ["/app", "Overview", LayoutDashboard], ["/app/queue", "Consultation queue", Users], ["/app/sessions", "My sessions", CalendarDays], ["/app/history", "Consultation history", FileText], ["/app/profile", "Professional profile", UserRound],
   ];

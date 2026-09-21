@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { useWorkspace, PageHeading, Panel, Empty, Status } from "../../components/workspace/Workspace";
 import { ACTIVE, canRead, money } from "../../features/consultations/model";
-import { pay, transition, raiseIssue } from "../../features/consultations/consultationSlice";
+import { pay, transition } from "../../features/consultations/consultationSlice";
 import Button from "../../components/ui/Button";
 import { MessageOverlay } from "../../components/ui/MessageBox";
 import { Documents } from "./Room";
@@ -18,8 +18,6 @@ export function BookingDetails() {
   const s = useWorkspace();
   const dispatch = useDispatch();
   const [cancel, setCancel] = useState(false);
-  const [issue, setIssue] = useState("");
-  const [feedback, setFeedback] = useState("");
   const b = s.bookings.find((b) => b.id === id);
   if (!canRead(s, b)) return <Empty title="Record unavailable">This record is not available in the current workspace.</Empty>;
   const p = s.professionals.find((p) => p.id === b.professionalId);
@@ -34,7 +32,6 @@ export function BookingDetails() {
       {ACTIVE.includes(b.status) ? <><span className="ws-queue-number">{b.status === "IN CONSULTATION" ? "Ready" : position}</span><h3>{b.status === "IN CONSULTATION" ? "Your professional has called you." : b.status === "NEXT" ? "You're next. Please be ready." : Math.max(0, position - 1) + " people ahead of you."}</h3><p className="mt-3">Your position updates automatically. Wait for {p.name} to call you before joining the room.</p>{b.status === "IN CONSULTATION" && <Link to={"/app/room/" + b.id} className="ws-link mt-6">Join consultation →</Link>}</> : b.status === "COMPLETED" ? <><h3>Notes shared with you</h3><p className="whitespace-pre-wrap mt-3">{b.notes || "No shared notes were added."}</p><h3 className="mt-6">Follow-up recommendation</h3><p className="whitespace-pre-wrap mt-3">{b.followUp || "No follow-up recommendation recorded."}</p>{s.role !== "user" && <><h3 className="mt-6">Private professional notes</h3><p className="whitespace-pre-wrap mt-3">{b.privateNotes || "No private notes."}</p></>}</> : <p>{b.status === "PAYMENT PENDING" ? "Complete the mock payment to join this professional's queue." : "This consultation is no longer in the active queue."}</p>}
     </Panel></div>
     <div className="ws-space"><Documents booking={b} /></div>
-    <Panel title="Need help with this consultation?"><form onSubmit={async (e) => { e.preventDefault(); const action = await dispatch(raiseIssue({ bookingId: id, text: issue.trim() })); if (!action.error) { setIssue(""); setFeedback("Your issue has been sent to support."); } }}><label className="ws-field">Describe the issue<textarea value={issue} onChange={(e) => setIssue(e.target.value)} maxLength={1000} required /></label><button className="ws-link" disabled={!issue.trim()}>Submit support request</button>{feedback && <p role="status" className="mt-3">{feedback}</p>}</form></Panel>
     {cancel && <MessageOverlay type="confirm" title="Cancel this booking?" text="Your place will be released. A paid mock booking will be marked for a simulated refund." onClose={() => setCancel(false)} onConfirm={() => { dispatch(transition({ id, status: "CANCELLED" })); setCancel(false); }} />}
   </>;
 }

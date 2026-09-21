@@ -9,7 +9,7 @@ export default function Overview() {
   const active = mine.filter((b) => ACTIVE.includes(b.status));
   const completed = mine.filter((b) => b.status === "COMPLETED");
   return <>
-    <PageHeading title={s.role === "admin" ? "A clear view of your platform." : s.role === "user" ? "Your next step starts here." : "Care starts with a conversation."}>{s.role === "user" ? "Find the right professional, manage your visits, and keep your records together." : s.role === "admin" ? "Review professional accounts, monitor bookings, and resolve issues." : professional.name + " · " + professional.speciality}</PageHeading>
+    <PageHeading title={s.role === "admin" ? "A clear view of your platform." : s.role === "user" ? "Your next step starts here." : "Care starts with a conversation."}>{s.role === "user" ? "Find the right professional, manage your visits, and keep your records together." : s.role === "admin" ? "Review professional accounts and monitor bookings." : professional.name + " · " + professional.speciality}</PageHeading>
     <div className="ws-grid">{[
       ["Active consultations", active.length, "In your current workspace"],
       ["Completed", completed.length, "Records ready to revisit"],
