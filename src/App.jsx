@@ -11,7 +11,7 @@ import Home from "./pages/Home";
 import Workspace, { Empty } from "./components/workspace/Workspace";
 import Overview from "./pages/workspace/Overview";
 import { Directory, ProfessionalDetails } from "./pages/workspace/Directory";
-import { Bookings, BookingDetails } from "./pages/workspace/Bookings";
+import { Bookings, BookingDetails, ProfessionalSessionHistory } from "./pages/workspace/Bookings";
 import { Queue, Sessions } from "./pages/workspace/Professional";
 import Profile from "./pages/workspace/Profile";
 import Room from "./pages/workspace/Room";
@@ -42,6 +42,7 @@ export default function App() {
       <Route path="/app/professionals/:id" element={<ProfessionalDetails />} />
       <Route path="/app/bookings" element={<Bookings />} />
       <Route path="/app/history" element={<Bookings history />} />
+      <Route path="/app/history/session/:sessionId" element={<ProfessionalSessionHistory />} />
       <Route path="/app/booking/:id" element={<BookingDetails />} />
       <Route path="/app/room/:id" element={<Room />} />
       <Route path="/app/queue" element={<Queue />} />
