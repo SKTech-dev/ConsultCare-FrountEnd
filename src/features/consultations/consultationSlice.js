@@ -3,7 +3,7 @@ import { callApi } from "../../api/apiClient.js";
 
 const empty = {
   role: null, professionalId: null, patient: {}, patients: [], professionals: [],
-  sessions: [], bookings: [], loaded: false, loading: false,
+  sessions: [], weeklyAvailability: [], bookings: [], loaded: false, loading: false,
   pending: 0, error: "", requestId: null, mockPayments: false,
 };
 
@@ -26,6 +26,7 @@ function command(name, request) {
 export const saveProfile = command("saveProfile", (p) => ["PUT", "/profile", p]);
 export const addSession = command("addSession", ({ id, ...p }) => ["POST", "/sessions", p]);
 export const toggleSession = command("toggleSession", (id, state) => ["PATCH", "/sessions/" + id, { online: !state.sessions.find((s) => s.id === id)?.online }]);
+export const saveWeeklyAvailability = command("saveWeeklyAvailability", (days) => ["PUT", "/weekly-availability", { days }]);
 export const book = command("book", (p) => ["POST", "/bookings", { sessionId: p.sessionId, reason: p.reason || "" }]);
 export const pay = command("pay", (p) => ["POST", "/bookings/" + p.id + "/payment-simulation", { success: p.success }]);
 export const transition = command("transition", (p) => ["PATCH", "/bookings/" + p.id + "/status", { status: p.status }]);

@@ -1,23 +1,33 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
+import { Plus, Trash2 } from "lucide-react";
 import { useWorkspace, PageHeading, Panel, Empty, Status } from "../../components/workspace/Workspace";
-import { addSession, toggleSession, transition } from "../../features/consultations/consultationSlice";
-import { queueFor } from "../../features/consultations/model";
-import Button from "../../components/ui/Button";
+import { saveWeeklyAvailability, transition } from "../../features/consultations/consultationSlice";
+import { queueFor, sessionLabel, sortUpcomingSessions } from "../../features/consultations/model";
 import { MessageOverlay } from "../../components/ui/MessageBox";
+
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const blankSlot = () => ({ start: "09:00", end: "10:00", capacity: 10 });
+
+function scheduleFrom(slots) {
+  return DAYS.map((_, weekday) => ({
+    weekday,
+    slots: slots.filter((slot) => slot.weekday === weekday).map(({ start, end, capacity }) => ({ start, end, capacity })),
+  }));
+}
 
 export function Queue() {
   const s = useWorkspace();
   const dispatch = useDispatch();
   const [skip, setSkip] = useState(null);
   if (!["doctor", "lawyer"].includes(s.role)) return <Empty title="Professional workspace">Sign in with a professional account to view its queue.</Empty>;
-  const p = s.professionals.find((p) => p.id === s.professionalId);
+  const p = s.professionals.find((professional) => professional.id === s.professionalId);
   const queue = queueFor(s, p.id);
-  const busy = queue.some((b) => b.status === "IN CONSULTATION");
-  return <><PageHeading title="Your consultation queue." action={<Link className="ws-link secondary" to="/app/sessions">Manage sessions</Link>}>Only bookings assigned to {p.name} appear here.</PageHeading>
+  const busy = queue.some((booking) => booking.status === "IN CONSULTATION");
+  return <><PageHeading title="Your consultation queue." action={<Link className="ws-link secondary" to="/app/sessions">Manage weekly schedule</Link>}>Only bookings assigned to {p.name} appear here.</PageHeading>
     {p.status !== "verified" && <div className="ws-notice">This professional is {p.status}. An administrator must approve the account before consultations can start.</div>}
-    <Panel>{!queue.length ? <Empty title="Your queue is clear">Bookings will appear when a patient confirms their place in your queue.</Empty> : queue.map((b, i) => { const session = s.sessions.find((x) => x.id === b.sessionId); return <div className="ws-row" key={b.id}><div><h3>{b.position}. {b.patientName}</h3><p>{session.date} · {session.start}–{session.end} · {session.online ? "Session online" : "Session offline"}</p></div><Status>{b.status}</Status><div className="ws-actions">{b.status === "IN CONSULTATION" ? <Link to={"/app/room/" + b.id} className="ws-link">Open room</Link> : <><button className="ws-link" disabled={p.status !== "verified" || busy || !session.online || b.status !== "NEXT"} onClick={() => dispatch(transition({ id: b.id, status: "IN CONSULTATION" }))}>Call next</button><button className="ws-link secondary" disabled={p.status !== "verified"} onClick={() => setSkip(b.id)}>No-show</button></>}<Link className="ws-link secondary" to={"/app/booking/" + b.id}>Details</Link></div></div>; })}</Panel>
+    <Panel>{!queue.length ? <Empty title="Your queue is clear">Bookings will appear when a patient confirms their place in your queue.</Empty> : queue.map((booking) => { const session = s.sessions.find((item) => item.id === booking.sessionId); return <div className="ws-row" key={booking.id}><div><h3>{booking.position}. {booking.patientName}</h3><p>{session ? sessionLabel(session) : "Scheduled consultation"}</p></div><Status>{booking.status}</Status><div className="ws-actions">{booking.status === "IN CONSULTATION" ? <Link to={`/app/room/${booking.id}`} className="ws-link">Open room</Link> : <><button className="ws-link" disabled={p.status !== "verified" || busy || !session?.online || booking.status !== "NEXT"} onClick={() => dispatch(transition({ id: booking.id, status: "IN CONSULTATION" }))}>Call next</button><button className="ws-link secondary" disabled={p.status !== "verified"} onClick={() => setSkip(booking.id)}>No-show</button></>}<Link className="ws-link secondary" to={`/app/booking/${booking.id}`}>Details</Link></div></div>; })}</Panel>
     {skip && <MessageOverlay type="confirm" title="Mark as no-show?" text="This person will leave the active queue. Their record and payment status will remain available for review." onClose={() => setSkip(null)} onConfirm={() => { dispatch(transition({ id: skip, status: "NO-SHOW" })); setSkip(null); }} />}
   </>;
 }
@@ -25,10 +35,28 @@ export function Queue() {
 export function Sessions() {
   const s = useWorkspace();
   const dispatch = useDispatch();
-  const [form, setForm] = useState({ date: new Date().toLocaleDateString("en-CA"), start: "17:00", end: "19:00" });
-  const [error, setError] = useState("");
+  const [days, setDays] = useState(() => scheduleFrom(s.weeklyAvailability || []));
+  const [message, setMessage] = useState("");
   if (!["doctor", "lawyer"].includes(s.role)) return <Empty title="Professional workspace">Sign in with a professional account to manage availability.</Empty>;
-  const p = s.professionals.find((p) => p.id === s.professionalId);
-  const sessions = s.sessions.filter((x) => x.professionalId === p.id);
-  return <><PageHeading title="Time for your consultations.">Publish availability and start or pause each session independently.</PageHeading><div className="ws-grid-two"><Panel title="Your sessions">{sessions.map((x) => <div className="ws-row" key={x.id}><div><h3>{x.date}</h3><p>{x.start}–{x.end} · {x.capacity} places</p><Status>{x.online ? "Online" : "Offline"}</Status></div><button className="ws-link secondary" disabled={p.status !== "verified"} onClick={() => dispatch(toggleSession(x.id))}>{x.online ? "Pause session" : "Start session"}</button></div>)}</Panel><Panel title="Add availability"><form className="ws-form" onSubmit={(e) => { e.preventDefault(); if (form.start >= form.end) { setError("End time must be after start time."); return; } if (sessions.some((x) => x.date === form.date && form.start < x.end && form.end > x.start)) { setError("This session overlaps an existing session."); return; } dispatch(addSession(form)).then((action) => { if (!action.error) setError("Session added. Start it when you are ready."); }); }}>{[["date", "Date", "date"], ["start", "Start time", "time"], ["end", "End time", "time"]].map(([key, label, type]) => <label className="ws-field" key={key}>{label}<input type={type} required min={type === "date" ? new Date().toLocaleDateString("en-CA") : undefined} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} /></label>)}<Button type="submit" disabled={p.status !== "verified"}>Add session</Button>{p.status !== "verified" && <p>Administrator verification is required to publish sessions.</p>}<p role="status">{error}</p></form></Panel></div></>;
+  const p = s.professionals.find((professional) => professional.id === s.professionalId);
+  const upcoming = sortUpcomingSessions(s.sessions.filter((session) => session.professionalId === p.id)).slice(0, 14);
+  const updateDay = (weekday, change) => setDays((current) => current.map((day) => day.weekday === weekday ? { ...day, ...change } : day));
+  const addSlot = (weekday) => { const day = days.find((item) => item.weekday === weekday); updateDay(weekday, { slots: [...day.slots, blankSlot()] }); };
+  const updateSlot = (weekday, index, change) => { const day = days.find((item) => item.weekday === weekday); updateDay(weekday, { slots: day.slots.map((slot, position) => position === index ? { ...slot, ...change } : slot) }); };
+  const removeSlot = (weekday, index) => { const day = days.find((item) => item.weekday === weekday); updateDay(weekday, { slots: day.slots.filter((_, position) => position !== index) }); };
+  const save = async (event) => {
+    event.preventDefault();
+    for (const day of days) {
+      const slots = day.slots.slice().sort((a, b) => a.start.localeCompare(b.start));
+      if (slots.some((slot) => slot.start >= slot.end)) { setMessage("Each availability slot must end after it starts."); return; }
+      if (slots.some((slot, index) => index && slots[index - 1].end > slot.start)) { setMessage("Slots on the same day cannot overlap."); return; }
+    }
+    const action = await dispatch(saveWeeklyAvailability(days));
+    setMessage(action.error ? action.payload || "Could not save weekly availability." : "Weekly schedule saved. Upcoming sessions have been generated automatically.");
+  };
+  return <><PageHeading title="Your weekly availability.">Set the hours you repeat each week. Patients can select the next available occurrence, and you only need to return here when your routine changes.</PageHeading>
+    {p.status !== "verified" && <div className="ws-notice">Administrator verification is required before you can publish availability.</div>}
+    <form onSubmit={save}><Panel title="Repeat every week"><div className="weekly-days">{days.map((day) => <section className="weekly-day" key={day.weekday}><div className="weekly-day-heading"><h3>{DAYS[day.weekday]}</h3><button type="button" className="ws-name-link weekly-add" onClick={() => addSlot(day.weekday)}><Plus size={16} />Add time</button></div>{day.slots.length ? <div className="weekly-slots">{day.slots.map((slot, index) => <div className="weekly-slot" key={index}><label>Start<input type="time" value={slot.start} required onChange={(event) => updateSlot(day.weekday, index, { start: event.target.value })} /></label><label>End<input type="time" value={slot.end} required onChange={(event) => updateSlot(day.weekday, index, { end: event.target.value })} /></label><label>Places<input type="number" min="1" max="100" value={slot.capacity} required onChange={(event) => updateSlot(day.weekday, index, { capacity: Number(event.target.value) })} /></label><button type="button" className="weekly-remove" aria-label={`Remove ${DAYS[day.weekday]} slot ${index + 1}`} onClick={() => removeSlot(day.weekday, index)}><Trash2 size={17} /></button></div>)}</div> : <p className="ws-muted">No availability set.</p>}</section>)}</div><div className="ws-actions"><button className="ws-link" disabled={p.status !== "verified"}>Save weekly schedule</button></div>{message && <p role="status" className={message.startsWith("Weekly") ? "ws-success" : "ws-error"}>{message}</p>}</Panel></form>
+    <div className="ws-space"><Panel title="Upcoming generated sessions"><p className="mb-4">Your saved weekly schedule automatically creates the next dates. Booked dates are kept when you change the schedule.</p>{upcoming.length ? upcoming.map((session) => <div className="ws-row" key={session.id}><div><h3>{sessionLabel(session)}</h3><p>{session.capacity} places · Available for patient booking</p></div><Status>Available</Status></div>) : <Empty title="No upcoming sessions">Add time slots to your weekly schedule, then save it.</Empty>}</Panel></div>
+  </>;
 }

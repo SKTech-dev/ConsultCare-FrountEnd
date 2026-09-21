@@ -23,6 +23,17 @@ there are no default credentials. The demo login bypass is removed.
 The frontend defaults to /api and Vite proxies to localhost:8000. No database
 passwords or other secrets belong in VITE_ environment variables.
 
+## Weekly professional availability
+
+Doctors and lawyers set their Monday-to-Sunday availability once in **My sessions**.
+Each day can hold multiple slots, and saving the schedule generates upcoming dated
+sessions automatically. Changing the weekly schedule replaces future unbooked
+occurrences; booked sessions remain attached to their original date and time.
+
+Patients see only sessions that have not ended, ordered by their next actual date
+and time in Sri Lanka time. This starts with any remaining slot today, then follows
+the next days of the week naturally.
+
 Checks: node --test tests/*.test.js and npm.cmd run build.
 
 ## Monthly settlements and professional earnings
