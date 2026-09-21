@@ -4,7 +4,7 @@ import { useDispatch } from "react-redux";
 import { Plus, Trash2 } from "lucide-react";
 import { useWorkspace, PageHeading, Panel, Empty, Status } from "../../components/workspace/Workspace";
 import { saveWeeklyAvailability, transition } from "../../features/consultations/consultationSlice";
-import { queueFor, sessionLabel, sortUpcomingSessions } from "../../features/consultations/model";
+import { queueFor, sessionLabel, sortUpcomingSessions, sriLankanDate } from "../../features/consultations/model";
 import { MessageOverlay } from "../../components/ui/MessageBox";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -23,9 +23,9 @@ export function Queue() {
   const [skip, setSkip] = useState(null);
   if (!["doctor", "lawyer"].includes(s.role)) return <Empty title="Professional workspace">Sign in with a professional account to view its queue.</Empty>;
   const p = s.professionals.find((professional) => professional.id === s.professionalId);
-  const now = Date.now();
-  const sevenDaysFromNow = now + (7 * 24 * 60 * 60 * 1000);
-  const sessions = sortUpcomingSessions(s.sessions.filter((session) => session.professionalId === p.id && Date.parse(session.startsAt || `${session.date}T${session.start}:00+05:30`) <= sevenDaysFromNow));
+  const today = sriLankanDate();
+  const lastQueueDate = sriLankanDate(Date.now() + (6 * 24 * 60 * 60 * 1000));
+  const sessions = sortUpcomingSessions(s.sessions.filter((session) => session.professionalId === p.id && session.date >= today && session.date <= lastQueueDate));
   return <><PageHeading title="Your consultation queues." action={<Link className="ws-link secondary" to="/app/sessions">Manage weekly schedule</Link>}>Each session has its own queue. Showing your scheduled sessions for the next seven days.</PageHeading>
     {p.status !== "verified" && <div className="ws-notice">This professional is {p.status}. An administrator must approve the account before consultations can start.</div>}
     {sessions.length ? <div className="queue-sessions">{sessions.map((session) => {

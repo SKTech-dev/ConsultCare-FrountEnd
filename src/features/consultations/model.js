@@ -1,12 +1,23 @@
 export const ACTIVE = ["WAITING", "NEXT", "IN CONSULTATION"];
 export const money = (amount) => "LKR " + Number(amount).toLocaleString("en-LK");
 
+export function sriLankanDate(at = Date.now()) {
+  const values = new Intl.DateTimeFormat("en-GB", {
+    year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Colombo",
+  }).formatToParts(new Date(at)).reduce((result, part) => ({ ...result, [part.type]: part.value }), {});
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
 export function sessionEndsAt(session) {
   return Date.parse(session.endsAt || `${session.date}T${session.end}:00+05:30`);
 }
 
+export function isUpcomingSession(session, at = Date.now()) {
+  return Boolean(session?.date && session.date >= sriLankanDate(at) && sessionEndsAt(session) > at);
+}
+
 export function isBookableSession(session, at = Date.now()) {
-  return Boolean(session?.online && sessionEndsAt(session) > at);
+  return Boolean(session?.online && isUpcomingSession(session, at));
 }
 
 export function sortUpcomingSessions(sessions) {
