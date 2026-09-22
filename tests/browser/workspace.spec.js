@@ -21,7 +21,7 @@ function booking(id, sessionId, status = "NEXT") {
     payment: "paid (mock)", files: [], messages: [], notes: "", privateNotes: "", followUp: "" };
 }
 
-async function mockAccount(page, state) {
+async function mockAccount(page, state, options = {}) {
   await page.clock.setFixedTime(new Date(currentTime));
   await page.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
@@ -30,6 +30,8 @@ async function mockAccount(page, state) {
       : { message: "Please sign in." } });
     if (path === "/api/workspace") return route.fulfill({ json: { data: state } });
     if (path === "/api/admin/users/professional") return route.fulfill({ status: 409, json: { message: "The professional must complete their credentials first." } });
+    if (path === "/api/bookings/room/messages" && options.messageFailure) return route.fulfill({ status: 503, json: { message: "Message service is temporarily unavailable." } });
+    if (path === "/api/documents/image" && options.imageFailure) return route.fulfill({ status: 503, json: { message: "Preview unavailable." } });
     return route.fulfill({ status: 404, json: { message: "Unexpected test request: " + path } });
   });
   // These tests exercise rendering/routing with deterministic data; backend tests
@@ -102,4 +104,39 @@ test("failed professional approval shows one error popup", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Cannot approve professional" })).toHaveCount(1);
   await page.getByRole("button", { name: "OK", exact: true }).click();
   await expect(page.getByRole("button", { name: "OK", exact: true })).toHaveCount(0);
+});
+
+test("popups use dialog semantics, contain focus and close with Escape", async ({ page }) => {
+  const state = snapshot("admin");
+  state.professionals[0].status = "pending";
+  await mockAccount(page, state);
+  await page.goto("/app/admin/person/professional/professional");
+  const approve = page.getByRole("button", { name: "Approve", exact: true });
+  await approve.click();
+  const dialog = page.getByRole("dialog", { name: "Update account status?" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Cancel" })).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(dialog.getByRole("button", { name: "OK", exact: true })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(approve).toBeFocused();
+});
+
+test("chat failures remain local and image previews explain failure with retry", async ({ page }) => {
+  const state = snapshot("user");
+  state.sessions = [session("current", "2026-09-22")];
+  state.bookings = [{ ...booking("room", "current", "IN CONSULTATION"), files: [{ id: "image", name: "report.png", type: "image/png", size: 100, kind: "image", private: false }] }];
+  await mockAccount(page, state, { messageFailure: true, imageFailure: true });
+  await page.goto("/app/room/room");
+  await expect(page.getByRole("status", { name: "Loading preview for report.png" })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Preview unavailable for report.png" })).toBeVisible();
+  await page.getByRole("button", { name: "Retry" }).click();
+  await expect(page.getByRole("group", { name: "Preview unavailable for report.png" })).toBeVisible();
+  const input = page.getByRole("textbox", { name: "Message", exact: true });
+  await input.fill("Can you hear me?");
+  await page.getByRole("button", { name: "Send message" }).click();
+  await expect(page.getByRole("alert")).toContainText("Message service is temporarily unavailable.");
+  await expect(input).toHaveValue("Can you hear me?");
+  await expect(page.getByText("Saving changes...")).toHaveCount(0);
 });

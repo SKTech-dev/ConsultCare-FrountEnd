@@ -66,6 +66,16 @@ test("admin moderation can use one contextual error instead of a duplicate globa
   assert.equal(s.getState().consultations.feedback, null);
 });
 
+test("chat actions use local pending state without blocking the whole workspace", () => {
+  const s = store();
+  s.dispatch({ type: "consultations/message/pending", meta: { arg: { localPending: true } } });
+  assert.equal(s.getState().consultations.pending, 0);
+  s.dispatch({ type: "consultations/message/rejected", payload: "Could not send", meta: { arg: { localPending: true } } });
+  assert.equal(s.getState().consultations.pending, 0);
+  assert.equal(s.getState().consultations.feedback, null);
+  assert.equal(s.getState().consultations.error, "");
+});
+
 test("logout clears private workspace data and ignores in-flight responses", async () => {
   const s = store();
   let resolve;

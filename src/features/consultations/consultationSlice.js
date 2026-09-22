@@ -65,13 +65,17 @@ const slice = createSlice({
         if (state.requestId !== action.meta.requestId) return;
         state.loading = false; state.error = action.payload || "Could not load workspace.";
       })
-      .addMatcher((action) => action.type.startsWith("consultations/") && !action.type.startsWith("consultations/fetch") && action.type.endsWith("/pending"), (state) => { state.pending += 1; state.error = ""; state.feedback = null; })
+      .addMatcher((action) => action.type.startsWith("consultations/") && !action.type.startsWith("consultations/fetch") && action.type.endsWith("/pending"), (state, action) => {
+        // Chat owns its own sending/retry state. Do not freeze the consultation room.
+        if (action.meta.arg?.localPending) return;
+        state.pending += 1; state.error = ""; state.feedback = null;
+      })
       .addMatcher((action) => action.type.startsWith("consultations/") && !action.type.startsWith("consultations/fetch") && /\/(fulfilled|rejected)$/.test(action.type), (state, action) => {
-        state.pending = Math.max(0, state.pending - 1);
-        if (action.type.endsWith("/rejected")) state.error = action.payload || "Could not save changes.";
+        if (!action.meta.arg?.localPending) state.pending = Math.max(0, state.pending - 1);
+        if (action.type.endsWith("/rejected") && !action.meta.arg?.localPending) state.error = action.payload || "Could not save changes.";
         const name = action.type.split("/")[1];
         if (action.type.endsWith("/rejected")) {
-          if (!action.meta.arg?.localFeedback) state.feedback = { type: "error", text: String(action.payload || "Could not save changes.") };
+          if (!action.meta.arg?.localFeedback && !action.meta.arg?.localPending) state.feedback = { type: "error", text: String(action.payload || "Could not save changes.") };
         } else if (name !== "message") {
           const messages = { book: "Booking reserved. Continue with payment to join the queue.", saveProfile: "Your profile has been saved.", saveWeeklyAvailability: "Your weekly sessions have been saved.", saveFamily: "Your family professionals have been updated.", transition: action.meta.arg.status === "CANCELLED" ? "Consultation cancelled." : "Consultation status updated.", pay: "Payment status updated.", saveNotes: "Notes saved.", sendPrescription: "Prescription sent to the patient." };
           state.feedback = { type: "success", text: messages[name] || "Changes saved successfully." };

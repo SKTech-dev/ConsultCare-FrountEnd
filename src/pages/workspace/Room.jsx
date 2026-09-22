@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { Video, Mic, MicOff, VideoOff, FileText, UploadCloud, ShieldCheck, MessageSquare } from "lucide-react";
+import { Video, Mic, MicOff, VideoOff, FileText, UploadCloud, ShieldCheck, MessageSquare, ImageOff, Loader2, RefreshCw } from "lucide-react";
 import { useWorkspace, PageHeading, Panel, Empty, Status } from "../../components/workspace/Workspace";
 import { ACTIVE, canRead } from "../../features/consultations/model";
 import { fetchWorkspace, message, saveNotes, transition } from "../../features/consultations/consultationSlice";
@@ -14,17 +14,22 @@ import { MessageOverlay } from "../../components/ui/MessageBox";
 
 function DocumentImage({ file }) {
   const [url, setUrl] = useState("");
+  const [state, setState] = useState("loading");
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let active = true;
     let objectUrl;
+    setState("loading"); setUrl("");
     apiClient.get("/documents/" + file.id, { responseType: "blob" }).then((response) => {
       if (!active) return;
       objectUrl = URL.createObjectURL(response.data);
-      setUrl(objectUrl);
-    }).catch(() => {});
+      setUrl(objectUrl); setState("ready");
+    }).catch(() => { if (active) setState("error"); });
     return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
-  }, [file.id]);
-  return url ? <a href={url} target="_blank" rel="noreferrer"><img className="consultation-image" src={url} alt={file.name} /></a> : <FileText size={18} />;
+  }, [file.id, attempt]);
+  if (state === "loading") return <span className="consultation-image-state" role="status" aria-label={`Loading preview for ${file.name}`}><Loader2 className="animate-spin" size={20} /><span>Loading preview</span></span>;
+  if (state === "error") return <span className="consultation-image-state consultation-image-error" role="group" aria-label={`Preview unavailable for ${file.name}`}><ImageOff size={20} /><span>Preview unavailable</span><button type="button" className="ws-link secondary" onClick={() => setAttempt((value) => value + 1)}><RefreshCw size={14} />Retry</button></span>;
+  return <a href={url} target="_blank" rel="noreferrer"><img className="consultation-image" src={url} alt={file.name} /></a>;
 }
 
 export function Documents({ booking }) {
@@ -67,6 +72,8 @@ export default function Room() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [text, setText] = useState("");
+  const [chatError, setChatError] = useState("");
+  const [sending, setSending] = useState(false);
   const [notes, setNotes] = useState(b?.notes || "");
   const [privateNotes, setPrivateNotes] = useState(b?.privateNotes || "");
   const [followUp, setFollowUp] = useState(b?.followUp || "");
@@ -96,13 +103,22 @@ export default function Room() {
     finally { if (mounted.current) setStarting(false); }
   }
   function storeNotes() { return dispatch(saveNotes({ id, notes, privateNotes, followUp })); }
+  async function sendMessage(event) {
+    event.preventDefault();
+    if (!text.trim() || sending) return;
+    setSending(true); setChatError("");
+    const action = await dispatch(message({ id, text: text.trim(), localPending: true }));
+    if (action.error) setChatError(action.payload || "Could not send your message. It is still here; try again.");
+    else setText("");
+    setSending(false);
+  }
   if (!accessible) return <Empty title="The consultation room is not open">The assigned professional must call this booking before either participant can enter.</Empty>;
   const p = s.professionals.find((x) => x.id === b.professionalId);
   return <div className="consultation-room">
     <PageHeading eyebrow="CONSULTATION ROOM" title={s.role === "user" ? p.name : b.patientName} action={<Status>IN CONSULTATION</Status>}>Private consultation record · chat refreshes automatically.</PageHeading>
     <div className="ws-space mb-6"><PatientContext booking={b} /></div>
     <div className="ws-room-grid"><div className="room-video-panel"><div className="ws-video">{camera ? <video ref={video} autoPlay muted playsInline aria-label="Your local camera preview" /> : <><Video size={48} strokeWidth={1} /><h2 className="text-2xl font-serif">A space for your conversation.</h2><p>Camera is off. Enable it to preview your device.</p></>}</div><div className="ws-actions"><button className="ws-link" disabled={starting} onClick={camera ? () => { stream.current?.getTracks().forEach((t) => t.stop()); stream.current = null; setCamera(false); } : startCamera}>{camera ? <VideoOff size={17} /> : <Video size={17} />}{starting ? "Opening devices…" : camera ? "Stop preview" : "Preview camera & microphone"}</button><button className="ws-link secondary" disabled={!camera} onClick={() => { stream.current?.getAudioTracks().forEach((t) => { t.enabled = !mic; }); setMic(!mic); }}>{mic ? <Mic size={17} /> : <MicOff size={17} />}{mic ? "Mute" : "Unmute"}</button></div>{mediaError && <p role="alert" className="ws-error">{mediaError}</p>}<div className="ws-notice">This is a local device preview, not a remote video call. Remote video calling is not yet connected. Chat is saved to your consultation.</div></div>
-      <section className="ws-panel room-chat-panel"><div className="room-chat-heading"><MessageSquare size={20} /><h2>Consultation chat</h2><span>Saved to your record</span></div><div className="ws-chat" ref={chat} role="log" aria-label="Consultation messages"><ChatMessages booking={b} /></div><form onSubmit={async (e) => { e.preventDefault(); const action = await dispatch(message({ id, text })); if (!action.error) setText(""); }}><label className="ws-field">Message<textarea value={text} onChange={(e) => setText(e.target.value)} maxLength={2000} placeholder="Write a message…" /></label><Button type="submit" disabled={!text.trim()}>Send message</Button></form></section>
+      <section className="ws-panel room-chat-panel"><div className="room-chat-heading"><MessageSquare size={20} /><h2>Consultation chat</h2><span>Saved to your record</span></div><div className="ws-chat" ref={chat} role="log" aria-live="polite" aria-relevant="additions text" aria-label="Consultation messages"><ChatMessages booking={b} /></div><form className="room-chat-form" onSubmit={sendMessage}><label className="ws-field">Message<textarea value={text} disabled={sending} onChange={(e) => { setText(e.target.value); setChatError(""); }} maxLength={2000} placeholder="Write a message…" /></label><div className="room-chat-send"><Button type="submit" disabled={!text.trim() || sending} aria-busy={sending}>{sending ? "Sending..." : "Send message"}</Button>{chatError && <p role="alert" className="ws-error">{chatError}</p>}</div></form></section>
     </div>
     <div className="ws-space"><Documents booking={b} /></div>
     <div className="ws-space"><Prescription key={b.id} booking={b} /></div>
