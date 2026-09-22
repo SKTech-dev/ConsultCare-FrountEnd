@@ -1,4 +1,7 @@
 .consultation-room { display: grid; gap: 24px; }
+.daily-video-frame { height: 520px; min-width: 0; }
+.daily-video-frame[hidden] { display: none; }
+@media (max-width: 640px) { .daily-video-frame { height: 440px; } }
 .consultation-room > .ws-space { margin: 0; }
 .consultation-room .ws-heading { margin-bottom: 0; padding-bottom: 24px; border-bottom: 1px solid var(--ws-border); }
 .consultation-room .ws-heading h1 { font-size: clamp(28px, 3vw, 38px); }

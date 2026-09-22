@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { Video, Mic, MicOff, VideoOff, FileText, UploadCloud, ShieldCheck, MessageSquare, ImageOff, Loader2, RefreshCw } from "lucide-react";
+import { FileText, UploadCloud, ShieldCheck, MessageSquare, ImageOff, Loader2, RefreshCw } from "lucide-react";
 import { useWorkspace, PageHeading, Panel, Empty, Status } from "../../components/workspace/Workspace";
 import { ACTIVE, canRead } from "../../features/consultations/model";
 import { fetchWorkspace, message, saveNotes, transition } from "../../features/consultations/consultationSlice";
@@ -9,6 +9,7 @@ import { saveFile, downloadFile } from "../../features/consultations/files";
 import { PatientContext, ChatMessages, Prescription } from "./ConsultationRecord";
 import { apiClient } from "../../api/apiClient";
 import "./room.css";
+import VideoCall from "../../components/workspace/VideoCall";
 import Button from "../../components/ui/Button";
 import { MessageOverlay } from "../../components/ui/MessageBox";
 
@@ -79,29 +80,9 @@ export default function Room() {
   const [followUp, setFollowUp] = useState(b?.followUp || "");
   const [confirm, setConfirm] = useState(false);
   const [feedback, setFeedback] = useState("");
-  const [mediaError, setMediaError] = useState("");
-  const [camera, setCamera] = useState(false);
-  const [mic, setMic] = useState(true);
-  const [starting, setStarting] = useState(false);
-  const video = useRef(null);
-  const stream = useRef(null);
-  const mounted = useRef(true);
   const chat = useRef(null);
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; stream.current?.getTracks().forEach((t) => t.stop()); }; }, []);
-  useEffect(() => { if (video.current) video.current.srcObject = stream.current; }, [camera]);
   useEffect(() => { if (chat.current) chat.current.scrollTop = chat.current.scrollHeight; }, [b?.messages.length]);
   const accessible = canRead(s, b) && b?.status === "IN CONSULTATION";
-  useEffect(() => { if (!accessible) { stream.current?.getTracks().forEach((t) => t.stop()); stream.current = null; setCamera(false); } }, [accessible]);
-  async function startCamera() {
-    setMediaError(""); setStarting(true);
-    try {
-      if (!navigator.mediaDevices?.getUserMedia) throw new Error("Camera preview needs localhost or HTTPS and browser media support.");
-      const result = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      if (!mounted.current) { result.getTracks().forEach((t) => t.stop()); return; }
-      stream.current = result; setCamera(true); setMic(true);
-    } catch (error) { if (mounted.current) setMediaError(error.name === "NotAllowedError" ? "Camera or microphone permission was denied. You can continue with chat." : error.message); }
-    finally { if (mounted.current) setStarting(false); }
-  }
   function storeNotes() { return dispatch(saveNotes({ id, notes, privateNotes, followUp })); }
   async function sendMessage(event) {
     event.preventDefault();
@@ -117,7 +98,7 @@ export default function Room() {
   return <div className="consultation-room">
     <PageHeading eyebrow="CONSULTATION ROOM" title={s.role === "user" ? p.name : b.patientName} action={<Status>IN CONSULTATION</Status>}>Private consultation record · chat refreshes automatically.</PageHeading>
     <div className="ws-space mb-6"><PatientContext booking={b} /></div>
-    <div className="ws-room-grid"><div className="room-video-panel"><div className="ws-video">{camera ? <video ref={video} autoPlay muted playsInline aria-label="Your local camera preview" /> : <><Video size={48} strokeWidth={1} /><h2 className="text-2xl font-serif">A space for your conversation.</h2><p>Camera is off. Enable it to preview your device.</p></>}</div><div className="ws-actions"><button className="ws-link" disabled={starting} onClick={camera ? () => { stream.current?.getTracks().forEach((t) => t.stop()); stream.current = null; setCamera(false); } : startCamera}>{camera ? <VideoOff size={17} /> : <Video size={17} />}{starting ? "Opening devices…" : camera ? "Stop preview" : "Preview camera & microphone"}</button><button className="ws-link secondary" disabled={!camera} onClick={() => { stream.current?.getAudioTracks().forEach((t) => { t.enabled = !mic; }); setMic(!mic); }}>{mic ? <Mic size={17} /> : <MicOff size={17} />}{mic ? "Mute" : "Unmute"}</button></div>{mediaError && <p role="alert" className="ws-error">{mediaError}</p>}<div className="ws-notice">This is a local device preview, not a remote video call. Remote video calling is not yet connected. Chat is saved to your consultation.</div></div>
+    <div className="ws-room-grid"><VideoCall key={id} bookingId={id} />
       <section className="ws-panel room-chat-panel"><div className="room-chat-heading"><MessageSquare size={20} /><h2>Consultation chat</h2><span>Saved to your record</span></div><div className="ws-chat" ref={chat} role="log" aria-live="polite" aria-relevant="additions text" aria-label="Consultation messages"><ChatMessages booking={b} /></div><form className="room-chat-form" onSubmit={sendMessage}><label className="ws-field">Message<textarea value={text} disabled={sending} onChange={(e) => { setText(e.target.value); setChatError(""); }} maxLength={2000} placeholder="Write a message…" /></label><div className="room-chat-send"><Button type="submit" disabled={!text.trim() || sending} aria-busy={sending}>{sending ? "Sending..." : "Send message"}</Button>{chatError && <p role="alert" className="ws-error">{chatError}</p>}</div></form></section>
     </div>
     <div className="ws-space"><Documents booking={b} /></div>
