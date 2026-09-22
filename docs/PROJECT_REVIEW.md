@@ -1,5 +1,9 @@
 # Project review — 21 September 2026
 
+Follow-up: dependency and scheduling findings were addressed on 22 September.
+See [implemented changes and verification](DEPENDENCIES_AND_SCHEDULING.md).
+The findings below describe the original review; remote video and real payments remain outstanding.
+
 ## Assessment
 
 The project has a useful consultation-workflow foundation, but is not ready for a public, paid-consultation launch. This source review covered the frontend and relevant sibling backend paths. It is not a penetration test or an end-to-end test of every role/device. No backend changes were made in this cleanup.

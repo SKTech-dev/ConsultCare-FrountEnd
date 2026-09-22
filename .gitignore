@@ -39,6 +39,8 @@ pids/
 
 # Coverage directory used by tools like istanbul
 coverage/
+playwright-report/
+test-results/
 *.lcov
 
 # Temporary folders
