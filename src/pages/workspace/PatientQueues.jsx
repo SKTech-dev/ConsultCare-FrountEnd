@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { Link } from "react-router-dom";
 import { useWorkspace, PageHeading, Panel, Empty, Status } from "../../components/workspace/Workspace";
-import { ACTIVE, sessionStartsAt, sessionEndsAt, sessionLabel } from "../../features/consultations/model";
+import { ACTIVE, money, sessionStartsAt, sessionEndsAt, sessionLabel } from "../../features/consultations/model";
+import BookingPayment from "./BookingPayment";
 import { transition } from "../../features/consultations/consultationSlice";
 import { MessageOverlay } from "../../components/ui/MessageBox";
 
@@ -24,6 +25,8 @@ export default function PatientQueues() {
       const estimate = session ? Math.max(sessionStartsAt(session), Date.now()) + Math.max(0, position - 1) * slot : 0;
       return <Panel key={b.id} title={state.professionals.find((p) => p.id === b.professionalId)?.name || "Consultation"}>
         <div className="ws-row"><p>{session ? sessionLabel(session) : "Session details unavailable"}</p><Status>{b.status}</Status></div>
+        {b.scheduledById && <p className="ws-space"><strong>Private appointment scheduled by your professional</strong> · {money(b.fee)}</p>}
+        {b.scheduledById && <BookingPayment booking={b} />}
         {ACTIVE.includes(b.status) && !ended && position > 0 && <div aria-live="polite">
           <p className="ws-space">{b.status === "IN CONSULTATION" ? "It is your turn." : position === 1 ? "You are next." : (position - 1) + " ahead of you."}</p>
           <ol className="patient-queue-track" aria-label="Your queue position">{Array.from({ length: Math.min(position + 1, b.queueSize || position) }, (_, i) => <li key={i} className={i + 1 === position ? "patient-queue-you" : ""} aria-current={i + 1 === position ? "step" : undefined}>{i + 1 === position ? "You" : i + 1}</li>)}</ol>

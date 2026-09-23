@@ -10,9 +10,12 @@ import "./transfers.css";
 
 const label = (s) => `${s.date} · ${s.start}–${s.end} (Sri Lanka)`;
 
-export default function SessionTransfers({ embedded = false }) {
+export default function SessionTransfers({ embedded = false, view = "all" }) {
   const workspace = useWorkspace();
   const allowed = ["admin", "doctor", "lawyer"].includes(workspace.role);
+  const showSessions = view === "all" || view === "request";
+  const showHistory = view !== "request";
+  const historyTitle = view === "upcoming" ? "Upcoming handovers" : view === "history" ? "Handover history" : "Requests & handover history";
   const dispatch = useDispatch();
   const [sessions, setSessions] = useState(null);
   const [history, setHistory] = useState(null);
@@ -34,13 +37,13 @@ export default function SessionTransfers({ embedded = false }) {
     const version = ++request.current;
     try {
       const [a, b] = await Promise.all([
-        callApi("GET", "/transferable-sessions", null, { page: sessionPage }),
-        callApi("GET", "/session-transfers", null, { page }),
+        showSessions ? callApi("GET", "/transferable-sessions", null, { page: sessionPage }) : null,
+        showHistory ? callApi("GET", "/session-transfers", null, { page, scope: view === "all" ? "all" : view }) : null,
       ]);
       if (version !== request.current) return;
-      setSessions(a.data); setHistory(b.data); setError("");
+      setSessions(a?.data); setHistory(b?.data); setError("");
     } catch (e) { if (version === request.current) setError(e.message); }
-  }, [allowed, page, sessionPage]);
+  }, [allowed, page, sessionPage, showSessions, showHistory, view]);
   useEffect(() => {
     load();
     const interval = setInterval(load, 10000);
@@ -59,10 +62,10 @@ export default function SessionTransfers({ embedded = false }) {
   if (!allowed) return <Empty title="Professional and administrator access">Session handovers are managed by professionals and administrators.</Empty>;
   return <section className="session-transfers" aria-label="Session handovers">
     {!embedded && <PageHeading title="Session handovers.">Arrange cover for a booked session and follow every request and earnings reassignment.</PageHeading>}
-    <Panel title="Hand over a booked session">
+    {error && <p role="alert" className="ws-error">{error} <button className="ws-link secondary" onClick={load}>Retry</button></p>}
+    {showSessions && <Panel title="Hand over a booked session">
       <p>Choose a dated session with patients in its queue. The receiver must accept before ownership changes. Booked prices, queue order and weekly schedules stay the same.</p>
       <div className="ws-notice">Requests expire at the session start. Only sessions that have not started can be handed over. Amounts below are estimates; earnings count completed, paid consultations.</div>
-      {error && <p role="alert" className="ws-error">{error} <button className="ws-link secondary" onClick={load}>Retry</button></p>}
       {!sessions && !error && <p role="status"><Loader2 size={18} className="animate-spin" /> Loading booked sessions…</p>}
       {sessions?.items.length === 0 && <Empty title="No sessions available for handover">Future sessions with queued patients will appear here.</Empty>}
       {sessions?.items.map((session) => <div className="transfer-session" key={session.id}>
@@ -72,10 +75,10 @@ export default function SessionTransfers({ embedded = false }) {
         <button className="ws-link" disabled={Boolean(session.pending) || session.adminOnly || busy} onClick={() => setSelected(session)}><ArrowRightLeft size={16} />Request handover</button>
       </div>)}
       {sessions && <Pagination page={sessionPage} count={sessions.count} size={sessions.pageSize} onChange={setSessionPage} />}
-    </Panel>
+    </Panel>}
     {selected && <div ref={formAnchor} tabIndex={-1} aria-label="Request session handover"><TransferForm key={selected.id} session={selected} onClose={() => setSelected(null)} onSaved={async (text) => { setSelected(null); setNotice({ type: "success", text }); await Promise.all([load(), dispatch(fetchWorkspace())]); }} /></div>}
-    <Panel title="Requests & handover history">
-      <p>Incoming requests have Accept and Reject actions. Your original session stays assigned until acceptance. Check suitability, speciality and language before accepting.</p>
+    {showHistory && <Panel title={historyTitle}>
+      <p>{view === "history" ? "Past sessions and resolved requests remain here for review, including their earnings attribution." : "Incoming requests have Accept and Reject actions. Accepted upcoming sessions remain here until they finish. Your original session stays assigned until acceptance."}</p>
       {!history && !error && <p role="status">Loading requests…</p>}
       {history?.items.length === 0 && <Empty title="No handovers yet">Incoming requests, your requests and their outcomes appear here.</Empty>}
       {history?.items.map((item) => <article className="transfer-card" key={item.id}>
@@ -91,7 +94,7 @@ export default function SessionTransfers({ embedded = false }) {
         </div>}
       </article>)}
       {history && <Pagination page={page} count={history.count} size={history.pageSize} onChange={setPage} />}
-    </Panel>
+    </Panel>}
     {decision && <div ref={decisionAnchor} tabIndex={-1} aria-label="Confirm handover decision"><Panel title={`${decision.action === "accept" ? "Accept this session?" : decision.action === "reject" ? "Reject this request?" : "Cancel this request?"}`}>
       <p>{label(decision.item)} · {decision.item.fromName} → {decision.item.toName}</p>
       {decision.action === "accept" && <p>By accepting, you agree to conduct the session at the existing booked fees. Availability and queued patients will be checked again.</p>}

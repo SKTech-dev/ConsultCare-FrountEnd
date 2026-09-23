@@ -1,0 +1,12 @@
+.appointment-search { display: flex; align-items: end; gap: 16px; margin: 24px 0; }
+.appointment-search .ws-field { flex: 1; min-width: 0; }
+.appointment-form { display: grid; gap: 18px; }
+.appointment-times { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 16px; }
+.appointment-card { padding: 20px; margin-top: 18px; border: 1px solid var(--ws-border); border-radius: 14px; background: var(--ws-appBg); }
+.appointment-summary { display: flex; flex-wrap: wrap; gap: 12px 24px; margin: 12px 0; font-size: 14px; }
+.appointment-filter { max-width: 280px; margin-top: 18px; }
+@media (max-width: 600px) {
+  .appointment-search { flex-direction: column; align-items: stretch; }
+  .appointment-times { grid-template-columns: 1fr; }
+  .appointment-card { padding: 14px; }
+}

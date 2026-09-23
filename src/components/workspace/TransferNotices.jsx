@@ -14,5 +14,5 @@ export default function TransferNotices() {
   }
   const pending = notices.filter((n) => n.status === "pending" && (n.incoming || s.role === "admin"));
   if (!pending.length) return null;
-  return <div className="ws-notice" role="status"><strong>{pending.length} session handover request{pending.length === 1 ? "" : "s"} pending</strong><p>Review the session time, queued patients and fees before responding.</p><Link className="underline" to={s.role === "admin" ? "/app/transfers" : "/app/sessions"}>Review handovers</Link></div>;
+  return <div className="ws-notice" role="status"><strong>{pending.length} session handover request{pending.length === 1 ? "" : "s"} pending</strong><p>Review the session time, queued patients and fees before responding.</p><Link className="underline" to={s.role === "admin" ? "/app/transfers" : "/app/queue"}>Review handovers</Link></div>;
 }

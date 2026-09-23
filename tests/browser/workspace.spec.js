@@ -5,7 +5,7 @@ const professional = { id: "professional", name: "Test Professional", role: "doc
 
 function snapshot(role = "doctor") {
   return { role, professionalId: role === "doctor" || role === "lawyer" ? professional.id : null,
-    patient: { id: "patient", name: "Test Patient" }, patients: [],
+    patient: { id: "patient", name: "Test Patient", status: "active" }, patients: [],
     professionals: [{ ...professional, role: role === "lawyer" ? "lawyer" : "doctor" }],
     sessions: [], bookings: [], weeklyAvailability: [], familyProfessionalIds: [],
     onboarding: null, mockPayments: true };
@@ -29,7 +29,7 @@ async function mockAccount(page, state, options = {}) {
       ? { data: { id: state.role === "user" ? "patient" : professional.id, role: state.role, name: "Test Account" } }
       : { message: "Please sign in." } });
     if (path === "/api/workspace") return route.fulfill({ json: { data: state } });
-    if (path === "/api/transferable-sessions" || path === "/api/session-transfers") return route.fulfill({ json: { data: { items: [], count: 0, pageSize: 30 } } });
+    if (path === "/api/transferable-sessions" || path === "/api/session-transfers" || path === "/api/scheduled-consultations") return route.fulfill({ json: { data: { items: [], count: 0, pageSize: 30 } } });
     if (path === "/api/admin/users/professional") return route.fulfill({ status: 409, json: { message: "The professional must complete their credentials first." } });
     if (path === "/api/bookings/room/messages" && options.messageFailure) return route.fulfill({ status: 503, json: { message: "Message service is temporarily unavailable." } });
     if (path === "/api/documents/image" && options.imageFailure) return route.fulfill({ status: 503, json: { message: "Preview unavailable." } });
@@ -52,7 +52,8 @@ test("my sessions replaces generated sessions with handover controls", async ({ 
   await page.goto("/app/sessions");
   await expect(page.getByRole("heading", { name: "Upcoming generated sessions" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Hand over a booked session" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Requests & handover history" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Requests & handover history" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Schedule a patient consultation" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "No sessions available for handover" })).toBeVisible();
 });
 
@@ -86,13 +87,83 @@ test("receiver confirms acceptance before the request is submitted", async ({ pa
     submitted = route.request().postDataJSON();
     return route.fulfill({ json: { message: "Handover accepted." } });
   });
-  await page.goto("/app/sessions");
+  await page.goto("/app/queue");
   await page.getByRole("button", { name: "Accept", exact: true }).click();
   expect(submitted).toBeUndefined();
   await expect(page.getByRole("heading", { name: "Accept this session?" })).toBeVisible();
   await page.getByRole("button", { name: "Confirm accept" }).click();
   await expect(page.getByText("Handover accepted.", { exact: true })).toBeVisible();
   expect(submitted.action).toBe("accept");
+});
+
+test("handover queue and history request separate server-filtered views", async ({ page }) => {
+  await mockAccount(page, snapshot());
+  const scopes = [];
+  await page.route("**/api/session-transfers?*", (route) => {
+    scopes.push(new URL(route.request().url()).searchParams.get("scope"));
+    return route.fulfill({ json: { data: { items: [], count: 0, pageSize: 30 } } });
+  });
+  await page.goto("/app/queue");
+  await expect(page.getByRole("heading", { name: "Upcoming handovers" })).toBeVisible();
+  await page.getByRole("navigation", { name: "Workspace" }).getByRole("link", { name: "Consultation history" }).click();
+  await expect(page.getByRole("heading", { name: "Handover history" })).toBeVisible();
+  await expect.poll(() => scopes).toContain("history");
+  expect(scopes).toContain("upcoming");
+});
+
+test("professional schedules a private consultation using an exact patient email", async ({ page }) => {
+  await mockAccount(page, snapshot());
+  await page.route("**/api/scheduled-consultations/patient-search", (route) => {
+    expect(route.request().postDataJSON()).toEqual({ email: "patient@example.com" });
+    return route.fulfill({ json: { data: { name: "Test Patient", email: "patient@example.com" } } });
+  });
+  let submitted;
+  await page.route("**/api/scheduled-consultations", (route) => {
+    submitted = route.request().postDataJSON();
+    return route.fulfill({ status: 201, json: { message: "Consultation scheduled. Patient payment is required." } });
+  });
+  await page.goto("/app/sessions");
+  await page.getByLabel("Patient / client email").fill("patient@example.com");
+  await page.getByRole("button", { name: "Find patient" }).click();
+  await expect(page.getByText("Test Patient", { exact: true })).toBeVisible();
+  await page.getByLabel("Date", { exact: true }).fill("2026-09-23");
+  await page.getByLabel("Start time", { exact: true }).fill("14:00");
+  await page.getByLabel("End time", { exact: true }).fill("14:30");
+  await page.getByRole("button", { name: "Schedule consultation", exact: true }).click();
+  await expect(page.getByText("Consultation scheduled. Patient payment is required.", { exact: true })).toBeVisible();
+  expect(submitted).toEqual({ email: "patient@example.com", date: "2026-09-23", start: "14:00", end: "14:30", expectedFee: 2500, reason: "" });
+});
+
+test("patient can accept and pay for an invitation from My consultations", async ({ page }) => {
+  const state = snapshot("user");
+  state.sessions = [session("private", "2026-09-23")];
+  state.bookings = [{ ...booking("invited", "private", "PAYMENT PENDING"), payment: "unpaid", scheduledById: professional.id, paymentDueAt: "2026-09-23T10:00:00+05:30" }];
+  await mockAccount(page, state);
+  let paid = false;
+  await page.route("**/api/bookings/invited/payment-simulation", (route) => {
+    expect(route.request().postDataJSON()).toEqual({ success: true });
+    paid = true; state.bookings[0].status = "NEXT";
+    return route.fulfill({ json: { message: "Saved." } });
+  });
+  await page.goto("/app/bookings");
+  await page.getByRole("button", { name: /Accept & simulate payment/ }).click();
+  expect(paid).toBe(false);
+  await page.getByRole("dialog").getByRole("button", { name: "OK", exact: true }).click();
+  await expect.poll(() => paid).toBe(true);
+  await expect(page.getByText("Payment status updated.", { exact: true })).toBeVisible();
+});
+
+test("expired invitations cannot be paid and admins can inspect scheduled appointments", async ({ page }) => {
+  const state = snapshot("user");
+  state.sessions = [session("private", "2026-09-22")];
+  state.bookings = [{ ...booking("expired", "private", "PAYMENT PENDING"), scheduledById: professional.id, paymentDueAt: "2026-09-22T10:00:00+05:30" }];
+  await mockAccount(page, state);
+  await page.goto("/app/bookings");
+  await expect(page.getByRole("button", { name: /Accept & simulate payment/ })).toBeDisabled();
+  await mockAccount(page, snapshot("admin"));
+  await page.goto("/app/appointments");
+  await expect(page.getByRole("heading", { name: "Scheduled consultations." })).toBeVisible();
+  await expect(page.getByRole("combobox", { name: "Appointment view" })).toBeVisible();
 });
 
 for (const role of ["user", "doctor", "lawyer"]) {

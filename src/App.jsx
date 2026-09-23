@@ -15,6 +15,7 @@ import { Bookings, BookingDetails, ProfessionalSessionHistory } from "./pages/wo
 import { Queue, Sessions } from "./pages/workspace/Professional";
 import Profile from "./pages/workspace/Profile";
 import SessionTransfers from "./pages/workspace/SessionTransfers";
+import ScheduledConsultations from "./pages/workspace/ScheduledConsultations";
 import Room from "./pages/workspace/Room";
 import IncomingConsultation from "./components/workspace/IncomingConsultation";
 import { AdminPeople, AdminPersonDetails, AdminPayments } from "./pages/workspace/Admin";
@@ -52,6 +53,7 @@ export default function App() {
       <Route path="/app/profile" element={<Profile />} />
       <Route path="/app/admin" element={<AdminPeople />} />
       <Route path="/app/transfers" element={<SessionTransfers />} />
+      <Route path="/app/appointments" element={<ScheduledConsultations />} />
       <Route path="/app/admin/person/:type/:id" element={<AdminPersonDetails />} />
       <Route path="/app/payments" element={<AdminPayments />} />
       <Route path="/app/settlements" element={<MonthlyEarnings />} />

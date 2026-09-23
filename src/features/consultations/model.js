@@ -51,5 +51,5 @@ export function queueFor(state, professionalId, sessionId) {
 export function canRead(state, booking) {
   return Boolean(booking && (state.role === "user"
     ? booking.patientId === state.patient.id
-    : ["doctor", "lawyer"].includes(state.role) && booking.professionalId === state.professionalId));
+    : ["doctor", "lawyer"].includes(state.role) && booking.professionalId === state.professionalId && (!booking.scheduledById || Boolean(booking.acceptedAt))));
 }

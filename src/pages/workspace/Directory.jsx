@@ -9,6 +9,7 @@ import Button from "../../components/ui/Button";
 
 export function Directory({ profession }) {
   const s = useWorkspace();
+  const publicSessions = s.sessions.filter((session) => !session.privateAppointment);
   const dispatch = useDispatch();
   const [search, setSearch] = useState("");
   const [speciality, setSpeciality] = useState("");
@@ -16,7 +17,7 @@ export function Directory({ profession }) {
   const [fee, setFee] = useState("");
   const [online, setOnline] = useState(false);
   const list = s.professionals.filter((p) => p.role === profession && p.status === "verified");
-  const found = list.filter((p) => (p.name + " " + p.speciality).toLowerCase().includes(search.toLowerCase()) && (!speciality || p.speciality === speciality) && (!language || p.languages.includes(language)) && (!fee || p.fee <= Number(fee)) && (!online || s.sessions.some((x) => x.professionalId === p.id && isBookableSession(x))));
+  const found = list.filter((p) => (p.name + " " + p.speciality).toLowerCase().includes(search.toLowerCase()) && (!speciality || p.speciality === speciality) && (!language || p.languages.includes(language)) && (!fee || p.fee <= Number(fee)) && (!online || publicSessions.some((x) => x.professionalId === p.id && isBookableSession(x))));
   const family = new Set(s.familyProfessionalIds || []);
   const booked = new Set(s.bookings.map((booking) => booking.professionalId));
   const groups = [["Family " + profession + "s", found.filter((p) => family.has(p.id))], ["Previously booked " + profession + "s", found.filter((p) => !family.has(p.id) && booked.has(p.id))], ["Discover " + profession + "s", found.filter((p) => !family.has(p.id) && !booked.has(p.id))]];
@@ -25,7 +26,7 @@ export function Directory({ profession }) {
     <PageHeading eyebrow={profession === "doctor" ? "FOR YOUR HEALTH" : "FOR YOUR PEACE OF MIND"} title={"Find your " + profession + "."}>Choose a professional who fits your needs, language, and schedule. Review their qualifications and available consultation sessions.</PageHeading>
     <div className="ws-filters"><label>Search<input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Name or speciality" /></label><label>Speciality<select value={speciality} onChange={(e) => setSpeciality(e.target.value)}><option value="">All specialities</option>{[...new Set(list.map((p) => p.speciality))].map((x) => <option key={x}>{x}</option>)}</select></label><label>Language<select value={language} onChange={(e) => setLanguage(e.target.value)}><option value="">All languages</option>{["English", "Sinhala", "Tamil"].map((x) => <option key={x}>{x}</option>)}</select></label><label>Maximum fee (LKR)<input type="number" min="0" value={fee} onChange={(e) => setFee(e.target.value)} placeholder="Any fee" /></label></div>
     <div className="flex justify-between mb-5 text-xs"><span>{found.length} professionals</span><label className="flex gap-2"><input type="checkbox" checked={online} onChange={(e) => setOnline(e.target.checked)} />Session online now</label></div>
-    {groups.map(([title, professionals]) => professionals.length > 0 && <section className="directory-group" key={title}><h2>{title}</h2><div className="ws-grid">{professionals.map((p) => { const next = sortUpcomingSessions(s.sessions.filter((x) => x.professionalId === p.id))[0]; return <article className="ws-panel ws-professional" key={p.id}><div className="ws-person-top"><div className="ws-person-avatar">{p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover rounded-[inherit]" /> : <Icon size={28} strokeWidth={1.3} />}</div><Status>verified</Status></div><h3>{p.name}</h3><p>{p.speciality}</p><div className="ws-tags">{p.languages.map((l) => <span key={l}>{l}</span>)}</div><p>{p.bio}</p><div className="ws-row"><strong>{money(p.fee)}</strong><span className="ws-muted">per consultation</span></div><p>{next ? sessionLabel(next) : "No upcoming sessions"}</p><div className="ws-actions">{s.role === "user" && <button className="ws-link secondary" onClick={() => dispatch(saveFamily({ id: p.id, saved: !family.has(p.id) }))}>{family.has(p.id) ? "Remove from family professionals" : "Save as family " + profession}</button>}<Link className="ws-link" to={"/app/professionals/" + p.id}>View profile & availability →</Link></div></article>; })}</div></section>)}
+    {groups.map(([title, professionals]) => professionals.length > 0 && <section className="directory-group" key={title}><h2>{title}</h2><div className="ws-grid">{professionals.map((p) => { const next = sortUpcomingSessions(publicSessions.filter((x) => x.professionalId === p.id))[0]; return <article className="ws-panel ws-professional" key={p.id}><div className="ws-person-top"><div className="ws-person-avatar">{p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover rounded-[inherit]" /> : <Icon size={28} strokeWidth={1.3} />}</div><Status>verified</Status></div><h3>{p.name}</h3><p>{p.speciality}</p><div className="ws-tags">{p.languages.map((l) => <span key={l}>{l}</span>)}</div><p>{p.bio}</p><div className="ws-row"><strong>{money(p.fee)}</strong><span className="ws-muted">per consultation</span></div><p>{next ? sessionLabel(next) : "No upcoming sessions"}</p><div className="ws-actions">{s.role === "user" && <button className="ws-link secondary" onClick={() => dispatch(saveFamily({ id: p.id, saved: !family.has(p.id) }))}>{family.has(p.id) ? "Remove from family professionals" : "Save as family " + profession}</button>}<Link className="ws-link" to={"/app/professionals/" + p.id}>View profile & availability →</Link></div></article>; })}</div></section>)}
     {!found.length && <Empty title="No matching professionals">Try another name, speciality, language, or fee.</Empty>}
   </>;
 }
@@ -39,7 +40,7 @@ export function ProfessionalDetails() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   if (!p) return <Empty title="Profile unavailable">This professional is not currently accepting bookings.</Empty>;
-  const sessions = sortUpcomingSessions(s.sessions.filter((x) => x.professionalId === id));
+  const sessions = sortUpcomingSessions(s.sessions.filter((x) => x.professionalId === id && !x.privateAppointment));
   const existing = s.bookings.find((b) => b.patientId === s.patient.id && b.sessionId === selected && !["CANCELLED", "NO-SHOW"].includes(b.status));
   const full = sessions.find((x) => x.id === selected)?.remaining === 0;
   return <>

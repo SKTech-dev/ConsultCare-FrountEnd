@@ -77,7 +77,7 @@ export function MonthlyEarnings() {
   if (!allowed(role)) return <Empty title="Page unavailable">Monthly earnings are available to administrators and professionals.</Empty>;
   const { data } = result;
   return <>
-    <PageHeading eyebrow={admin ? "PROFESSIONAL PAYOUTS" : "YOUR EARNINGS"} title={admin ? "Monthly settlements" : "My earnings"} action={<Link className="ws-link secondary" to={admin ? "/app/transfers" : "/app/sessions"}>View handovers</Link>}>
+    <PageHeading eyebrow={admin ? "PROFESSIONAL PAYOUTS" : "YOUR EARNINGS"} title={admin ? "Monthly settlements" : "My earnings"} action={<Link className="ws-link secondary" to={admin ? "/app/transfers" : "/app/history"}>View handovers</Link>}>
       Earnings are grouped by the month each consultation was completed. Professionals receive the full consultation payment.
     </PageHeading>
     <LoadState {...result} />
