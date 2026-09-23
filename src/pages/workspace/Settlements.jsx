@@ -70,6 +70,10 @@ function TestNotice({ visible }) {
   return visible ? <div className="ws-notice">These totals contain test patient payments. No real money has been collected or paid out for these entries.</div> : null;
 }
 
+function EarningsBreakdown({ totals }) {
+  return <p className="earnings-breakdown">Private consultations: {cash(totals.consultationTotal ?? totals.total)} · Group clinics: {cash(totals.clinicTotal || 0)}</p>;
+}
+
 export function MonthlyEarnings() {
   const { role } = useWorkspace();
   const admin = role === "admin";
@@ -78,7 +82,7 @@ export function MonthlyEarnings() {
   const { data } = result;
   return <>
     <PageHeading eyebrow={admin ? "PROFESSIONAL PAYOUTS" : "YOUR EARNINGS"} title={admin ? "Monthly settlements" : "My earnings"} action={<Link className="ws-link secondary" to={admin ? "/app/transfers" : "/app/history"}>View handovers</Link>}>
-      Earnings are grouped by the month each consultation was completed. Professionals receive the full consultation payment.
+      Earnings are grouped by the month each consultation or clinic was completed. Professionals receive the full payment; clinic ticket revenue is shown separately.
     </PageHeading>
     <LoadState {...result} />
     {data && <>
@@ -89,16 +93,16 @@ export function MonthlyEarnings() {
       <div className="earnings-months">
         {data.months.map((month) => admin ? <details className="ws-panel earnings-month" key={month.month}>
           <summary className="earnings-summary">
-            <div><h2>{monthLabel(month.month)}</h2><p>{month.count} completed consultation{month.count === 1 ? "" : "s"} · {month.closed ? "Month closed" : "Month in progress"}</p></div>
+            <div><h2>{monthLabel(month.month)}</h2><p>{month.count} consultations / clinic tickets · {month.closed ? "Month closed" : "Month in progress"}</p><EarningsBreakdown totals={month} /></div>
             <strong>{cash(month.total)}</strong><ChevronDown aria-hidden="true" size={20} />
           </summary>
           <div className="earnings-groups">
             {Object.entries(roleLabels).map(([category, label]) => {
               const group = month.groups[category];
               return <details className="earnings-group" key={category}>
-                <summary className="earnings-summary"><div><h3>{label}</h3><p>{group.professionals.length} professionals · {group.count} consultations</p></div><strong>{cash(group.total)}</strong><ChevronDown aria-hidden="true" size={18} /></summary>
+                <summary className="earnings-summary"><div><h3>{label}</h3><p>{group.professionals.length} professionals · {group.count} paid items</p><EarningsBreakdown totals={group} /></div><strong>{cash(group.total)}</strong><ChevronDown aria-hidden="true" size={18} /></summary>
                 {group.professionals.length ? <div className="earnings-professionals">{group.professionals.map((person) => <div className="earnings-professional" key={person.id}>
-                  <div><Link className="ws-name-link" to={`/app/settlements/${month.month}/${person.id}`}>{person.name}</Link><p>{person.count} completed consultation{person.count === 1 ? "" : "s"}</p></div>
+                  <div><Link className="ws-name-link" to={`/app/settlements/${month.month}/${person.id}`}>{person.name}</Link><p>{person.count} consultations / clinic tickets</p><EarningsBreakdown totals={person} /></div>
                   <PayoutStatus payout={person.payout} /><strong>{cash(person.total)}</strong>
                   <Link className="ws-link secondary" to={`/app/settlements/${month.month}/${person.id}`}>View payments</Link>
                 </div>)}</div> : <p className="earnings-empty">No completed paid consultations in this category.</p>}
@@ -115,7 +119,7 @@ function ProfessionalMonth({ month, role }) {
   const person = month.groups[role]?.professionals[0];
   if (!person) return null;
   return <Link className="ws-panel earnings-month-link" to={`/app/earnings/${month.month}`}>
-    <Wallet aria-hidden="true" size={25} /><div><h2>{monthLabel(month.month)}</h2><p>{month.count} completed consultations · {month.closed ? "Month closed" : "Month in progress"}</p></div>
+    <Wallet aria-hidden="true" size={25} /><div><h2>{monthLabel(month.month)}</h2><p>{month.count} consultations / clinic tickets · {month.closed ? "Month closed" : "Month in progress"}</p><EarningsBreakdown totals={month} /></div>
     <PayoutStatus payout={person.payout} /><strong>{cash(month.total)}</strong><span className="earnings-open">View payments →</span>
   </Link>;
 }
@@ -140,20 +144,25 @@ export function MonthlyEarningsDetails() {
       <PageHeading eyebrow={admin ? "MONTHLY SETTLEMENT" : "MY EARNINGS"} title={monthLabel(data.month)} action={<PayoutStatus payout={data.payout} />}>{data.professional.name} · {data.professional.role === "doctor" ? "Doctor" : "Lawyer"}</PageHeading>
       <div className="earnings-totals">
         <Panel title="Monthly earnings"><strong>{cash(data.total)}</strong><p>Full amount · no institution commission</p></Panel>
-        <Panel title="Completed consultations"><strong>{data.count}</strong><p>Completed in {monthLabel(data.month)}</p></Panel>
+        <Panel title="Consultations & clinic tickets"><strong>{data.count}</strong><p>Completed in {monthLabel(data.month)}</p><EarningsBreakdown totals={data} /></Panel>
         <Panel title="Payout"><PayoutStatus payout={data.payout} />{data.payout.paidAt ? <p className="mt-3">Paid {dateLabel(data.payout.paidAt)} at {timeLabel(data.payout.paidAt)}<br />Reference: {data.payout.reference}</p> : <p className="mt-3">{data.closed ? "Awaiting monthly payout" : "This month is still in progress"}</p>}</Panel>
       </div>
       <TestNotice visible={data.testPayments} />
       {admin && <div className="earnings-pay"><div><h3>Pay this professional</h3><p>Bank payouts will be available once the institution connects a payment provider.</p></div><button className="ws-link" disabled={Boolean(error) || !data.closed || ["paid", "processing"].includes(data.payout.status)} onClick={() => setPopup(true)}>Pay professional</button>{!data.closed && <p className="w-full">Monthly payouts are available after the month ends.</p>}</div>}
-      <Panel title="Patient / client payments">
+      <Panel title="Private consultation payments">
         <p className="mb-4">Included by consultation completion date. Payment dates may fall in an earlier month. All dates and times are in Sri Lanka time.</p>
         <div className="ws-table-wrap"><table className="ws-table earnings-table"><caption className="sr-only">Payments for {data.professional.name}, {monthLabel(data.month)}</caption>
           <thead><tr><th scope="col">Patient / client</th><th scope="col">Date paid</th><th scope="col">Time paid</th><th scope="col">Consultation completed</th><th scope="col">Amount</th></tr></thead>
-          <tbody>{data.payments.map((payment) => <tr key={payment.id}><td>{payment.patientName}{payment.transfer && <small className="block">Handed over by {payment.transfer.fromName}</small>}</td><td>{dateLabel(payment.paidAt)}</td><td>{timeLabel(payment.paidAt)}</td><td>{dateLabel(payment.completedAt)} · {timeLabel(payment.completedAt)}</td><td>{cash(payment.amount)}</td></tr>)}</tbody>
-          <tfoot><tr><th scope="row" colSpan={4}>Monthly total ({data.count} consultations)</th><td>{cash(data.total)}</td></tr></tfoot>
+          <tbody>{data.payments.filter((payment) => payment.serviceType !== "clinic").map((payment) => <tr key={payment.id}><td>{payment.patientName}{payment.transfer && <small className="block">Handed over by {payment.transfer.fromName}</small>}</td><td>{dateLabel(payment.paidAt)}</td><td>{timeLabel(payment.paidAt)}</td><td>{dateLabel(payment.completedAt)} · {timeLabel(payment.completedAt)}</td><td>{cash(payment.amount)}</td></tr>)}</tbody>
+          <tfoot><tr><th scope="row" colSpan={4}>Monthly private consultation total</th><td>{cash(data.consultationTotal ?? data.total)}</td></tr></tfoot>
         </table></div>
-        <div className="earnings-pagination"><button className="ws-link secondary" disabled={page <= 1} onClick={() => setPagination({ key, page: page - 1 })}>Previous</button><span>Page {page} of {Math.max(1, Math.ceil(data.count / data.pageSize))}</span><button className="ws-link secondary" disabled={page * data.pageSize >= data.count} onClick={() => setPagination({ key, page: page + 1 })}>Next</button></div>
       </Panel>
+      <div className="ws-space"><Panel title="Group clinic payments">
+        <p className="mb-4">Confirmed paid tickets for clinics completed this month, including attendees who did not join. Cancelled and refunded tickets are excluded. No private consultation record is created.</p>
+        {data.payments.some((payment) => payment.serviceType === "clinic") ? <div className="ws-table-wrap"><table className="ws-table earnings-table"><caption className="sr-only">Group clinic payments</caption><thead><tr><th>Patient / client</th><th>Clinic</th><th>Paid at</th><th>Clinic completed</th><th>Amount</th></tr></thead><tbody>{data.payments.filter((payment) => payment.serviceType === "clinic").map((payment) => <tr key={payment.id}><td>{payment.patientName}</td><td><Link className="ws-name-link" to={`/app/clinics/${payment.clinicId}`}>{payment.clinicTitle}</Link></td><td>{dateLabel(payment.paidAt)} · {timeLabel(payment.paidAt)}</td><td>{dateLabel(payment.completedAt)} · {timeLabel(payment.completedAt)}</td><td>{cash(payment.amount)}</td></tr>)}</tbody></table></div> : <p className="ws-muted">No clinic payments on this page.</p>}
+        <div className="ws-row"><span>Monthly group clinic total</span><strong>{cash(data.clinicTotal || 0)}</strong></div>
+      </Panel></div>
+      <div className="earnings-pagination"><button className="ws-link secondary" disabled={page <= 1} onClick={() => setPagination({ key, page: page - 1 })}>Previous</button><span>Payments page {page} of {Math.max(1, Math.ceil(data.count / data.pageSize))} (both sections)</span><button className="ws-link secondary" disabled={page * data.pageSize >= data.count} onClick={() => setPagination({ key, page: page + 1 })}>Next</button></div>
     </>}
     {popup && <MessageOverlay type="error" title="Payments are not connected yet" text="The institution needs to connect a payout provider before sending money. No money has been sent and this month remains unpaid." confirmText="Got it" onClose={() => setPopup(false)} />}
   </>;

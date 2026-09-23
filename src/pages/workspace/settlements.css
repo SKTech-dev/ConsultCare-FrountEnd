@@ -28,3 +28,4 @@ details[open]>.earnings-summary>svg{transform:rotate(180deg)}
 .earnings-table tfoot{border-top:2px solid var(--ws-border);font-weight:600}
 .earnings-pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:20px;font-size:12px}
 @media(max-width:900px){.earnings-totals{grid-template-columns:1fr}.earnings-summary{flex-wrap:wrap;gap:12px}.earnings-summary>strong{font-size:16px}}
+.earnings-breakdown { font-size: 12px; line-height: 1.6; color: var(--ws-textSecondary); margin-top: 8px; }

@@ -6,6 +6,7 @@ import { ACTIVE, money, sessionStartsAt, sessionEndsAt, sessionLabel } from "../
 import BookingPayment from "./BookingPayment";
 import { transition } from "../../features/consultations/consultationSlice";
 import { MessageOverlay } from "../../components/ui/MessageBox";
+import { ClinicList } from "./Clinics";
 
 const timeLabel = (at) => new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Colombo" }).format(at);
 
@@ -18,6 +19,7 @@ export default function PatientQueues() {
     .sort((a, b) => (a.session ? sessionStartsAt(a.session) : Infinity) - (b.session ? sessionStartsAt(b.session) : Infinity));
   return <>
     <PageHeading title="Your consultations.">Each booking has its own queue. {state.liveConnected ? "Live updates connected." : "Reconnecting live updates; checking periodically."}</PageHeading>
+    <ClinicList embedded title="Your upcoming group clinics" />
     <div className="patient-queues">{bookings.map(({ booking: b, session }) => {
       const position = b.position || 0;
       const ended = session && sessionEndsAt(session) <= Date.now();

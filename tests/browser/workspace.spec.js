@@ -29,7 +29,7 @@ async function mockAccount(page, state, options = {}) {
       ? { data: { id: state.role === "user" ? "patient" : professional.id, role: state.role, name: "Test Account" } }
       : { message: "Please sign in." } });
     if (path === "/api/workspace") return route.fulfill({ json: { data: state } });
-    if (path === "/api/transferable-sessions" || path === "/api/session-transfers" || path === "/api/scheduled-consultations") return route.fulfill({ json: { data: { items: [], count: 0, pageSize: 30 } } });
+    if (path === "/api/clinics" || path === "/api/transferable-sessions" || path === "/api/session-transfers" || path === "/api/scheduled-consultations") return route.fulfill({ json: { data: { items: [], count: 0, pageSize: 30 } } });
     if (path === "/api/admin/users/professional") return route.fulfill({ status: 409, json: { message: "The professional must complete their credentials first." } });
     if (path === "/api/bookings/room/messages" && options.messageFailure) return route.fulfill({ status: 503, json: { message: "Message service is temporarily unavailable." } });
     if (path === "/api/documents/image" && options.imageFailure) return route.fulfill({ status: 503, json: { message: "Preview unavailable." } });

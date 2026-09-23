@@ -9,6 +9,7 @@ import { MessageOverlay } from "../../components/ui/MessageBox";
 import { Documents } from "./Room";
 import PatientQueues from "./PatientQueues";
 import SessionTransfers from "./SessionTransfers";
+import { ClinicList } from "./Clinics";
 import { PatientContext, ChatMessages, Prescription } from "./ConsultationRecord";
 
 export function Bookings({ history = false }) {
@@ -16,7 +17,7 @@ export function Bookings({ history = false }) {
   if (!history && s.role === "user") return <PatientQueues />;
   if (history && ["doctor", "lawyer"].includes(s.role)) return <ProfessionalHistory />;
   const list = s.bookings.filter((b) => canRead(s, b) && (history ? ["COMPLETED", "CANCELLED", "NO-SHOW"].includes(b.status) : !["COMPLETED", "CANCELLED", "NO-SHOW"].includes(b.status)));
-  return <><PageHeading title={history ? "Your consultation history." : "Your upcoming conversations."}>{history ? "Revisit consultation records, shared notes, and professional documents." : "Follow your booking from payment to the waiting room."}</PageHeading>{list.length ? <Panel>{list.slice().reverse().map((b) => <div className="ws-row" key={b.id}><div><h3>{s.professionals.find((p) => p.id === b.professionalId)?.name}</h3><p>{s.role !== "user" && b.patientName + " · "}{s.sessions.find((x) => x.id === b.sessionId)?.date} · {money(b.fee)}</p></div><Status>{b.status}</Status><Link className="ws-link secondary" to={"/app/booking/" + b.id}>View record →</Link></div>)}</Panel> : <Empty title={history ? "No past consultations yet" : "No bookings yet"}>Your consultations will appear here as you work through the booking flow.</Empty>}</>;
+  return <><PageHeading title={history ? "Your consultation history." : "Your upcoming conversations."}>{history ? "Revisit consultation records, shared notes, and professional documents." : "Follow your booking from payment to the waiting room."}</PageHeading>{history && <ClinicList embedded view="history" title="Past group clinics" />}{list.length ? <Panel>{list.slice().reverse().map((b) => <div className="ws-row" key={b.id}><div><h3>{s.professionals.find((p) => p.id === b.professionalId)?.name}</h3><p>{s.role !== "user" && b.patientName + " · "}{s.sessions.find((x) => x.id === b.sessionId)?.date} · {money(b.fee)}</p></div><Status>{b.status}</Status><Link className="ws-link secondary" to={"/app/booking/" + b.id}>View record →</Link></div>)}</Panel> : <Empty title={history ? "No past consultations yet" : "No bookings yet"}>Your consultations will appear here as you work through the booking flow.</Empty>}</>;
 }
 const DATE_FORMAT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Colombo" });
 const MONTH_FORMAT = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "Asia/Colombo" });
@@ -67,6 +68,7 @@ function ProfessionalHistory() {
   return <>
     <PageHeading title="Consultation history.">Browse past session times by month, week and day. Every booking remains visible, including consultations that did not take place.</PageHeading>
     <div className="ws-space"><SessionTransfers embedded view="history" /></div>
+    <ClinicList embedded view="history" title="Past group clinics" />
     {months.length ? <div className="history-tree">{months.map((month) => {
       const monthBookings = month.weeks.flatMap((week) => week.days).flatMap((day) => day.sessions).reduce((total, item) => total + item.bookings.length, 0);
       return <details className="history-node history-month" key={month.key}><summary><span><strong>{month.label}</strong><small>{monthBookings} booked consultation{monthBookings === 1 ? "" : "s"}</small></span><span className="history-expand">Expand</span></summary><div className="history-children">{month.weeks.map((week) => {
