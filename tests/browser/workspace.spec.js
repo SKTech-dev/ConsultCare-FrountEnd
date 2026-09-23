@@ -129,10 +129,41 @@ test("professional schedules a private consultation using an exact patient email
   await page.getByLabel("Date", { exact: true }).fill("2026-09-23");
   await page.getByLabel("Start time", { exact: true }).fill("14:00");
   await page.getByLabel("End time", { exact: true }).fill("14:30");
+  await page.getByLabel("Individual consultation fee (LKR)", { exact: true }).fill("7500.50");
   await page.getByRole("button", { name: "Schedule consultation", exact: true }).click();
   await expect(page.getByText("Consultation scheduled. Patient payment is required.", { exact: true })).toBeVisible();
-  expect(submitted).toEqual({ email: "patient@example.com", date: "2026-09-23", start: "14:00", end: "14:30", expectedFee: 2500, reason: "" });
+  expect(submitted).toEqual({ email: "patient@example.com", date: "2026-09-23", start: "14:00", end: "14:30", fee: 7500.50, reason: "" });
 });
+
+for (const role of ["doctor", "lawyer"]) {
+  test(`${role} edits weekly fees in My sessions, not their profile`, async ({ page }) => {
+    const state = snapshot(role);
+    await mockAccount(page, state);
+    let submitted;
+    await page.route("**/api/weekly-availability", (route) => {
+      submitted = route.request().postDataJSON();
+      state.professionals[0].fee = submitted.fee;
+      return route.fulfill({ json: { message: "Saved." } });
+    });
+    await page.goto("/app/profile");
+    await expect(page.getByLabel("Consultation fee (LKR)", { exact: true })).toHaveCount(0);
+    await page.getByRole("link", { name: "My sessions", exact: true }).click();
+    const fee = page.getByLabel("Consultation fee (LKR)", { exact: true });
+    await expect(fee).toHaveValue("2500");
+    for (const amount of ["5000", "5000.50"]) {
+      await fee.fill(amount);
+      await page.getByRole("button", { name: "Save weekly schedule", exact: true }).click();
+      await expect.poll(() => submitted?.fee).toBe(Number(amount));
+      expect(submitted.days).toHaveLength(7);
+      await expect(page.getByText("Your weekly sessions have been saved.", { exact: true })).toBeVisible();
+      await page.getByRole("dialog").getByRole("button", { name: "OK", exact: true }).click();
+    }
+    await page.reload();
+    await expect(fee).toHaveValue("5000.5");
+    await expect(page.getByLabel("Individual consultation fee (LKR)", { exact: true })).toHaveValue("");
+    await expect(page.getByLabel("Date", { exact: true })).toBeVisible();
+  });
+}
 
 test("patient can accept and pay for an invitation from My consultations", async ({ page }) => {
   const state = snapshot("user");

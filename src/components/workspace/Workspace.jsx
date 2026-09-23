@@ -51,7 +51,7 @@ export default function Workspace() {
     }
     setOnboardingNotice(state.onboarding === "profile"
       ? { title: "Complete your profile first", text: "Please finish the required details in My Profile before continuing to other pages." }
-      : { title: "Set your weekly sessions first", text: "Please add and save at least one weekly session before continuing to other pages." });
+      : { title: "Set your weekly sessions first", text: "Please save at least one weekly session and its consultation fee before continuing to other pages." });
     navigate(destination, { replace: true });
   }, [state.loaded, state.onboarding, location.pathname, location.key, navigate]);
   const signOut = async () => {
@@ -85,7 +85,7 @@ export default function Workspace() {
       {onboardingNotice && <MessageOverlay type="error" title={onboardingNotice.title} text={onboardingNotice.text} onClose={() => setOnboardingNotice(null)} />}
       <main className="ws-main">
         {!state.onboarding && <TransferNotices />}
-        {state.onboarding && <div className="ws-notice">{state.onboarding === "profile" ? "Welcome. Complete your required profile details to continue." : "Next, add at least one weekly session to finish your professional setup."}</div>}
+        {state.onboarding && <div className="ws-notice">{state.onboarding === "profile" ? "Welcome. Complete your required profile details to continue." : "Next, save at least one weekly session and its consultation fee to finish your professional setup."}</div>}
         {(!state.onboarding || location.pathname === "/app/" + state.onboarding) ? <Outlet /> : <GlobalLoader message="Opening your required setup page..." />}
       </main>
     </div>

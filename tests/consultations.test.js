@@ -2,13 +2,25 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { configureStore } from "@reduxjs/toolkit";
 import { apiClient } from "../src/api/apiClient.js";
-import reducer, { fetchWorkspace, book, pay, moderate } from "../src/features/consultations/consultationSlice.js";
+import reducer, { fetchWorkspace, book, pay, moderate, saveWeeklyAvailability } from "../src/features/consultations/consultationSlice.js";
 
 globalThis.document = { cookie: "cc_csrf=test-csrf" };
 globalThis.window = { dispatchEvent() {} };
 const snapshot = { role: "user", professionalId: null, patient: { id: "real-user" },
   patients: [], professionals: [], sessions: [], bookings: [], issues: [], mockPayments: true };
 const store = () => configureStore({ reducer: { consultations: reducer } });
+
+test("weekly schedule sends its own fee in the same request", async () => {
+  const requests = [];
+  apiClient.defaults.adapter = async (config) => {
+    requests.push(config);
+    return { status: 200, config, headers: {}, data: { data: snapshot } };
+  };
+  const days = Array.from({ length: 7 }, (_, weekday) => ({ weekday, slots: [] }));
+  await store().dispatch(saveWeeklyAvailability({ days, fee: 5000.50 })).unwrap();
+  assert.equal(requests[0].url, "/weekly-availability");
+  assert.deepEqual(JSON.parse(requests[0].data), { days, fee: 5000.50 });
+});
 
 test("successful writes remain successful when refreshing the workspace fails", async () => {
   apiClient.defaults.adapter = async (config) => {

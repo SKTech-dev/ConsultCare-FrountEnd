@@ -28,7 +28,7 @@ function command(name, request) {
 
 export const saveProfile = command("saveProfile", (p) => ["PUT", "/profile", p]);
 export const saveFamily = command("saveFamily", ({ id, saved }) => ["PUT", "/family-professionals/" + id, { saved }]);
-export const saveWeeklyAvailability = command("saveWeeklyAvailability", (days) => ["PUT", "/weekly-availability", { days }]);
+export const saveWeeklyAvailability = command("saveWeeklyAvailability", ({ days, fee }) => ["PUT", "/weekly-availability", { days, fee }]);
 export const book = command("book", (p) => ["POST", "/bookings", { sessionId: p.sessionId, reason: p.reason || "" }]);
 export const pay = command("pay", (p) => ["POST", "/bookings/" + p.id + "/payment-simulation", { success: p.success }]);
 export const transition = command("transition", (p) => ["PATCH", "/bookings/" + p.id + "/status", { status: p.status }]);

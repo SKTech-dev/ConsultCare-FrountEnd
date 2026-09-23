@@ -49,6 +49,8 @@ export function Sessions() {
   const s = useWorkspace();
   const dispatch = useDispatch();
   const [days, setDays] = useState(() => scheduleFrom(s.weeklyAvailability || []));
+  const [fee, setFee] = useState(() => s.professionals.find((professional) => professional.id === s.professionalId)?.fee || "");
+  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   if (!["doctor", "lawyer"].includes(s.role)) return <Empty title="Professional workspace">Sign in with a professional account to manage availability.</Empty>;
   const p = s.professionals.find((professional) => professional.id === s.professionalId);
@@ -58,17 +60,21 @@ export function Sessions() {
   const removeSlot = (weekday, index) => { const day = days.find((item) => item.weekday === weekday); updateDay(weekday, { slots: day.slots.filter((_, position) => position !== index) }); };
   const save = async (event) => {
     event.preventDefault();
+    if (saving) return;
     for (const day of days) {
       const slots = day.slots.slice().sort((a, b) => a.start.localeCompare(b.start));
       if (slots.some((slot) => slot.start >= slot.end)) { setMessage("Each availability slot must end after it starts."); return; }
       if (slots.some((slot, index) => index && slots[index - 1].end > slot.start)) { setMessage("Slots on the same day cannot overlap."); return; }
     }
-    const action = await dispatch(saveWeeklyAvailability(days));
-    setMessage(action.error ? action.payload || "Could not save weekly availability." : "Weekly schedule saved. Upcoming sessions have been generated automatically.");
+    setSaving(true);
+    try {
+      const action = await dispatch(saveWeeklyAvailability({ days, fee: Number(fee) }));
+      setMessage(action.error ? action.payload || "Could not save weekly availability." : "Weekly schedule and fee saved. Existing bookings keep their original fee.");
+    } finally { setSaving(false); }
   };
   return <><PageHeading title="Your weekly availability.">Set the hours you repeat each week. Patients can select the next available occurrence, and you only need to return here when your routine changes.</PageHeading>
     {p.status !== "verified" && <div className="ws-notice">You can save your schedule now. Administrator verification is required before patients can book.</div>}
-    <form onSubmit={save}><Panel title="Repeat every week"><div className="weekly-days">{days.map((day) => <section className="weekly-day" key={day.weekday}><div className="weekly-day-heading"><h3>{DAYS[day.weekday]}</h3><button type="button" className="ws-name-link weekly-add" onClick={() => addSlot(day.weekday)}><Plus size={16} />Add time</button></div>{day.slots.length ? <div className="weekly-slots">{day.slots.map((slot, index) => <div className="weekly-slot" key={index}><label>Start<input type="time" value={slot.start} required onChange={(event) => updateSlot(day.weekday, index, { start: event.target.value })} /></label><label>End<input type="time" value={slot.end} required onChange={(event) => updateSlot(day.weekday, index, { end: event.target.value })} /></label><label>Places<input type="number" min="1" max="100" value={slot.capacity} required onChange={(event) => updateSlot(day.weekday, index, { capacity: Number(event.target.value) })} /></label><button type="button" className="weekly-remove" aria-label={`Remove ${DAYS[day.weekday]} slot ${index + 1}`} onClick={() => removeSlot(day.weekday, index)}><Trash2 size={17} /></button></div>)}</div> : <p className="ws-muted">No availability set.</p>}</section>)}</div><div className="ws-actions"><button className="ws-link">Save weekly schedule</button></div>{message && <p role="status" className={message.startsWith("Weekly") ? "ws-success" : "ws-error"}>{message}</p>}</Panel></form>
+    <form onSubmit={save}><Panel title="Repeat every week"><fieldset disabled={saving} className="weekly-editor"><div className="weekly-fee"><label className="ws-field">Consultation fee (LKR)<input type="number" min="0.01" max="1000000" step="0.01" required value={fee} onChange={(event) => setFee(event.target.value)} aria-describedby="weekly-fee-help" /></label><p id="weekly-fee-help" className="ws-muted">Per patient/client, for weekly recurring sessions only. Changes apply to new bookings; existing bookings keep their original fee. Individual appointments have a separate fee.</p></div><div className="weekly-days">{days.map((day) => <section className="weekly-day" key={day.weekday}><div className="weekly-day-heading"><h3>{DAYS[day.weekday]}</h3><button type="button" className="ws-name-link weekly-add" onClick={() => addSlot(day.weekday)}><Plus size={16} />Add time</button></div>{day.slots.length ? <div className="weekly-slots">{day.slots.map((slot, index) => <div className="weekly-slot" key={index}><label>Start<input type="time" value={slot.start} required onChange={(event) => updateSlot(day.weekday, index, { start: event.target.value })} /></label><label>End<input type="time" value={slot.end} required onChange={(event) => updateSlot(day.weekday, index, { end: event.target.value })} /></label><label>Places<input type="number" min="1" max="100" value={slot.capacity} required onChange={(event) => updateSlot(day.weekday, index, { capacity: Number(event.target.value) })} /></label><button type="button" className="weekly-remove" aria-label={`Remove ${DAYS[day.weekday]} slot ${index + 1}`} onClick={() => removeSlot(day.weekday, index)}><Trash2 size={17} /></button></div>)}</div> : <p className="ws-muted">No availability set.</p>}</section>)}</div><div className="ws-actions"><button className="ws-link" disabled={saving}>{saving ? "Saving schedule…" : "Save weekly schedule"}</button></div></fieldset>{message && <p role="status" className={message.startsWith("Weekly") ? "ws-success" : "ws-error"}>{message}</p>}</Panel></form>
     <div className="ws-space"><SessionTransfers embedded view="request" /></div>
     <div className="ws-space"><ScheduleConsultation /></div>
   </>;

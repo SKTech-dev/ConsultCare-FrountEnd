@@ -10,3 +10,7 @@
   .appointment-times { grid-template-columns: 1fr; }
   .appointment-card { padding: 14px; }
 }
+.weekly-editor { min-width: 0; border: 0; margin: 0; padding: 0; }
+.weekly-fee { display: grid; gap: 12px; margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--ws-border); }
+.weekly-fee .ws-field { width: 100%; max-width: 320px; }
+.weekly-fee p { margin: 0; }
