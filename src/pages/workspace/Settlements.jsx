@@ -77,12 +77,13 @@ export function MonthlyEarnings() {
   if (!allowed(role)) return <Empty title="Page unavailable">Monthly earnings are available to administrators and professionals.</Empty>;
   const { data } = result;
   return <>
-    <PageHeading eyebrow={admin ? "PROFESSIONAL PAYOUTS" : "YOUR EARNINGS"} title={admin ? "Monthly settlements" : "My earnings"}>
+    <PageHeading eyebrow={admin ? "PROFESSIONAL PAYOUTS" : "YOUR EARNINGS"} title={admin ? "Monthly settlements" : "My earnings"} action={<Link className="ws-link secondary" to={admin ? "/app/transfers" : "/app/sessions"}>View handovers</Link>}>
       Earnings are grouped by the month each consultation was completed. Professionals receive the full consultation payment.
     </PageHeading>
     <LoadState {...result} />
     {data && <>
       <TestNotice visible={data.testPayments} />
+      <p className="ws-muted mb-5">Accepted handovers are credited to the conducting professional at the original booked fee. Handed-over payments are labelled in the monthly payment details.</p>
       <p className="ws-muted mb-5">All amounts in LKR. Dates use Sri Lanka time. Payment status updates automatically.</p>
       {!data.months.length && <Empty title="No completed paid consultations yet">Monthly totals will appear here once paid consultations are completed.</Empty>}
       <div className="earnings-months">
@@ -148,7 +149,7 @@ export function MonthlyEarningsDetails() {
         <p className="mb-4">Included by consultation completion date. Payment dates may fall in an earlier month. All dates and times are in Sri Lanka time.</p>
         <div className="ws-table-wrap"><table className="ws-table earnings-table"><caption className="sr-only">Payments for {data.professional.name}, {monthLabel(data.month)}</caption>
           <thead><tr><th scope="col">Patient / client</th><th scope="col">Date paid</th><th scope="col">Time paid</th><th scope="col">Consultation completed</th><th scope="col">Amount</th></tr></thead>
-          <tbody>{data.payments.map((payment) => <tr key={payment.id}><td>{payment.patientName}</td><td>{dateLabel(payment.paidAt)}</td><td>{timeLabel(payment.paidAt)}</td><td>{dateLabel(payment.completedAt)} · {timeLabel(payment.completedAt)}</td><td>{cash(payment.amount)}</td></tr>)}</tbody>
+          <tbody>{data.payments.map((payment) => <tr key={payment.id}><td>{payment.patientName}{payment.transfer && <small className="block">Handed over by {payment.transfer.fromName}</small>}</td><td>{dateLabel(payment.paidAt)}</td><td>{timeLabel(payment.paidAt)}</td><td>{dateLabel(payment.completedAt)} · {timeLabel(payment.completedAt)}</td><td>{cash(payment.amount)}</td></tr>)}</tbody>
           <tfoot><tr><th scope="row" colSpan={4}>Monthly total ({data.count} consultations)</th><td>{cash(data.total)}</td></tr></tfoot>
         </table></div>
         <div className="earnings-pagination"><button className="ws-link secondary" disabled={page <= 1} onClick={() => setPagination({ key, page: page - 1 })}>Previous</button><span>Page {page} of {Math.max(1, Math.ceil(data.count / data.pageSize))}</span><button className="ws-link secondary" disabled={page * data.pageSize >= data.count} onClick={() => setPagination({ key, page: page + 1 })}>Next</button></div>

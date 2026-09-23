@@ -7,6 +7,7 @@ import { logoutUser } from "../../features/auth/authSlice";
 import { fetchWorkspace, clearWorkspaceError, clearFeedback } from "../../features/consultations/consultationSlice";
 import { MessageOverlay } from "../ui/MessageBox";
 import "./workspace.css";
+import TransferNotices from "./TransferNotices";
 
 export function useWorkspace() { return useSelector((s) => s.consultations); }
 export function PageHeading({ eyebrow = "YOUR CONSULTATION SPACE", title, children, action }) {
@@ -63,7 +64,7 @@ export default function Workspace() {
   const links = state.role === "user" ? [
     ["/app", "Overview", LayoutDashboard], ["/consult/doctors", "Find a doctor", HeartPulse], ["/consult/lawyers", "Find a lawyer", Scale], ["/app/bookings", "My consultations", CalendarDays], ["/app/history", "My history", FileText], ["/app/profile", "My profile", UserRound],
   ] : state.role === "admin" ? [
-    ["/app", "Overview", LayoutDashboard], ["/app/admin", "People & verification", Users], ["/app/settlements", "Monthly settlements", CalendarDays], ["/app/payments", "Payments & refunds", ShieldCheck],
+    ["/app", "Overview", LayoutDashboard], ["/app/admin", "People & verification", Users], ["/app/transfers", "Session handovers", CalendarDays], ["/app/settlements", "Monthly settlements", CalendarDays], ["/app/payments", "Payments & refunds", ShieldCheck],
   ] : [
     ["/app", "Overview", LayoutDashboard], ["/app/queue", "Consultation queue", Users], ["/app/sessions", "My sessions", CalendarDays], ["/app/earnings", "My earnings", ShieldCheck], ["/app/history", "Consultation history", FileText], ["/app/profile", "Professional profile", UserRound],
   ];
@@ -83,6 +84,7 @@ export default function Workspace() {
       {state.feedback && <MessageOverlay type={state.feedback.type} text={state.feedback.text} onClose={() => dispatch(clearFeedback())} />}
       {onboardingNotice && <MessageOverlay type="error" title={onboardingNotice.title} text={onboardingNotice.text} onClose={() => setOnboardingNotice(null)} />}
       <main className="ws-main">
+        {!state.onboarding && <TransferNotices />}
         {state.onboarding && <div className="ws-notice">{state.onboarding === "profile" ? "Welcome. Complete your required profile details to continue." : "Next, add at least one weekly session to finish your professional setup."}</div>}
         {(!state.onboarding || location.pathname === "/app/" + state.onboarding) ? <Outlet /> : <GlobalLoader message="Opening your required setup page..." />}
       </main>

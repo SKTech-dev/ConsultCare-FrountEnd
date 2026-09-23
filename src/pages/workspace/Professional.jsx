@@ -5,6 +5,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { useWorkspace, PageHeading, Panel, Empty, Status } from "../../components/workspace/Workspace";
 import { saveWeeklyAvailability, transition } from "../../features/consultations/consultationSlice";
 import { isSessionLive, queueFor, sessionLabel, sessionStartsAt, sortUpcomingSessions, sriLankanDate } from "../../features/consultations/model";
+import SessionTransfers from "./SessionTransfers";
 import { MessageOverlay } from "../../components/ui/MessageBox";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -47,7 +48,6 @@ export function Sessions() {
   const [message, setMessage] = useState("");
   if (!["doctor", "lawyer"].includes(s.role)) return <Empty title="Professional workspace">Sign in with a professional account to manage availability.</Empty>;
   const p = s.professionals.find((professional) => professional.id === s.professionalId);
-  const upcoming = sortUpcomingSessions(s.sessions.filter((session) => session.professionalId === p.id)).slice(0, 14);
   const updateDay = (weekday, change) => setDays((current) => current.map((day) => day.weekday === weekday ? { ...day, ...change } : day));
   const addSlot = (weekday) => { const day = days.find((item) => item.weekday === weekday); updateDay(weekday, { slots: [...day.slots, blankSlot()] }); };
   const updateSlot = (weekday, index, change) => { const day = days.find((item) => item.weekday === weekday); updateDay(weekday, { slots: day.slots.map((slot, position) => position === index ? { ...slot, ...change } : slot) }); };
@@ -65,6 +65,6 @@ export function Sessions() {
   return <><PageHeading title="Your weekly availability.">Set the hours you repeat each week. Patients can select the next available occurrence, and you only need to return here when your routine changes.</PageHeading>
     {p.status !== "verified" && <div className="ws-notice">You can save your schedule now. Administrator verification is required before patients can book.</div>}
     <form onSubmit={save}><Panel title="Repeat every week"><div className="weekly-days">{days.map((day) => <section className="weekly-day" key={day.weekday}><div className="weekly-day-heading"><h3>{DAYS[day.weekday]}</h3><button type="button" className="ws-name-link weekly-add" onClick={() => addSlot(day.weekday)}><Plus size={16} />Add time</button></div>{day.slots.length ? <div className="weekly-slots">{day.slots.map((slot, index) => <div className="weekly-slot" key={index}><label>Start<input type="time" value={slot.start} required onChange={(event) => updateSlot(day.weekday, index, { start: event.target.value })} /></label><label>End<input type="time" value={slot.end} required onChange={(event) => updateSlot(day.weekday, index, { end: event.target.value })} /></label><label>Places<input type="number" min="1" max="100" value={slot.capacity} required onChange={(event) => updateSlot(day.weekday, index, { capacity: Number(event.target.value) })} /></label><button type="button" className="weekly-remove" aria-label={`Remove ${DAYS[day.weekday]} slot ${index + 1}`} onClick={() => removeSlot(day.weekday, index)}><Trash2 size={17} /></button></div>)}</div> : <p className="ws-muted">No availability set.</p>}</section>)}</div><div className="ws-actions"><button className="ws-link">Save weekly schedule</button></div>{message && <p role="status" className={message.startsWith("Weekly") ? "ws-success" : "ws-error"}>{message}</p>}</Panel></form>
-    <div className="ws-space"><Panel title="Upcoming generated sessions"><p className="mb-4">Your saved weekly schedule automatically creates the next dates. Booked dates are kept when you change the schedule.</p>{upcoming.length ? upcoming.map((session) => <div className="ws-row" key={session.id}><div><h3>{sessionLabel(session)}</h3><p>{session.capacity} places · Available for patient booking</p></div><Status>Available</Status></div>) : <Empty title="No upcoming sessions">Add time slots to your weekly schedule, then save it.</Empty>}</Panel></div>
+    <div className="ws-space"><SessionTransfers embedded /></div>
   </>;
 }

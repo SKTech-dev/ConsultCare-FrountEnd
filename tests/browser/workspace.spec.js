@@ -29,6 +29,7 @@ async function mockAccount(page, state, options = {}) {
       ? { data: { id: state.role === "user" ? "patient" : professional.id, role: state.role, name: "Test Account" } }
       : { message: "Please sign in." } });
     if (path === "/api/workspace") return route.fulfill({ json: { data: state } });
+    if (path === "/api/transferable-sessions" || path === "/api/session-transfers") return route.fulfill({ json: { data: { items: [], count: 0, pageSize: 30 } } });
     if (path === "/api/admin/users/professional") return route.fulfill({ status: 409, json: { message: "The professional must complete their credentials first." } });
     if (path === "/api/bookings/room/messages" && options.messageFailure) return route.fulfill({ status: 503, json: { message: "Message service is temporarily unavailable." } });
     if (path === "/api/documents/image" && options.imageFailure) return route.fulfill({ status: 503, json: { message: "Preview unavailable." } });
@@ -44,6 +45,54 @@ test("protected routes redirect signed-out visitors to login", async ({ page }) 
   await page.goto("/app/queue");
   await expect(page).toHaveURL(/\/login\?next=/);
   await expect(page.locator('input[type="password"]')).toBeVisible();
+});
+
+test("my sessions replaces generated sessions with handover controls", async ({ page }) => {
+  await mockAccount(page, snapshot());
+  await page.goto("/app/sessions");
+  await expect(page.getByRole("heading", { name: "Upcoming generated sessions" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Hand over a booked session" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Requests & handover history" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "No sessions available for handover" })).toBeVisible();
+});
+
+test("a professional searches for a receiver and requests a handover", async ({ page }) => {
+  await mockAccount(page, snapshot());
+  const future = { id: "cover", date: "2026-09-23", start: "10:00", end: "11:00", professionalName: "Test Professional", queueCount: 2, expectedAmount: 5000 };
+  await page.route("**/api/transferable-sessions*", (route) => route.fulfill({ json: { data: { items: [future], count: 1, pageSize: 30 } } }));
+  await page.route("**/api/sessions/cover/transfer-candidates*", (route) => route.fulfill({ json: { data: [{ id: "receiver", name: "Cover Doctor", speciality: "General practice", registration: "REG-2", languages: ["English"] }] } }));
+  let submitted;
+  await page.route("**/api/sessions/cover/transfers", (route) => {
+    submitted = route.request().postDataJSON();
+    return route.fulfill({ status: 201, json: { message: "Handover requested." } });
+  });
+  await page.goto("/app/sessions");
+  await page.getByRole("button", { name: "Request handover", exact: true }).click();
+  await page.getByLabel("Search by name or email").fill("Cover");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await page.getByRole("radio", { name: /Cover Doctor/ }).check();
+  await page.getByLabel("Reason for handover").fill("Unavoidable absence");
+  await page.getByRole("button", { name: "Send request" }).click();
+  await expect(page.getByText("Handover requested.", { exact: true })).toBeVisible();
+  expect(submitted).toEqual({ professionalId: "receiver", reason: "Unavoidable absence" });
+});
+
+test("receiver confirms acceptance before the request is submitted", async ({ page }) => {
+  await mockAccount(page, snapshot());
+  const pending = { id: "transfer", fromId: "sender", toId: professional.id, fromName: "Original Doctor", toName: "Test Professional", initiatedBy: "Administrator", status: "pending", date: "2026-09-23", start: "10:00", end: "11:00", reason: "Unavoidable absence", createdAt: currentTime, expectedAmount: 2500, queueCount: 1 };
+  await page.route("**/api/session-transfers?*", (route) => route.fulfill({ json: { data: { items: [pending], count: 1, pageSize: 30 } } }));
+  let submitted;
+  await page.route("**/api/session-transfers/transfer/decision", (route) => {
+    submitted = route.request().postDataJSON();
+    return route.fulfill({ json: { message: "Handover accepted." } });
+  });
+  await page.goto("/app/sessions");
+  await page.getByRole("button", { name: "Accept", exact: true }).click();
+  expect(submitted).toBeUndefined();
+  await expect(page.getByRole("heading", { name: "Accept this session?" })).toBeVisible();
+  await page.getByRole("button", { name: "Confirm accept" }).click();
+  await expect(page.getByText("Handover accepted.", { exact: true })).toBeVisible();
+  expect(submitted.action).toBe("accept");
 });
 
 for (const role of ["user", "doctor", "lawyer"]) {

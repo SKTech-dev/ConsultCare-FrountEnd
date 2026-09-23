@@ -1,0 +1,15 @@
+.session-transfers { display: grid; gap: 24px; }
+.session-transfers .ws-panel > p { line-height: 1.7; }
+.transfer-session,.transfer-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+.transfer-session { padding:20px 0; border-bottom:1px solid var(--ws-border); }
+.transfer-session small,.transfer-candidate small { display:block; margin-top:6px; color:var(--ws-textSecondary); }
+.transfer-card { padding:22px; margin-top:18px; border:1px solid var(--ws-border); border-radius:14px; background:var(--ws-appBg); }
+.transfer-card p { margin-top:10px; overflow-wrap:anywhere; }
+.transfer-people { font-weight:600; }
+.transfer-totals { display:flex; flex-wrap:wrap; gap:12px 24px; padding:16px 0; font-size:13px; }
+.transfer-search { display:flex; align-items:end; gap:12px; margin:20px 0; }
+.transfer-search label { flex:1; min-width:0; }
+.transfer-candidate { display:flex; align-items:center; gap:14px; padding:14px; border:1px solid var(--ws-border); border-radius:10px; margin-bottom:10px; }
+.transfer-candidate:has(input:checked) { border-color:var(--ws-accent); }
+.transfer-candidate input { accent-color:var(--ws-accent); }
+@media(max-width:600px) { .transfer-search { flex-direction:column; align-items:stretch; } .transfer-card { padding:16px; } }
