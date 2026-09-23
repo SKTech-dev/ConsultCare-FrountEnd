@@ -5,7 +5,7 @@ const empty = {
   role: null, professionalId: null, patient: {}, patients: [], professionals: [],
   sessions: [], weeklyAvailability: [], bookings: [], loaded: false, loading: false,
   pending: 0, error: "", requestId: null, mockPayments: false,
-  feedback: null, liveConnected: false, familyProfessionalIds: [],
+  feedback: null, liveConnected: false, familyProfessionalIds: [], onboarding: null,
 };
 
 export const fetchWorkspace = createAsyncThunk("consultations/fetch", async (_, { rejectWithValue }) => {

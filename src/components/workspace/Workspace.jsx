@@ -1,7 +1,7 @@
 import { Link, NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { CalendarDays, FileText, HeartPulse, LayoutDashboard, Scale, ShieldCheck, UserRound, Users, Menu, X, PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import GlobalLoader from "../ui/GlobalLoader";
 import { logoutUser } from "../../features/auth/authSlice";
 import { fetchWorkspace, clearWorkspaceError, clearFeedback } from "../../features/consultations/consultationSlice";
@@ -30,7 +30,8 @@ export default function Workspace() {
   useEffect(() => {
     dispatch(fetchWorkspace());
   }, [dispatch]);
-  useEffect(() => {
+  // This runs before paint: an incomplete account never briefly shows another workspace page.
+  useLayoutEffect(() => {
     if (!state.loaded || !state.onboarding) return;
     const destination = "/app/" + state.onboarding;
     if (location.pathname === destination) {

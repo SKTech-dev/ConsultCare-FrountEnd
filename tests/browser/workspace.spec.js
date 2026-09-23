@@ -46,6 +46,26 @@ test("protected routes redirect signed-out visitors to login", async ({ page }) 
   await expect(page.locator('input[type="password"]')).toBeVisible();
 });
 
+for (const role of ["user", "doctor", "lawyer"]) {
+  test(`${role} accounts must finish their profile before opening another workspace page`, async ({ page }) => {
+    const state = snapshot(role);
+    state.onboarding = "profile";
+    await mockAccount(page, state);
+    await page.goto(role === "user" ? "/consult/doctors" : "/app/queue");
+    await expect(page).toHaveURL(/\/app\/profile$/);
+    await expect(page.getByRole("heading", { name: role === "user" ? "A profile that's yours." : "Your professional profile." })).toBeVisible();
+  });
+}
+
+test("profile onboarding does not show an error on first workspace arrival", async ({ page }) => {
+  const state = snapshot("user");
+  state.onboarding = "profile";
+  await mockAccount(page, state);
+  await page.goto("/app");
+  await expect(page).toHaveURL(/\/app\/profile$/);
+  await expect(page.getByRole("alert")).toHaveCount(0);
+});
+
 for (const role of ["user", "doctor", "lawyer", "admin"]) {
   test(`${role} workspace and sidebar navigation work after the router upgrade`, async ({ page }) => {
     const errors = [];
