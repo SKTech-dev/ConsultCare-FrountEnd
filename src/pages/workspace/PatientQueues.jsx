@@ -19,7 +19,8 @@ export default function PatientQueues() {
     .sort((a, b) => (a.session ? sessionStartsAt(a.session) : Infinity) - (b.session ? sessionStartsAt(b.session) : Infinity));
   return <>
     <PageHeading title="Your consultations.">Each booking has its own queue. {state.liveConnected ? "Live updates connected." : "Reconnecting live updates; checking periodically."}</PageHeading>
-    <ClinicList embedded title="Your upcoming group clinics" />
+    <div className="workspace-sections"><ClinicList embedded title="Your upcoming group clinics" />
+    <Panel title="Your private consultations">
     <div className="patient-queues">{bookings.map(({ booking: b, session }) => {
       const position = b.position || 0;
       const ended = session && sessionEndsAt(session) <= Date.now();
@@ -41,6 +42,7 @@ export default function PatientQueues() {
       </Panel>;
     })}</div>
     {!bookings.length && <Empty title="No active bookings">Book a doctor or lawyer to see your consultation queue here.</Empty>}
+    </Panel></div>
     {cancel && <MessageOverlay type="confirm" title="Cancel consultation?" text="Your queue place will be released. Any paid booking will follow the existing refund process." isProcessing={state.pending > 0} onClose={() => setCancel(null)} onConfirm={async () => { await dispatch(transition({ id: cancel, status: "CANCELLED" })); setCancel(null); }} />}
   </>;
 }

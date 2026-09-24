@@ -38,7 +38,7 @@ function ProfileForm({ source, patient }) {
     setSaving(true);
     setFeedback("");
     try {
-      const action = await dispatch(saveProfile(patient ? { name: form.name.trim(), dob: form.dob, phone: form.phone, email: form.email, emergency: form.emergency, details: form.details, weightKg: form.weightKg === "" || form.weightKg == null ? null : Number(form.weightKg), medicalDetails: form.medicalDetails || "", legalDetails: form.legalDetails || "" } : { name: form.name.trim(), speciality: form.speciality, registration: form.registration, qualifications: form.qualifications, languages: form.languages.split(",").map((l) => l.trim()).filter(Boolean), bio: form.bio, image: form.image || "" }));
+      const action = await dispatch(saveProfile(patient ? { name: form.name.trim(), dob: form.dob, phone: form.phone, email: form.email, emergency: form.emergency, details: form.details, image: form.image || "", weightKg: form.weightKg === "" || form.weightKg == null ? null : Number(form.weightKg), medicalDetails: form.medicalDetails || "", legalDetails: form.legalDetails || "" } : { name: form.name.trim(), speciality: form.speciality, registration: form.registration, qualifications: form.qualifications, languages: form.languages.split(",").map((l) => l.trim()).filter(Boolean), bio: form.bio, image: form.image || "" }));
       if (!action.error) setFeedback(patient ? "Profile saved." : "Profile saved. Changed credentials require administrator review.");
     } finally { setSaving(false); }
   }
@@ -47,25 +47,25 @@ function ProfileForm({ source, patient }) {
     <PageHeading title={patient ? "A profile that's yours." : "Your professional profile."}>
       {patient ? "Keep your contact information accurate and up to date." : "Introduce yourself, keep your credentials up to date and help patients or clients get to know you. Consultation fees are managed in My sessions."}
     </PageHeading>
-    <div className={patient ? "ws-grid-two" : "professional-profile-layout"}>
+    <div className="professional-profile-layout">
       <Panel title="Your details">
         <form className="ws-form" onSubmit={save}>
           <fieldset className="profile-fields" disabled={saving || readingImage}>
-            {!patient && <div className="profile-photo-editor">
+            <div className="profile-photo-editor">
               <div className="profile-photo-preview">
                 {form.image && !imageFailed ? <img src={form.image} alt="Profile preview" onError={() => setImageFailed(true)} /> : <span aria-label="Profile initials">{initials}</span>}
               </div>
               <div className="profile-photo-controls">
                 <h3>Profile photo</h3>
-                <p>A clear photo helps patients and clients recognise you.</p>
+                <p>{patient ? "Choose a photo for your personal profile." : "A clear photo helps patients and clients recognise you."}</p>
                 <label className="ws-field">Choose or replace photo<input type="file" accept=".jpg,.jpeg,.png,.webp" onChange={selectImage} aria-describedby="profile-photo-help" /></label>
                 <p id="profile-photo-help">JPEG, PNG or WebP, up to 200 KB. Preview your changes before saving.</p>
                 {readingImage && <p role="status">Loading photo…</p>}
                 {imageFailed && <p role="alert">This photo could not be displayed. Choose another image.</p>}
                 {form.image && <button type="button" className="ws-name-link" onClick={() => { setForm((current) => ({ ...current, image: "" })); setImageFailed(false); }}>Remove photo</button>}
               </div>
-            </div>}
-            <div className={patient ? "profile-field-list" : "profile-detail-fields"}>
+            </div>
+            <div className="profile-detail-fields">
               {fields.map(([key, label, type]) => <Input key={key} label={label} name={key} type={type} value={form[key] ?? ""} onChange={(event) => setForm({ ...form, [key]: event.target.value })} disabled={key === "email"} required={key === "name" || !patient || key === "dob" || key === "phone"} step={key === "weightKg" ? "0.01" : undefined} min={key === "weightKg" ? 0.01 : undefined} max={type === "date" ? new Date().toLocaleDateString("en-CA") : undefined} />)}
             </div>
             <label className="ws-field">{patient ? "Relevant consultation information" : "Professional introduction"}<textarea maxLength={2000} value={(patient ? form.details : form.bio) || ""} onChange={(event) => setForm({ ...form, [patient ? "details" : "bio"]: event.target.value })} /></label>

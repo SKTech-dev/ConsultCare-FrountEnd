@@ -32,3 +32,9 @@
 @media(max-width:760px){.ws-sidebar-collapsed{transform:none}.ws-body-expanded{margin-left:0}.ws-sidebar-restore{display:none}}
 .consultation-image-state{width:96px;min-height:96px;padding:8px;display:grid;place-items:center;gap:5px;text-align:center;border:1px dashed var(--ws-border);border-radius:8px;color:var(--ws-textSecondary);font-size:10px}.consultation-image-error{color:var(--ws-error)}.consultation-image-state .ws-link{font-size:10px;padding:4px 7px}.room-chat-form{display:grid;gap:10px}.room-chat-form .ws-field{margin:0}.room-chat-form textarea{min-height:74px;resize:vertical}.room-chat-send{display:flex;align-items:center;justify-content:space-between;gap:12px}.room-chat-send .ws-error{margin:0;flex:1;text-align:right}
 .professional-sections{display:grid;gap:32px}.professional-sections>.ws-space{margin-top:0}.queue-section-description{margin-bottom:20px}
+.workspace-sections{display:grid;gap:32px;min-width:0}.workspace-sections>.ws-space{margin-top:0}
+.ws-panel>p+.ws-empty,.ws-panel>.ws-empty{margin-top:20px}
+.ws-list-filters{display:flex;flex-wrap:wrap;gap:16px;align-items:end;padding:20px;margin:20px 0;background:var(--ws-appBg);border:1px solid var(--ws-border);border-radius:10px}
+.ws-list-filters .ws-field{flex:1 1 150px;margin:0}.ws-list-filters .ws-field:has(input[type=search]){flex:2 1 240px}.ws-list-filters .ws-actions{margin:0;flex-basis:100%}
+.history-collapse-label{display:none}.history-node[open]>summary .history-expand-label{display:none}.history-node[open]>summary .history-collapse-label{display:inline}
+@media(max-width:600px){.workspace-sections,.professional-sections{gap:24px}.ws-list-filters{padding:16px}.ws-list-filters .ws-field{flex-basis:100%}}

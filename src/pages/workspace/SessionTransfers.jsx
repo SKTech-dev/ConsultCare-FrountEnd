@@ -7,6 +7,7 @@ import { money } from "../../features/consultations/model";
 import { useWorkspace, Panel, PageHeading, Empty, Status } from "../../components/workspace/Workspace";
 import { MessageOverlay } from "../../components/ui/MessageBox";
 import "./transfers.css";
+import ListFilters, { emptyFilters, filterParams } from "../../components/workspace/ListFilters";
 
 const label = (s) => `${s.date} · ${s.start}–${s.end} (Sri Lanka)`;
 
@@ -21,6 +22,8 @@ export default function SessionTransfers({ embedded = false, view = "all" }) {
   const [history, setHistory] = useState(null);
   const [page, setPage] = useState(1);
   const [sessionPage, setSessionPage] = useState(1);
+  const [sessionFilters, setSessionFilters] = useState({ ...emptyFilters });
+  const [historyFilters, setHistoryFilters] = useState({ ...emptyFilters });
   const [error, setError] = useState("");
   const [notice, setNotice] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -37,13 +40,13 @@ export default function SessionTransfers({ embedded = false, view = "all" }) {
     const version = ++request.current;
     try {
       const [a, b] = await Promise.all([
-        showSessions ? callApi("GET", "/transferable-sessions", null, { page: sessionPage }) : null,
-        showHistory ? callApi("GET", "/session-transfers", null, { page, scope: view === "all" ? "all" : view }) : null,
+        showSessions ? callApi("GET", "/transferable-sessions", null, { page: sessionPage, ...filterParams(sessionFilters) }) : null,
+        showHistory ? callApi("GET", "/session-transfers", null, { page, scope: view === "all" ? "all" : view, ...filterParams(historyFilters) }) : null,
       ]);
       if (version !== request.current) return;
       setSessions(a?.data); setHistory(b?.data); setError("");
     } catch (e) { if (version === request.current) setError(e.message); }
-  }, [allowed, page, sessionPage, showSessions, showHistory, view]);
+  }, [allowed, page, sessionPage, showSessions, showHistory, view, sessionFilters, historyFilters]);
   useEffect(() => {
     load();
     const interval = setInterval(load, 10000);
@@ -64,6 +67,7 @@ export default function SessionTransfers({ embedded = false, view = "all" }) {
     {!embedded && <PageHeading title="Session handovers.">Arrange cover for a booked session and follow every request and earnings reassignment.</PageHeading>}
     {error && <p role="alert" className="ws-error">{error} <button className="ws-link secondary" onClick={load}>Retry</button></p>}
     {showSessions && <Panel title="Hand over a booked session">
+      {workspace.role === "admin" && <ListFilters label="Filter booked sessions" onApply={(value) => { setSessions(null); setSessionFilters(value); setSessionPage(1); }} statuses={["available", "pending"]} />}
       <p>Choose a dated session with patients in its queue. The receiver must accept before ownership changes. Booked prices, queue order and weekly schedules stay the same.</p>
       <div className="ws-notice">Requests expire at the session start. Only sessions that have not started can be handed over. Amounts below are estimates; earnings count completed, paid consultations.</div>
       {!sessions && !error && <p role="status"><Loader2 size={18} className="animate-spin" /> Loading booked sessions…</p>}
@@ -78,6 +82,7 @@ export default function SessionTransfers({ embedded = false, view = "all" }) {
     </Panel>}
     {selected && <div ref={formAnchor} tabIndex={-1} aria-label="Request session handover"><TransferForm key={selected.id} session={selected} onClose={() => setSelected(null)} onSaved={async (text) => { setSelected(null); setNotice({ type: "success", text }); await Promise.all([load(), dispatch(fetchWorkspace())]); }} /></div>}
     {showHistory && <Panel title={historyTitle}>
+      {workspace.role === "admin" && <ListFilters label="Filter handover history" onApply={(value) => { setHistory(null); setHistoryFilters(value); setPage(1); }} statuses={["pending", "accepted", "rejected", "cancelled", "expired"]} />}
       <p>{view === "history" ? "Past sessions and resolved requests remain here for review, including their earnings attribution." : "Incoming requests have Accept and Reject actions. Accepted upcoming sessions remain here until they finish. Your original session stays assigned until acceptance."}</p>
       {!history && !error && <p role="status">Loading requests…</p>}
       {history?.items.length === 0 && <Empty title="No handovers yet">Incoming requests, your requests and their outcomes appear here.</Empty>}

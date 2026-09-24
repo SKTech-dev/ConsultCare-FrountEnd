@@ -1,4 +1,4 @@
-.session-transfers { display: grid; gap: 24px; }
+.session-transfers { display: grid; gap: 32px; }
 .session-transfers .ws-panel > p { line-height: 1.7; }
 .transfer-session,.transfer-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
 .transfer-session { padding:20px 0; border-bottom:1px solid var(--ws-border); }

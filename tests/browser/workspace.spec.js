@@ -3,6 +3,105 @@ import { test, expect } from "@playwright/test";
 const currentTime = "2026-09-22T10:30:00+05:30";
 const professional = { id: "professional", name: "Test Professional", role: "doctor", status: "verified", speciality: "General practice", qualifications: "Test qualification", registration: "REG-1", languages: ["English"], fee: 2500 };
 
+test("queue and history use consistent empty states and section gaps", async ({ page }) => {
+  await mockAccount(page, snapshot());
+  await page.goto("/app/queue");
+  await expect(page.locator(".professional-sections .ws-empty")).toHaveCount(4);
+  expect(await page.locator(".professional-sections").evaluate((el) => getComputedStyle(el).gap)).toBe("32px");
+  await page.goto("/app/history");
+  await expect(page.locator(".professional-sections .ws-empty")).toHaveCount(3);
+});
+
+test("history expand labels follow each independent disclosure state", async ({ page }) => {
+  const state = snapshot();
+  state.sessions = [session("past", "2026-09-21")];
+  state.bookings = [booking("record", "past", "COMPLETED")];
+  await mockAccount(page, state);
+  await page.goto("/app/history");
+  const month = page.locator(".history-month > summary");
+  await expect(month.getByText("Expand", { exact: true })).toBeVisible();
+  await month.click();
+  await expect(month.getByText("Collapse", { exact: true })).toBeVisible();
+  const week = page.locator(".history-week > summary");
+  await week.click();
+  await expect(week.getByText("Collapse", { exact: true })).toBeVisible();
+  const day = page.locator(".history-day > summary");
+  await day.click();
+  await expect(day.getByText("Collapse", { exact: true })).toBeVisible();
+  await month.click();
+  await expect(month.getByText("Expand", { exact: true })).toBeVisible();
+});
+
+test("patient pages embed clinics with matching empty sections and remove the clinic menu", async ({ page }) => {
+  const state = snapshot("user");
+  state.professionals = [];
+  await mockAccount(page, state);
+  for (const path of ["/app/bookings", "/app/history", "/consult/doctors", "/consult/lawyers"]) {
+    await page.goto(path);
+    await expect(page.locator(".workspace-sections .ws-empty")).toHaveCount(2);
+    await expect(page.locator(".ws-sidebar").getByRole("link", { name: "Group clinics", exact: true })).toHaveCount(0);
+    expect(await page.locator(".workspace-sections").evaluate((el) => getComputedStyle(el).gap)).toBe("32px");
+  }
+  await page.goto("/app/clinics");
+  await expect(page).toHaveURL(/\/app\/bookings$/);
+});
+
+test("professional verification sits below personal details on desktop", async ({ page }) => {
+  await mockAccount(page, snapshot());
+  await page.goto("/app/profile");
+  const panels = page.locator(".professional-profile-layout > .ws-panel");
+  const details = await panels.nth(0).boundingBox();
+  const verification = await panels.nth(1).boundingBox();
+  expect(verification.y).toBeGreaterThanOrEqual(details.y + details.height + 30);
+  expect(verification.x).toBe(details.x);
+});
+
+test("patient profile photo is submitted and remains after reload", async ({ page }) => {
+  const state = snapshot("user");
+  Object.assign(state.patient, { dob: "1990-01-01", phone: "0711111111", email: "patient@example.com" });
+  await mockAccount(page, state);
+  let saved;
+  await page.route("**/api/profile", (route) => {
+    saved = route.request().postDataJSON();
+    Object.assign(state.patient, saved);
+    return route.fulfill({ json: { message: "Saved." } });
+  });
+  await page.goto("/app/profile");
+  await page.getByLabel("Choose or replace photo").setInputFiles({ name: "portrait.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64") });
+  await expect(page.getByAltText("Profile preview")).toBeVisible();
+  await page.getByRole("button", { name: "Save profile", exact: true }).click();
+  await expect.poll(() => saved?.image).toMatch(/^data:image\/png;base64,/);
+  await page.reload();
+  await expect(page.getByAltText("Profile preview")).toBeVisible();
+});
+
+test("admin list filters send search criteria and reset pagination", async ({ page }) => {
+  await mockAccount(page, snapshot("admin"));
+  for (const [path, label, endpoint] of [
+    ["/app/clinics", "Filter group clinics", "/api/clinics"],
+    ["/app/appointments", "Filter scheduled consultations", "/api/scheduled-consultations"],
+    ["/app/transfers", "Filter booked sessions", "/api/transferable-sessions"],
+    ["/app/transfers", "Filter handover history", "/api/session-transfers"],
+  ]) {
+    await page.goto(path);
+    const form = page.getByRole("form", { name: label });
+    await form.getByLabel("Professional name or email").fill("  Receiver  ");
+    await form.getByRole("combobox", { name: "Profession", exact: true }).selectOption("doctor");
+    await form.getByLabel("From date").fill("2026-09-23");
+    const request = page.waitForRequest((r) => {
+      const url = new URL(r.url());
+      return url.pathname === endpoint && url.searchParams.get("q") === "Receiver";
+    });
+    await form.getByRole("button", { name: "Apply filters" }).click();
+    const params = new URL((await request).url()).searchParams;
+    expect(params.get("profession")).toBe("doctor");
+    expect(params.get("date_from")).toBe("2026-09-23");
+    expect(params.get("page")).toBe("1");
+    await form.getByRole("button", { name: "Clear filters" }).click();
+    await expect(form.getByLabel("Professional name or email")).toHaveValue("");
+  }
+});
+
 function snapshot(role = "doctor") {
   return { role, professionalId: role === "doctor" || role === "lawyer" ? professional.id : null,
     patient: { id: "patient", name: "Test Patient", status: "active" }, patients: [],

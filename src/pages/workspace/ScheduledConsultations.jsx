@@ -7,12 +7,14 @@ import { money } from "../../features/consultations/model";
 import { Empty, PageHeading, Panel, Status, useWorkspace } from "../../components/workspace/Workspace";
 import { MessageOverlay } from "../../components/ui/MessageBox";
 import "./appointments.css";
+import ListFilters, { emptyFilters, filterParams } from "../../components/workspace/ListFilters";
 
 export default function ScheduledConsultations({ embedded = false, renderQueue }) {
   const state = useWorkspace();
   const dispatch = useDispatch();
   const allowed = ["admin", "doctor", "lawyer"].includes(state.role);
   const [scope, setScope] = useState("upcoming");
+  const [filters, setFilters] = useState({ ...emptyFilters });
   const [page, setPage] = useState(1);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
@@ -30,7 +32,7 @@ export default function ScheduledConsultations({ embedded = false, renderQueue }
       if (fetching) return;
       fetching = true;
       try {
-        const response = await callApi("GET", "/scheduled-consultations", null, { scope, page }, { signal: controller.signal });
+        const response = await callApi("GET", "/scheduled-consultations", null, { scope, page, ...filterParams(filters) }, { signal: controller.signal });
         if (active) { setResult(response.data); setError(""); }
       } catch (failure) { if (active) setError(failure.message); }
       finally { fetching = false; }
@@ -38,7 +40,7 @@ export default function ScheduledConsultations({ embedded = false, renderQueue }
     load();
     const interval = setInterval(() => { if (!document.hidden) load(); }, 10000);
     return () => { active = false; clearInterval(interval); controller.abort(); };
-  }, [allowed, scope, page, retry]);
+  }, [allowed, scope, page, retry, filters]);
 
   async function cancelAppointment() {
     if (busy || !cancel) return;
@@ -58,7 +60,8 @@ export default function ScheduledConsultations({ embedded = false, renderQueue }
       {!embedded && <label className="ws-field appointment-filter">Show<select aria-label="Appointment view" value={scope} onChange={(e) => { setScope(e.target.value); setPage(1); }}><option value="upcoming">Upcoming</option><option value="history">History</option><option value="all">All appointments</option></select></label>}
       {error && <p className="ws-error" role="alert">{error} <button className="ws-link secondary" onClick={refresh}>Retry</button></p>}
       {!result && !error && <p role="status">Loading scheduled consultations…</p>}
-      {result?.items.length === 0 && <p className="ws-muted ws-space">No scheduled consultations in this view.</p>}
+      {state.role === "admin" && <ListFilters label="Filter scheduled consultations" onApply={(value) => { setFilters(value); setPage(1); }} statuses={["PAYMENT PENDING", "WAITING", "NEXT", "IN CONSULTATION", "COMPLETED", "CANCELLED", "NO-SHOW"]} />}
+      {result?.items.length === 0 && <Empty title="No scheduled consultations in this view">One-off appointments matching this view and any selected filters will appear here.</Empty>}
       {result?.items.map((item) => <article className="appointment-card" key={item.id}>
         <div className="ws-row"><div><h3>{item.patientName}</h3><p>{item.professionalName} · {item.date} · {item.start}–{item.end} (Sri Lanka)</p></div><Status>{item.status}</Status></div>
         <div className="appointment-summary"><span>Fee: <strong>{money(item.fee)}</strong></span><span>Payment: {item.payment}</span><span>Scheduled by: {item.scheduledBy}</span></div>
