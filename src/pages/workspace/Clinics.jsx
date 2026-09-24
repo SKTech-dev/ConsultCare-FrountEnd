@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { CalendarDays, Users, Video } from "lucide-react";
 import { callApi } from "../../api/apiClient";
@@ -82,7 +82,7 @@ export function ScheduleClinic() {
           <label className="ws-field">Clinic places<input type="number" required min="2" max="100" step="1" {...field("capacity")} /></label>
         </div>
         <p className="ws-muted">Fee per attendee, for this clinic only. All times use Sri Lanka time. Attendees must pay before joining; their camera and microphone are disabled for this lecture.</p>
-        <div className="ws-actions"><button className="ws-link" disabled={busy || !enabled}>{busy ? "Scheduling clinic…" : "Schedule clinic"}</button><Link className="ws-link secondary" to="/app/clinics">View my clinics</Link></div>
+        <div className="ws-actions"><button className="ws-link" disabled={busy || !enabled}>{busy ? "Scheduling clinic…" : "Schedule clinic"}</button><Link className="ws-link secondary" to="/app/queue">View my clinics</Link></div>
       </fieldset>
     </form>
     {notice && <MessageOverlay type={notice.type} text={notice.text} onClose={() => { const id = notice.id; setNotice(null); if (id) navigate(`/app/clinics/${id}`); }} />}
@@ -118,6 +118,7 @@ export function ClinicList({ view = "upcoming", profession, title = "Group clini
 export default function Clinics() {
   const { role } = useWorkspace();
   const [view, setView] = useState("upcoming");
+  if (["doctor", "lawyer"].includes(role)) return <Navigate to="/app/queue" replace />;
   return <><PageHeading title={role === "admin" ? "Clinics & registrations." : "Your group clinics."}>Review schedules, confirmed registrations and clinic payments separately from private consultations.</PageHeading>
     <label className="ws-field clinic-filter">Clinic view<select value={view} onChange={(event) => setView(event.target.value)}><option value="upcoming">Upcoming and live</option><option value="history">Past and cancelled</option><option value="all">All clinics</option>{role === "user" && <option value="available">Available clinics</option>}</select></label>
     <ClinicList view={view} />
@@ -163,7 +164,7 @@ function ClinicDetailContent({ id }) {
   const canPay = registration?.status === "pending" && Date.now() < Date.parse(registration.paymentDueAt) && scheduled && before && clinic.professionalAvailable;
   const disabled = busy || Boolean(result.error);
   return <>
-    <Link className="ws-name-link" to="/app/clinics">← Back to clinics</Link>
+    <Link className="ws-name-link" to={["doctor", "lawyer"].includes(role) ? (["completed", "cancelled"].includes(clinic.status) || Date.parse(clinic.endsAt) <= Date.now() ? "/app/history" : "/app/queue") : "/app/clinics"}>← Back to {["doctor", "lawyer"].includes(role) ? "consultations" : "clinics"}</Link>
     <PageHeading eyebrow="GROUP CLINIC · LECTURE" title={clinic.title} action={<Status>{clinic.status}</Status>}>{clinic.professionalName} · {clinic.profession}</PageHeading>
     <LoadState {...result} />
     <div className="ws-grid-two"><Panel title="Clinic information">

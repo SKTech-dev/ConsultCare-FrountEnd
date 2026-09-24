@@ -31,3 +31,4 @@
 @media(max-width:1200px){.ws-body-expanded{margin-left:0}}
 @media(max-width:760px){.ws-sidebar-collapsed{transform:none}.ws-body-expanded{margin-left:0}.ws-sidebar-restore{display:none}}
 .consultation-image-state{width:96px;min-height:96px;padding:8px;display:grid;place-items:center;gap:5px;text-align:center;border:1px dashed var(--ws-border);border-radius:8px;color:var(--ws-textSecondary);font-size:10px}.consultation-image-error{color:var(--ws-error)}.consultation-image-state .ws-link{font-size:10px;padding:4px 7px}.room-chat-form{display:grid;gap:10px}.room-chat-form .ws-field{margin:0}.room-chat-form textarea{min-height:74px;resize:vertical}.room-chat-send{display:flex;align-items:center;justify-content:space-between;gap:12px}.room-chat-send .ws-error{margin:0;flex:1;text-align:right}
+.professional-sections{display:grid;gap:32px}.professional-sections>.ws-space{margin-top:0}.queue-section-description{margin-bottom:20px}

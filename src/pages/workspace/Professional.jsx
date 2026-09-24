@@ -4,7 +4,7 @@ import { useDispatch } from "react-redux";
 import { Plus, Trash2 } from "lucide-react";
 import { useWorkspace, PageHeading, Panel, Empty, Status } from "../../components/workspace/Workspace";
 import { saveWeeklyAvailability, transition } from "../../features/consultations/consultationSlice";
-import { isSessionLive, queueFor, sessionLabel, sessionStartsAt, sortUpcomingSessions, sriLankanDate } from "../../features/consultations/model";
+import { isSessionLive, isUpcomingSession, queueFor, sessionLabel, sessionStartsAt } from "../../features/consultations/model";
 import SessionTransfers from "./SessionTransfers";
 import ScheduleConsultation from "./ScheduleConsultation";
 import ScheduledConsultations from "./ScheduledConsultations";
@@ -27,22 +27,28 @@ export function Queue() {
   const [skip, setSkip] = useState(null);
   if (!["doctor", "lawyer"].includes(s.role)) return <Empty title="Professional workspace">Sign in with a professional account to view its queue.</Empty>;
   const p = s.professionals.find((professional) => professional.id === s.professionalId);
-  const today = sriLankanDate();
-  const lastQueueDate = sriLankanDate(Date.now() + (6 * 24 * 60 * 60 * 1000));
-  const sessions = sortUpcomingSessions(s.sessions.filter((session) => !session.clinicBlocked && session.professionalId === p.id && session.date >= today && session.date <= lastQueueDate && (!session.privateAppointment || queueFor(s, p.id, session.id).length > 0)));
+  const sessions = s.sessions.filter((session) => !session.clinicBlocked && !session.privateAppointment && session.professionalId === p.id && isUpcomingSession(session)).sort((a, b) => sessionStartsAt(a) - sessionStartsAt(b));
   const ongoing = s.bookings.filter((booking) => booking.professionalId === p.id && booking.status === "IN CONSULTATION");
-  const outsideUpcoming = ongoing.filter((booking) => !sessions.some((session) => session.id === booking.sessionId));
-  return <><PageHeading title="Your consultation queues." action={<Link className="ws-link secondary" to="/app/sessions">Manage weekly schedule</Link>}>Each session has its own queue. Showing your scheduled sessions for the next seven days.</PageHeading>
-    <div className="ws-space"><SessionTransfers embedded view="upcoming" /></div>
-    <div className="ws-space"><ScheduledConsultations embedded /></div>
+  const outsideUpcoming = ongoing.filter((booking) => !isUpcomingSession(s.sessions.find((session) => session.id === booking.sessionId)));
+  const renderQueue = (session) => {
+      const queue = queueFor(s, p.id, session.id);
+      const busy = ongoing.length > 0;
+      return <><div className="queue-session-heading"><p>{queue.length ? `${queue.length} active patient${queue.length === 1 ? "" : "s"} / client${queue.length === 1 ? "" : "s"} in this session queue.` : "No active bookings for this session yet."}</p><Status>{session.online ? "Available" : "Offline"}</Status></div>{queue.length ? queue.map((booking) => <div className="ws-row" key={booking.id}><div><h3>{booking.position}. {booking.patientName}</h3><p>{booking.payment}</p></div><Status>{booking.status}</Status><div className="ws-actions">{booking.status === "IN CONSULTATION" ? <Link to={`/app/room/${booking.id}`} className="ws-link">Open room</Link> : <><button className="ws-link" disabled={p.status !== "verified" || busy || !session.online || !isSessionLive(session) || booking.status !== "NEXT"} onClick={() => dispatch(transition({ id: booking.id, status: "IN CONSULTATION" }))}>Call next</button><button className="ws-link secondary" disabled={p.status !== "verified" || Date.now() < sessionStartsAt(session)} title={Date.now() < sessionStartsAt(session) ? "Available after the session starts" : undefined} onClick={() => setSkip(booking.id)}>No-show</button></>}<Link className="ws-link secondary" to={`/app/booking/${booking.id}`}>Details</Link></div></div>) : <div className="queue-empty">This queue is clear.</div>}</>;
+  };
+  return <><PageHeading title="Your consultation queues." action={<Link className="ws-link secondary" to="/app/sessions">Manage weekly schedule</Link>}>Manage upcoming and ongoing handovers, individual appointments, group clinics and weekly queues. Past sessions are available in Consultation history.</PageHeading>
+    <div className="professional-sections"><SessionTransfers embedded view="upcoming" />
+    <ScheduledConsultations embedded renderQueue={(id) => {
+      const booking = s.bookings.find((item) => item.id === id && item.professionalId === p.id);
+      const session = s.sessions.find((item) => item.id === booking?.sessionId);
+      return session && isUpcomingSession(session) ? renderQueue(session) : null;
+    }} />
     <ClinicList embedded title="Upcoming group clinics" />
     {outsideUpcoming.length > 0 && <Panel title="Consultation still in progress">{outsideUpcoming.map((booking) => <div className="ws-row" key={booking.id}><div><h3>{booking.patientName}</h3><p>This consultation is still open. Complete it before calling the next person.</p></div><Link to={`/app/room/${booking.id}`} className="ws-link">Return to consultation</Link></div>)}</Panel>}
     {p.status !== "verified" && <div className="ws-notice">This professional is {p.status}. An administrator must approve the account before consultations can start.</div>}
-    {sessions.length ? <div className="queue-sessions">{sessions.map((session) => {
-      const queue = queueFor(s, p.id, session.id);
-      const busy = ongoing.length > 0;
-      return <Panel key={session.id} title={sessionLabel(session)}><div className="queue-session-heading"><p>{queue.length ? `${queue.length} active patient${queue.length === 1 ? "" : "s"} / client${queue.length === 1 ? "" : "s"} in this session queue.` : "No active bookings for this session yet."}</p><Status>{session.online ? "Available" : "Offline"}</Status></div>{queue.length ? queue.map((booking) => <div className="ws-row" key={booking.id}><div><h3>{booking.position}. {booking.patientName}</h3><p>{booking.payment}</p></div><Status>{booking.status}</Status><div className="ws-actions">{booking.status === "IN CONSULTATION" ? <Link to={`/app/room/${booking.id}`} className="ws-link">Open room</Link> : <><button className="ws-link" disabled={p.status !== "verified" || busy || !session.online || !isSessionLive(session) || booking.status !== "NEXT"} onClick={() => dispatch(transition({ id: booking.id, status: "IN CONSULTATION" }))}>Call next</button><button className="ws-link secondary" disabled={p.status !== "verified" || Date.now() < sessionStartsAt(session)} title={Date.now() < sessionStartsAt(session) ? "Available after the session starts" : undefined} onClick={() => setSkip(booking.id)}>No-show</button></>}<Link className="ws-link secondary" to={`/app/booking/${booking.id}`}>Details</Link></div></div>) : <div className="queue-empty">This queue is clear.</div>}</Panel>;
-    })}</div> : <Empty title="No sessions in the next seven days">Create or update your weekly schedule to generate session queues.</Empty>}
+    <Panel title="Weekly queues">
+      <p className="queue-section-description">Upcoming and ongoing weekly sessions, ordered by date and time. Offline sessions remain visible so you can review their bookings.</p>
+      {sessions.length ? <div className="queue-sessions">{sessions.map((session) => <Panel key={session.id} title={sessionLabel(session)}>{renderQueue(session)}</Panel>)}</div> : <Empty title="No upcoming weekly sessions">Create or update your weekly schedule to generate session queues.</Empty>}
+    </Panel></div>
     {skip && <MessageOverlay type="confirm" title="Mark as no-show?" text="This person will leave the active queue. Their record and payment status will remain available for review." onClose={() => setSkip(null)} onConfirm={() => { dispatch(transition({ id: skip, status: "NO-SHOW" })); setSkip(null); }} />}
   </>;
 }

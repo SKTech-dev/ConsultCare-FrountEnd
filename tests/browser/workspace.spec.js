@@ -113,19 +113,15 @@ test("handover queue and history request separate server-filtered views", async 
 
 test("professional schedules a private consultation using an exact patient email", async ({ page }) => {
   await mockAccount(page, snapshot());
-  await page.route("**/api/scheduled-consultations/patient-search", (route) => {
-    expect(route.request().postDataJSON()).toEqual({ email: "patient@example.com" });
-    return route.fulfill({ json: { data: { name: "Test Patient", email: "patient@example.com" } } });
-  });
   let submitted;
   await page.route("**/api/scheduled-consultations", (route) => {
     submitted = route.request().postDataJSON();
     return route.fulfill({ status: 201, json: { message: "Consultation scheduled. Patient payment is required." } });
   });
   await page.goto("/app/sessions");
+  await expect(page.getByRole("button", { name: "Schedule consultation", exact: true })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Find patient" })).toHaveCount(0);
   await page.getByLabel("Patient / client email").fill("patient@example.com");
-  await page.getByRole("button", { name: "Find patient" }).click();
-  await expect(page.getByText("Test Patient", { exact: true })).toBeVisible();
   await page.getByLabel("Date", { exact: true }).fill("2026-09-23");
   await page.getByLabel("Start time", { exact: true }).fill("14:00");
   await page.getByLabel("End time", { exact: true }).fill("14:30");
@@ -231,6 +227,37 @@ for (const role of ["user", "doctor", "lawyer", "admin"]) {
     expect(errors).toEqual([]);
   });
 }
+
+test("professional queue separates one-off appointments and includes future offline weekly sessions", async ({ page }) => {
+  const state = snapshot();
+  state.sessions = [session("past", "2026-09-21"), { ...session("private", "2026-09-22"), privateAppointment: true }, { ...session("later", "2026-10-05"), online: false }];
+  state.bookings = [booking("one-off", "private"), booking("past-record", "past")];
+  await mockAccount(page, state);
+  await page.route("**/api/scheduled-consultations?*", (route) => route.fulfill({ json: { data: { items: [{ ...state.bookings[0], date: "2026-09-22", start: "10:00", end: "11:00", acceptedAt: currentTime }], count: 1, pageSize: 30 } } }));
+  await page.goto("/app/clinics");
+  await expect(page).toHaveURL(/\/app\/queue$/);
+  await expect(page.locator(".ws-sidebar").getByRole("link", { name: "Group clinics" })).toHaveCount(0);
+  await expect(page.locator(".professional-sections > section > h2, .professional-sections > section > section > h2")).toHaveText(["Upcoming handovers", "One-off scheduled consultations", "Upcoming group clinics", "Weekly queues"]);
+  const weekly = page.locator("section.ws-panel").filter({ has: page.getByRole("heading", { name: "Weekly queues", exact: true }) });
+  await expect(weekly.getByText("Offline", { exact: true })).toBeVisible();
+  await expect(weekly.getByText("Test Patient", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Call next", exact: true })).toBeEnabled();
+  await page.goto("/app/history");
+  await expect(page.getByRole("heading", { name: "Past consultation sessions", exact: true })).toBeVisible();
+  await expect(page.getByText("September 2026", { exact: true })).toBeVisible();
+});
+
+test("professional profile previews and removes a selected photo on mobile", async ({ page }) => {
+  await mockAccount(page, snapshot());
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/app/profile");
+  await page.getByLabel("Choose or replace photo").setInputFiles({ name: "portrait.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64") });
+  await expect(page.getByAltText("Profile preview")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Professional verification", exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.getByRole("button", { name: "Remove photo", exact: true }).click();
+  await expect(page.getByAltText("Profile preview")).toHaveCount(0);
+});
 
 test("future sessions disable both call-next and no-show", async ({ page }) => {
   const state = snapshot();

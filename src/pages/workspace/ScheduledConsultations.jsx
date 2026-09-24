@@ -8,7 +8,7 @@ import { Empty, PageHeading, Panel, Status, useWorkspace } from "../../component
 import { MessageOverlay } from "../../components/ui/MessageBox";
 import "./appointments.css";
 
-export default function ScheduledConsultations({ embedded = false }) {
+export default function ScheduledConsultations({ embedded = false, renderQueue }) {
   const state = useWorkspace();
   const dispatch = useDispatch();
   const allowed = ["admin", "doctor", "lawyer"].includes(state.role);
@@ -63,6 +63,7 @@ export default function ScheduledConsultations({ embedded = false }) {
         <div className="ws-row"><div><h3>{item.patientName}</h3><p>{item.professionalName} · {item.date} · {item.start}–{item.end} (Sri Lanka)</p></div><Status>{item.status}</Status></div>
         <div className="appointment-summary"><span>Fee: <strong>{money(item.fee)}</strong></span><span>Payment: {item.payment}</span><span>Scheduled by: {item.scheduledBy}</span></div>
         {item.status === "PAYMENT PENDING" && <p className="ws-notice">Awaiting patient acceptance and payment before {item.start} on {item.date}. This appointment cannot start unpaid.</p>}
+        {renderQueue?.(item.id)}
         <div className="ws-actions">
           {state.role !== "admin" && item.acceptedAt && <Link className="ws-link secondary" to={`/app/booking/${item.id}`}>View consultation</Link>}
           {item.canCancel && <button className="ws-link secondary" disabled={busy} onClick={() => setCancel(item)}>Cancel appointment</button>}

@@ -67,8 +67,10 @@ function ProfessionalHistory() {
   const months = historyTree(s);
   return <>
     <PageHeading title="Consultation history.">Browse past session times by month, week and day. Every booking remains visible, including consultations that did not take place.</PageHeading>
-    <div className="ws-space"><SessionTransfers embedded view="history" /></div>
+    <div className="professional-sections">
+    <SessionTransfers embedded view="history" />
     <ClinicList embedded view="history" title="Past group clinics" />
+    <Panel title="Past consultation sessions">
     {months.length ? <div className="history-tree">{months.map((month) => {
       const monthBookings = month.weeks.flatMap((week) => week.days).flatMap((day) => day.sessions).reduce((total, item) => total + item.bookings.length, 0);
       return <details className="history-node history-month" key={month.key}><summary><span><strong>{month.label}</strong><small>{monthBookings} booked consultation{monthBookings === 1 ? "" : "s"}</small></span><span className="history-expand">Expand</span></summary><div className="history-children">{month.weeks.map((week) => {
@@ -76,6 +78,7 @@ function ProfessionalHistory() {
         return <details className="history-node history-week" key={week.key}><summary><span><strong>{week.label}</strong><small>{weekBookings} booked consultation{weekBookings === 1 ? "" : "s"}</small></span><span className="history-expand">Expand</span></summary><div className="history-children">{week.days.map((day) => <details className="history-node history-day" key={day.key}><summary><span><strong>{day.label}</strong><small>{day.sessions.length} session{day.sessions.length === 1 ? "" : "s"}</small></span><span className="history-expand">Expand</span></summary><div className="history-sessions">{day.sessions.map(({ session, bookings }) => <Link className="history-session" key={session.id} to={`/app/history/session/${session.id}`}><span><strong>{session.start}–{session.end}</strong><small>{bookings.length} patient{bookings.length === 1 ? "" : "s"} / client{bookings.length === 1 ? "" : "s"}</small></span><span>View session →</span></Link>)}</div></details>)}</div></details>;
       })}</div></details>;
     })}</div> : <Empty title="No past session records yet">Past sessions with booked patients or clients will appear here.</Empty>}
+    </Panel></div>
   </>;
 }
 
