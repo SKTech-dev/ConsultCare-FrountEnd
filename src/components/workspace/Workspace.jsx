@@ -24,10 +24,36 @@ export default function Workspace() {
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  const [mobile, setMobile] = useState(() => window.matchMedia("(max-width: 1024px)").matches);
+  const sidebar = useRef(null);
+  const menuButton = useRef(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [onboardingNotice, setOnboardingNotice] = useState(null);
   const onboardingStep = useRef(null);
   const redirectedLocation = useRef(null);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 1024px)");
+    const change = () => { setMobile(media.matches); setOpen(false); };
+    media.addEventListener("change", change);
+    return () => media.removeEventListener("change", change);
+  }, []);
+  useEffect(() => { setOpen(false); }, [location.pathname]);
+  useEffect(() => {
+    if (!open || !mobile || !state.loaded) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    sidebar.current?.querySelector("button")?.focus();
+    return () => { document.body.style.overflow = previousOverflow; menuButton.current?.focus(); };
+  }, [open, mobile, state.loaded]);
+  function navigationKeys(event) {
+    if (!mobile || !open) return;
+    if (event.key === "Escape") { event.preventDefault(); setOpen(false); }
+    if (event.key !== "Tab") return;
+    const items = [...sidebar.current.querySelectorAll('a[href], button:not([disabled])')].filter((item) => item.getClientRects().length);
+    const first = items[0], last = items[items.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+  }
   useEffect(() => {
     dispatch(fetchWorkspace());
   }, [dispatch]);
@@ -69,15 +95,17 @@ export default function Workspace() {
     ["/app", "Overview", LayoutDashboard], ["/app/queue", "Consultation queue", Users], ["/app/sessions", "My sessions", CalendarDays], ["/app/earnings", "My earnings", ShieldCheck], ["/app/history", "Consultation history", FileText], ["/app/profile", "Professional profile", UserRound],
   ];
   return <div className="ws" style={Object.fromEntries(Object.entries(colors).map(([key, value]) => [`--ws-${key}`, value]))}>
-    <aside className={"ws-sidebar " + (open ? "ws-sidebar-open " : "") + (sidebarCollapsed ? "ws-sidebar-collapsed" : "")}>
+    {mobile && open && <div className="ws-nav-backdrop" aria-hidden="true" onClick={() => setOpen(false)} />}
+    <aside ref={sidebar} id="workspace-navigation" role={mobile && open ? "dialog" : undefined} aria-modal={mobile && open ? true : undefined} aria-label="Workspace navigation" inert={(mobile ? !open : sidebarCollapsed) ? "" : undefined} onKeyDown={navigationKeys} className={"ws-sidebar " + (open ? "ws-sidebar-open " : "") + (sidebarCollapsed ? "ws-sidebar-collapsed" : "")}>
+      <button type="button" className="ws-nav-close" aria-label="Close navigation" onClick={() => setOpen(false)}><X size={22} /></button>
       <Link className="ws-brand" to="/"><ShieldCheck />consultcare<span>.</span></Link>
       <p className="ws-eyebrow ws-nav-label">{state.role === "user" ? "PATIENT & CLIENT" : state.role.toUpperCase()} WORKSPACE</p>
       <nav aria-label="Workspace">{links.map(([to, label, Icon]) => <NavLink key={to} to={to} end onClick={() => setOpen(false)}><Icon size={18} />{label}</NavLink>)}</nav>
-      <div className="ws-sidebar-bottom"><ShieldCheck size={23} /><h3>A little clarity.<br />A better next step.</h3><p>Your conversations, all in one place.</p><div className="ws-sidebar-footer"><Link to="/">Back to home →</Link><button className="ws-sidebar-toggle" type="button" aria-label="Hide sidebar" title="Hide sidebar" onClick={() => window.matchMedia("(max-width: 760px)").matches ? setOpen(false) : setSidebarCollapsed(true)}><PanelLeftClose size={16} /></button></div></div>
+      <div className="ws-sidebar-bottom"><ShieldCheck size={23} /><h3>A little clarity.<br />A better next step.</h3><p>Your conversations, all in one place.</p><div className="ws-sidebar-footer"><Link to="/">Back to home →</Link><button className="ws-sidebar-toggle" type="button" aria-label="Hide sidebar" title="Hide sidebar" onClick={() => mobile ? setOpen(false) : setSidebarCollapsed(true)}><PanelLeftClose size={16} /></button></div></div>
     </aside>
-    <div className={"ws-body " + (sidebarCollapsed ? "ws-body-expanded" : "")}>
+    <div inert={mobile && open ? "" : undefined} className={"ws-body " + (sidebarCollapsed ? "ws-body-expanded" : "")}>
       {sidebarCollapsed && <button className="ws-sidebar-restore" type="button" aria-label="Show sidebar" title="Show sidebar" onClick={() => setSidebarCollapsed(false)}><PanelLeftOpen size={18} /></button>}
-      <header className="ws-topbar"><button className="ws-menu" aria-label="Toggle navigation" onClick={() => setOpen(!open)}>{open ? <X /> : <Menu />}</button><div><span className="ws-eyebrow">WELCOME BACK</span><p>{name}</p></div><div className="ws-identity"><span className="ws-avatar">{name.split(" ").map((w) => w[0]).slice(0, 2).join("")}</span></div></header>
+      <header className="ws-topbar"><button ref={menuButton} type="button" className="ws-menu" aria-label="Toggle navigation" aria-expanded={open} aria-controls="workspace-navigation" onClick={() => setOpen(!open)}>{open ? <X /> : <Menu />}</button><div><span className="ws-eyebrow">WELCOME BACK</span><p>{name}</p></div><div className="ws-identity"><span className="ws-avatar">{name.split(" ").map((w) => w[0]).slice(0, 2).join("")}</span></div></header>
       <div className="ws-preview"><div><strong>{state.role === "user" ? "Patient / client" : state.role} workspace</strong><span> · Connected to your account{state.mockPayments ? " · Test payments enabled" : ""}</span></div><button className="underline font-semibold" onClick={signOut}>Sign out</button></div>
       {state.error && <div className="ws-notice mx-6" role="alert">{state.error}<button className="underline ml-4" onClick={() => dispatch(clearWorkspaceError())}>Dismiss</button></div>}
       {state.pending > 0 && <GlobalLoader fullPage message="Saving changes..." />}

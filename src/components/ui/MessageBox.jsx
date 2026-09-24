@@ -65,7 +65,7 @@ export const MessageOverlay = ({
         aria-describedby={textId}
         tabIndex={-1}
         onKeyDown={keyDown}
-        className="w-[90%] max-w-md rounded-2xl p-6 shadow-xl text-center"
+        className="w-[90%] max-w-md max-h-[90dvh] overflow-y-auto break-words rounded-2xl p-5 sm:p-6 shadow-xl text-center"
         style={{
           backgroundColor: colors.cardBg,
           border: `1px solid ${borderColor}`,

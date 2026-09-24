@@ -37,7 +37,7 @@ export default function Input({
         onChange={onChange}
         required={required}
         placeholder={placeholder}
-        className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg border focus:outline-none focus:ring-2 text-sm sm:text-base transition"
+        className="w-full min-w-0 min-h-11 px-3 sm:px-4 py-2 sm:py-3 rounded-lg border focus:outline-none focus:ring-2 text-base transition"
         style={{
           borderColor: error ? "#ef4444" : colors.border,
           backgroundColor: colors.outerBackground,

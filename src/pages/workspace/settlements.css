@@ -29,3 +29,6 @@ details[open]>.earnings-summary>svg{transform:rotate(180deg)}
 .earnings-pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:20px;font-size:12px}
 @media(max-width:900px){.earnings-totals{grid-template-columns:1fr}.earnings-summary{flex-wrap:wrap;gap:12px}.earnings-summary>strong{font-size:16px}}
 .earnings-breakdown { font-size: 12px; line-height: 1.6; color: var(--ws-textSecondary); margin-top: 8px; }
+.earnings-pagination{flex-wrap:wrap}
+.earnings-summary>strong,.earnings-month-link>strong{white-space:normal;overflow-wrap:anywhere;max-width:100%}
+@media(max-width:520px){.earnings-group{padding:12px}.earnings-summary>div{flex-basis:100%}.earnings-month-link>div,.earnings-professional>div{min-width:0;flex-basis:100%}.earnings-months{gap:20px}}

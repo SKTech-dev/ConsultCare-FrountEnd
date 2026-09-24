@@ -30,7 +30,7 @@ export default function Landing() {
         <nav className="cc-desktop-nav" aria-label="Main navigation">
           <a href="#services">Our services</a><a href="#how-it-works">How it works</a><a href="#privacy">Our approach</a>
         </nav>
-        <div className="flex items-center gap-4 text-sm">{isAuthenticated ? <Link to="/app">My dashboard</Link> : <><Link to="/login">Log in</Link><Link className="cc-button" to="/signup">Sign up</Link></>}</div>
+        <div className="cc-header-account flex items-center gap-4 text-sm">{isAuthenticated ? <Link to="/app">My dashboard</Link> : <><Link to="/login">Log in</Link><Link className="cc-button" to="/signup">Sign up</Link></>}</div>
         <button className="cc-menu-toggle" type="button" aria-label={menuOpen ? "Close navigation" : "Open navigation"} aria-expanded={menuOpen} aria-controls="home-navigation" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X /> : <Menu />}</button>
       </header>
       {menuOpen && <nav id="home-navigation" className="cc-mobile-nav cc-container" aria-label="Mobile navigation">{[["#services", "Our services"], ["#how-it-works", "How it works"], ["#privacy", "Our approach"]].map(([href, label]) => <a key={href} href={href} onClick={() => setMenuOpen(false)}>{label}<ArrowUpRight size={16} /></a>)}</nav>}

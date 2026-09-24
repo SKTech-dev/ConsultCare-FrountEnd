@@ -1,6 +1,7 @@
 .consultation-room { display: grid; gap: 24px; }
 .daily-video-frame { height: 520px; min-width: 0; }
 .daily-video-frame[hidden] { display: none; }
+.daily-video-frame iframe{max-width:100%;border:0}
 @media (max-width: 640px) { .daily-video-frame { height: 440px; } }
 .consultation-room > .ws-space { margin: 0; }
 .consultation-room .ws-heading { margin-bottom: 0; padding-bottom: 24px; border-bottom: 1px solid var(--ws-border); }
@@ -58,3 +59,4 @@
   .room-privacy { align-items: flex-start; }
   .room-note-actions > button { flex: 1 1 180px; }
 }
+@media(max-width:520px){.consultation-room .ws-panel{padding:16px}.consultation-room .consultation-facts{grid-template-columns:1fr}.room-upload input{width:100%;min-width:0}.daily-video-frame{height:65dvh;min-height:280px;max-height:440px}.room-documents-empty{align-items:flex-start}.room-documents-empty svg{flex-shrink:0}}
