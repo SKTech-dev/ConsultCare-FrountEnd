@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { Plus, Trash2 } from "lucide-react";
 import { useWorkspace, PageHeading, Panel, Empty, Status } from "../../components/workspace/Workspace";
@@ -10,6 +10,8 @@ import ScheduleConsultation from "./ScheduleConsultation";
 import ScheduledConsultations from "./ScheduledConsultations";
 import { ClinicList, ScheduleClinic } from "./Clinics";
 import { MessageOverlay } from "../../components/ui/MessageBox";
+
+import { useUnsavedChanges } from "../../components/ui/UnsavedChanges";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const blankSlot = () => ({ start: "09:00", end: "10:00", capacity: 10 });
@@ -24,6 +26,16 @@ function scheduleFrom(slots) {
 export function Queue() {
   const s = useWorkspace();
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const [calling, setCalling] = useState(null);
+  async function callNext(id) {
+    if (calling) return;
+    setCalling(id);
+    try {
+      const action = await dispatch(transition({ id, status: "IN CONSULTATION" }));
+      if (!action.error) navigate(`/app/room/${id}`);
+    } finally { setCalling(null); }
+  }
   const [skip, setSkip] = useState(null);
   if (!["doctor", "lawyer"].includes(s.role)) return <Empty title="Professional workspace">Sign in with a professional account to view its queue.</Empty>;
   const p = s.professionals.find((professional) => professional.id === s.professionalId);
@@ -33,9 +45,9 @@ export function Queue() {
   const renderQueue = (session) => {
       const queue = queueFor(s, p.id, session.id);
       const busy = ongoing.length > 0;
-      return <><div className="queue-session-heading"><p>{queue.length ? `${queue.length} active patient${queue.length === 1 ? "" : "s"} / client${queue.length === 1 ? "" : "s"} in this session queue.` : "No active bookings for this session yet."}</p><Status>{session.online ? "Available" : "Offline"}</Status></div>{queue.length ? queue.map((booking) => <div className="ws-row" key={booking.id}><div><h3>{booking.position}. {booking.patientName}</h3><p>{booking.payment}</p></div><Status>{booking.status}</Status><div className="ws-actions">{booking.status === "IN CONSULTATION" ? <Link to={`/app/room/${booking.id}`} className="ws-link">Open room</Link> : <><button className="ws-link" disabled={p.status !== "verified" || busy || !session.online || !isSessionLive(session) || booking.status !== "NEXT"} onClick={() => dispatch(transition({ id: booking.id, status: "IN CONSULTATION" }))}>Call next</button><button className="ws-link secondary" disabled={p.status !== "verified" || Date.now() < sessionStartsAt(session)} title={Date.now() < sessionStartsAt(session) ? "Available after the session starts" : undefined} onClick={() => setSkip(booking.id)}>No-show</button></>}<Link className="ws-link secondary" to={`/app/booking/${booking.id}`}>Details</Link></div></div>) : <div className="queue-empty">This queue is clear.</div>}</>;
+      return <><div className="queue-session-heading"><p>{queue.length ? `${queue.length} active patient${queue.length === 1 ? "" : "s"} / client${queue.length === 1 ? "" : "s"} in this session queue.` : "No active bookings for this session yet."}</p><Status>{session.online ? "Available" : "Offline"}</Status></div>{queue.length ? queue.map((booking) => <div className="ws-row" key={booking.id}><div><h3>{booking.position}. {booking.patientName}</h3><p>{booking.payment}</p></div><Status>{booking.status}</Status><div className="ws-actions">{booking.status === "IN CONSULTATION" ? <Link to={`/app/room/${booking.id}`} className="ws-link">Open room</Link> : <><button className="ws-link" disabled={Boolean(calling) || p.status !== "verified" || busy || !session.online || !isSessionLive(session) || booking.status !== "NEXT"} onClick={() => callNext(booking.id)}>Call next</button><button className="ws-link secondary" disabled={p.status !== "verified" || Date.now() < sessionStartsAt(session)} title={Date.now() < sessionStartsAt(session) ? "Available after the session starts" : undefined} onClick={() => setSkip(booking.id)}>No-show</button></>}<Link className="ws-link secondary" to={`/app/booking/${booking.id}`}>Details</Link></div></div>) : <div className="queue-empty">This queue is clear.</div>}</>;
   };
-  return <><PageHeading title="Your consultation queues." action={<Link className="ws-link secondary" to="/app/sessions">Manage weekly schedule</Link>}>Manage upcoming and ongoing handovers, individual appointments, group clinics and weekly queues. Past sessions are available in Consultation history.</PageHeading>
+  return <><PageHeading title="Your consultation queues.">Manage upcoming and ongoing handovers, individual appointments, group clinics and weekly queues. Past sessions are available in Consultation history.</PageHeading>
     <div className="professional-sections"><SessionTransfers embedded view="upcoming" />
     <ScheduledConsultations embedded renderQueue={(id) => {
       const booking = s.bookings.find((item) => item.id === id && item.professionalId === p.id);
@@ -58,6 +70,7 @@ export function Sessions() {
   const dispatch = useDispatch();
   const [days, setDays] = useState(() => scheduleFrom(s.weeklyAvailability || []));
   const [fee, setFee] = useState(() => s.professionals.find((professional) => professional.id === s.professionalId)?.fee || "");
+  const markSaved = useUnsavedChanges({ days, fee });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   if (!["doctor", "lawyer"].includes(s.role)) return <Empty title="Professional workspace">Sign in with a professional account to manage availability.</Empty>;
@@ -77,12 +90,12 @@ export function Sessions() {
     setSaving(true);
     try {
       const action = await dispatch(saveWeeklyAvailability({ days, fee: Number(fee) }));
-      setMessage(action.error ? action.payload || "Could not save weekly availability." : "Weekly schedule and fee saved. Existing bookings keep their original fee.");
+      if (!action.error) markSaved();
     } finally { setSaving(false); }
   };
-  return <><PageHeading title="Your weekly availability.">Set the hours you repeat each week. Patients can select the next available occurrence, and you only need to return here when your routine changes.</PageHeading>
+  return <><PageHeading title="My sessions.">Set the hours you repeat each week. Patients can select the next available occurrence, and you only need to return here when your routine changes.</PageHeading>
     {p.status !== "verified" && <div className="ws-notice">You can save your schedule now. Administrator verification is required before patients can book.</div>}
-    <form onSubmit={save}><Panel title="Repeat every week"><fieldset disabled={saving} className="weekly-editor"><div className="weekly-fee"><label className="ws-field">Consultation fee (LKR)<input type="number" min="0.01" max="1000000" step="0.01" required value={fee} onChange={(event) => setFee(event.target.value)} aria-describedby="weekly-fee-help" /></label><p id="weekly-fee-help" className="ws-muted">Per patient/client, for weekly recurring sessions only. Changes apply to new bookings; existing bookings keep their original fee. Individual appointments have a separate fee.</p></div><div className="weekly-days">{days.map((day) => <section className="weekly-day" key={day.weekday}><div className="weekly-day-heading"><h3>{DAYS[day.weekday]}</h3><button type="button" className="ws-name-link weekly-add" onClick={() => addSlot(day.weekday)}><Plus size={16} />Add time</button></div>{day.slots.length ? <div className="weekly-slots">{day.slots.map((slot, index) => <div className="weekly-slot" key={index}><label>Start<input type="time" value={slot.start} required onChange={(event) => updateSlot(day.weekday, index, { start: event.target.value })} /></label><label>End<input type="time" value={slot.end} required onChange={(event) => updateSlot(day.weekday, index, { end: event.target.value })} /></label><label>Places<input type="number" min="1" max="100" value={slot.capacity} required onChange={(event) => updateSlot(day.weekday, index, { capacity: Number(event.target.value) })} /></label><button type="button" className="weekly-remove" aria-label={`Remove ${DAYS[day.weekday]} slot ${index + 1}`} onClick={() => removeSlot(day.weekday, index)}><Trash2 size={17} /></button></div>)}</div> : <p className="ws-muted">No availability set.</p>}</section>)}</div><div className="ws-actions"><button className="ws-link" disabled={saving}>{saving ? "Saving schedule…" : "Save weekly schedule"}</button></div></fieldset>{message && <p role="status" className={message.startsWith("Weekly") ? "ws-success" : "ws-error"}>{message}</p>}</Panel></form>
+    <form onSubmit={save}><Panel title="Repeat every week"><fieldset disabled={saving} className="weekly-editor"><div className="weekly-fee"><label className="ws-field">Consultation fee (LKR)<input type="number" min="0.01" max="1000000" step="0.01" required value={fee} onChange={(event) => setFee(event.target.value)} aria-describedby="weekly-fee-help" /></label><p id="weekly-fee-help" className="ws-muted">Per patient/client, for weekly recurring sessions only. Changes apply to new bookings; existing bookings keep their original fee. Individual appointments have a separate fee.</p></div><div className="weekly-days">{days.map((day) => <section className="weekly-day" key={day.weekday}><div className="weekly-day-heading"><h3>{DAYS[day.weekday]}</h3><button type="button" className="ws-name-link weekly-add" onClick={() => addSlot(day.weekday)}><Plus size={16} />Add time</button></div>{day.slots.length ? <div className="weekly-slots">{day.slots.map((slot, index) => <div className="weekly-slot" key={index}><label>Start<input type="time" value={slot.start} required onChange={(event) => updateSlot(day.weekday, index, { start: event.target.value })} /></label><label>End<input type="time" value={slot.end} required onChange={(event) => updateSlot(day.weekday, index, { end: event.target.value })} /></label><label>Places<input type="number" min="1" max="100" value={slot.capacity} required onChange={(event) => updateSlot(day.weekday, index, { capacity: Number(event.target.value) })} /></label><button type="button" className="weekly-remove" aria-label={`Remove ${DAYS[day.weekday]} slot ${index + 1}`} onClick={() => removeSlot(day.weekday, index)}><Trash2 size={17} /></button></div>)}</div> : <p className="ws-muted">No availability set.</p>}</section>)}</div><div className="ws-actions"><button className="ws-link" disabled={saving}>{saving ? "Saving schedule…" : "Save weekly schedule"}</button></div></fieldset>{message && <MessageOverlay type="error" text={message} onClose={() => setMessage("")} />}</Panel></form>
     <div className="ws-space"><SessionTransfers embedded view="request" /></div>
     <div className="ws-space"><ScheduleConsultation /></div>
     <div className="ws-space"><ScheduleClinic /></div>

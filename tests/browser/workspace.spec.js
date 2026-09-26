@@ -104,10 +104,10 @@ test("admin list filters send search criteria and reset pagination", async ({ pa
 
 function snapshot(role = "doctor") {
   return { role, professionalId: role === "doctor" || role === "lawyer" ? professional.id : null,
-    patient: { id: "patient", name: "Test Patient", status: "active" }, patients: [],
+    patient: { id: "patient", name: "Test Patient", status: "active", address: "12 Test Road", city: "Colombo" }, patients: [],
     professionals: [{ ...professional, role: role === "lawyer" ? "lawyer" : "doctor" }],
     sessions: [], bookings: [], weeklyAvailability: [], familyProfessionalIds: [],
-    onboarding: null, mockPayments: true };
+    onboarding: null, payhereEnabled: true };
 }
 
 function session(id, date, start = "10:00", end = "11:00") {
@@ -117,7 +117,7 @@ function session(id, date, start = "10:00", end = "11:00") {
 function booking(id, sessionId, status = "NEXT") {
   return { id, sessionId, professionalId: professional.id, patientId: "patient",
     patientName: "Test Patient", status, position: 1, fee: 2500,
-    payment: "paid (mock)", files: [], messages: [], notes: "", privateNotes: "", followUp: "" };
+    payment: "paid", files: [], messages: [], notes: "", privateNotes: "", followUp: "" };
 }
 
 async function mockAccount(page, state, options = {}) {
@@ -138,6 +138,80 @@ async function mockAccount(page, state, options = {}) {
   // independently exercise real authenticated WebSocket queue updates.
   await page.routeWebSocket("**/api/workspace/live", (socket) => socket.send(JSON.stringify(state)));
 }
+
+test("unsaved profile blocks navigation and successful save clears the warning", async ({ page }) => {
+  const state = snapshot("user");
+  Object.assign(state.patient, { dob: "1990-01-01", phone: "0771234567", address: "12 Main Road", city: "Colombo" });
+  await mockAccount(page, state);
+  await page.route("**/api/profile", (route) => {
+    Object.assign(state.patient, route.request().postDataJSON());
+    return route.fulfill({ json: { message: "Saved." } });
+  });
+  await page.goto("/app/profile");
+  await page.getByLabel("Full name", { exact: true }).fill("Updated Patient");
+  await page.getByRole("navigation").getByRole("link", { name: "My consultations" }).click();
+  await expect(page.getByRole("dialog", { name: "Leave without saving?" })).toBeVisible();
+  await page.getByRole("button", { name: "Stay and save" }).click();
+  await page.getByRole("button", { name: "Save profile", exact: true }).click();
+  await page.getByRole("button", { name: "OK", exact: true }).click();
+  await page.getByRole("navigation").getByRole("link", { name: "My consultations" }).click();
+  await expect(page).toHaveURL(/\/app\/bookings$/);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+test("call next opens the consultation room immediately", async ({ page }) => {
+  const state = snapshot();
+  state.sessions = [session("current", "2026-09-22")];
+  state.bookings = [booking("called", "current")];
+  await mockAccount(page, state);
+  await page.route("**/api/bookings/called/status", (route) => {
+    state.bookings[0].status = "IN CONSULTATION";
+    return route.fulfill({ json: { message: "Saved." } });
+  });
+  await page.goto("/app/queue");
+  await expect(page.getByRole("link", { name: "Manage weekly schedule" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Call next", exact: true }).click();
+  await expect(page).toHaveURL(/\/app\/room\/called$/);
+});
+
+test("payment return waits for verified payment then opens patient queues", async ({ page }) => {
+  const state = snapshot("user");
+  state.sessions = [session("current", "2026-09-22")];
+  state.bookings = [{ ...booking("paid", "current", "PAYMENT PENDING"), payment: "pending" }];
+  await mockAccount(page, state);
+  await page.goto("/app/booking/paid?payment=return");
+  await expect(page.getByText(/Waiting for PayHere to confirm/)).toBeVisible();
+  await expect(page).toHaveURL(/payment=return/);
+  state.bookings[0].payment = "paid";
+  state.bookings[0].status = "NEXT";
+  await expect(page).toHaveURL(/\/app\/bookings$/, { timeout: 12000 });
+});
+
+test("weekly overlap errors use the error popup", async ({ page }) => {
+  await mockAccount(page, snapshot());
+  await page.goto("/app/sessions");
+  await expect(page.getByRole("heading", { name: "My sessions.", exact: true })).toBeVisible();
+  const day = page.locator(".weekly-day").first();
+  await day.getByRole("button", { name: "Add time" }).click();
+  await day.getByRole("button", { name: "Add time" }).click();
+  await page.getByRole("button", { name: "Save weekly schedule" }).click();
+  await expect(page.getByRole("dialog")).toContainText("Slots on the same day cannot overlap.");
+});
+
+test("report names open an in-page image preview", async ({ page }) => {
+  const state = snapshot();
+  state.sessions = [session("current", "2026-09-22")];
+  state.bookings = [{ ...booking("preview", "current", "IN CONSULTATION"), files: [{ id: "report", name: "report.png", type: "image/png", size: 100, kind: "image", private: false }] }];
+  await mockAccount(page, state);
+  await page.route("**/api/documents/report", (route) => route.fulfill({ contentType: "image/png", body: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64") }));
+  await page.goto("/app/room/preview");
+  await page.getByRole("button", { name: "report.png", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "report.png" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("img")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+});
 
 test("protected routes redirect signed-out visitors to login", async ({ page }) => {
   await mockAccount(page, null);
@@ -265,18 +339,19 @@ test("patient can accept and pay for an invitation from My consultations", async
   state.sessions = [session("private", "2026-09-23")];
   state.bookings = [{ ...booking("invited", "private", "PAYMENT PENDING"), payment: "unpaid", scheduledById: professional.id, paymentDueAt: "2026-09-23T10:00:00+05:30" }];
   await mockAccount(page, state);
-  let paid = false;
-  await page.route("**/api/bookings/invited/payment-simulation", (route) => {
-    expect(route.request().postDataJSON()).toEqual({ success: true });
-    paid = true; state.bookings[0].status = "NEXT";
-    return route.fulfill({ json: { message: "Saved." } });
+  await page.route("**/api/bookings/invited/payhere-checkout", (route) => {
+    expect(route.request().postDataJSON()).toEqual({});
+    return route.fulfill({ json: { data: { checkoutUrl: "https://sandbox.payhere.lk/pay/checkout", fields: { order_id: "invited", amount: "2500.00" } } } });
   });
+  await page.route("https://sandbox.payhere.lk/pay/checkout", (route) => route.fulfill({ contentType: "text/html", body: "<h1>Sandbox checkout</h1>" }));
   await page.goto("/app/bookings");
-  await page.getByRole("button", { name: /Accept & simulate payment/ }).click();
-  expect(paid).toBe(false);
-  await page.getByRole("dialog").getByRole("button", { name: "OK", exact: true }).click();
-  await expect.poll(() => paid).toBe(true);
-  await expect(page.getByText("Payment status updated.", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Billing address")).toHaveCount(0);
+  const posted = page.waitForRequest("https://sandbox.payhere.lk/pay/checkout");
+  await page.getByRole("button", { name: /Accept & pay with PayHere/ }).click();
+  const request = await posted;
+  expect(request.method()).toBe("POST");
+  expect(new URLSearchParams(request.postData()).get("order_id")).toBe("invited");
+  expect(state.bookings[0].status).toBe("PAYMENT PENDING");
 });
 
 test("expired invitations cannot be paid and admins can inspect scheduled appointments", async ({ page }) => {
@@ -285,7 +360,7 @@ test("expired invitations cannot be paid and admins can inspect scheduled appoin
   state.bookings = [{ ...booking("expired", "private", "PAYMENT PENDING"), scheduledById: professional.id, paymentDueAt: "2026-09-22T10:00:00+05:30" }];
   await mockAccount(page, state);
   await page.goto("/app/bookings");
-  await expect(page.getByRole("button", { name: /Accept & simulate payment/ })).toBeDisabled();
+  await expect(page.getByRole("button", { name: /Accept & pay with PayHere/ })).toBeDisabled();
   await mockAccount(page, snapshot("admin"));
   await page.goto("/app/appointments");
   await expect(page.getByRole("heading", { name: "Scheduled consultations." })).toBeVisible();

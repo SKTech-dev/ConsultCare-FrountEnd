@@ -13,3 +13,5 @@
 .transfer-candidate:has(input:checked) { border-color:var(--ws-accent); }
 .transfer-candidate input { accent-color:var(--ws-accent); }
 @media(max-width:600px) { .transfer-search { flex-direction:column; align-items:stretch; } .transfer-card { padding:16px; } }
+.transfer-contacts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; margin: 16px 0; padding: 14px; border-radius: 12px; background: var(--ws-appBg); }
+.transfer-contacts a { color: var(--ws-primary); text-decoration: underline; }

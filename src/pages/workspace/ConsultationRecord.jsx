@@ -3,6 +3,8 @@ import { useDispatch } from "react-redux";
 import { Panel, useWorkspace } from "../../components/workspace/Workspace";
 import { apiClient } from "../../api/apiClient";
 import { sendPrescription } from "../../features/consultations/consultationSlice";
+import { MessageOverlay } from "../../components/ui/MessageBox";
+import { useUnsavedChanges } from "../../components/ui/UnsavedChanges";
 import { sriLankanDate } from "../../features/consultations/model";
 
 export function PatientContext({ booking }) {
@@ -32,6 +34,7 @@ export function Prescription({ booking }) {
   const state = useWorkspace();
   const dispatch = useDispatch();
   const [text, setText] = useState("");
+  const markSaved = useUnsavedChanges(text, !booking.prescription);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   if (booking.patientContext?.profession !== "doctor") return null;
@@ -50,9 +53,9 @@ export function Prescription({ booking }) {
     {booking.prescription ? <><p className="whitespace-pre-wrap">{booking.prescription}</p><p className="mt-3">Sent {new Date(booking.prescribedAt).toLocaleString()}</p><button className="ws-link mt-4" disabled={busy} aria-busy={busy} onClick={download}>{busy ? "Downloading prescription..." : "Download prescription PDF"}</button></> : state.role === "doctor" && booking.status === "IN CONSULTATION" ? <form onSubmit={async (event) => {
       event.preventDefault(); setBusy(true); setError("");
       const action = await dispatch(sendPrescription({ id: booking.id, text }));
-      if (action.error) setError(action.payload || "Could not send prescription.");
+      if (!action.error) markSaved();
       setBusy(false);
     }}><label className="ws-field">Prescription<textarea required maxLength={10000} value={text} onChange={(event) => setText(event.target.value)} placeholder="Medicine, dose, frequency, duration and instructions" /></label><p className="mb-3">Review before sending. The sent prescription is saved in the consultation record.</p><button className="ws-link" disabled={busy || !text.trim()}>Send prescription to patient</button></form> : <p>No prescription has been sent.</p>}
-    {error && <p role="alert" className="ws-error">{error}</p>}
+    {error && <MessageOverlay type="error" text={error} onClose={() => setError("")} />}
   </Panel>;
 }

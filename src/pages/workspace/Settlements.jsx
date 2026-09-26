@@ -5,6 +5,7 @@ import { callApi } from "../../api/apiClient";
 import { Empty, PageHeading, Panel, useWorkspace } from "../../components/workspace/Workspace";
 import { MessageOverlay } from "../../components/ui/MessageBox";
 import "./settlements.css";
+import ErrorNotice from "../../components/ui/ErrorNotice";
 
 const cash = (value) => new Intl.NumberFormat("en-LK", {
   style: "currency", currency: "LKR", minimumFractionDigits: 2,
@@ -62,7 +63,7 @@ function PayoutStatus({ payout }) {
 }
 
 function LoadState({ data, error, retry }) {
-  if (error) return <div className="ws-notice" role="alert">{error} <button className="underline ml-3" onClick={retry}>Try again</button></div>;
+  if (error) return <ErrorNotice error={error} onRetry={retry} />;
   return !data ? <p role="status" className="ws-notice">Loading monthly earnings…</p> : null;
 }
 

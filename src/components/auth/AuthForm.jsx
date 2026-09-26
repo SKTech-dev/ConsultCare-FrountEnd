@@ -6,6 +6,8 @@ import Input from "../ui/Input";
 import Button from "../ui/Button";
 import { callApi } from "../../api/apiClient";
 import { setAuthUser } from "../../features/auth/authSlice";
+import { MessageOverlay } from "../ui/MessageBox";
+import { useUnsavedChanges } from "../ui/UnsavedChanges";
 import { getDestination } from "../../features/auth/roles";
 
 export default function AuthForm({ signup = false }) {
@@ -18,6 +20,7 @@ export default function AuthForm({ signup = false }) {
   const [created, setCreated] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const markSaved = useUnsavedChanges(form, signup && !created);
   const change = (event) => setForm({ ...form, [event.target.name]: event.target.value });
 
   async function submit(event) {
@@ -31,6 +34,7 @@ export default function AuthForm({ signup = false }) {
       if (signup) {
         await callApi("POST", "/auth/register", { name: form.name.trim(), email: form.email.trim(), password: form.password, role: form.role });
         // Registration does not imply a session or an approved professional role.
+        markSaved();
         setCreated(true);
       } else {
         await callApi("POST", "/auth/login", { email: form.email.trim(), password: form.password });
@@ -55,7 +59,7 @@ export default function AuthForm({ signup = false }) {
           <Input label="Password" type="password" name="password" value={form.password} onChange={change} autoComplete={signup ? "new-password" : "current-password"} minLength={signup ? 12 : undefined} required disabled={busy} />
           {signup && <Input label="Confirm password" type="password" name="confirm" value={form.confirm} onChange={change} autoComplete="new-password" required disabled={busy} />}
           {!signup && <p className="text-xs">For account recovery, contact your administrator. Automated password reset is not available yet.</p>}
-          {error && <p role="alert" className="text-sm" style={{ color: "var(--cc-error)" }}>{error}</p>}
+          {error && <MessageOverlay type="error" text={error} onClose={() => setError("")} />}
           <Button type="submit" disabled={busy}>{busy ? "Please wait…" : signup ? "Create account" : "Log in"}</Button>
           <p className="text-sm">{signup ? "Already registered? " : "New to ConsultCare? "}<Link className="underline font-semibold" to={`${signup ? "/login" : "/signup"}${suffix}`}>{signup ? "Log in" : "Sign up"}</Link></p>
           {!signup && <p className="text-xs leading-5">Doctors, lawyers, users, and administrators use this same secure login. Administrator accounts are provisioned privately.</p>}

@@ -5,6 +5,8 @@ import { saveProfile } from "../../features/consultations/consultationSlice";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import "./profile.css";
+import { useUnsavedChanges } from "../../components/ui/UnsavedChanges";
+import { MessageOverlay } from "../../components/ui/MessageBox";
 
 export default function Profile() {
   const s = useWorkspace();
@@ -14,6 +16,7 @@ export default function Profile() {
 }
 function ProfileForm({ source, patient }) {
   const [form, setForm] = useState({ ...source, languages: source.languages?.join(", ") || "" });
+  const markSaved = useUnsavedChanges(form);
   const [feedback, setFeedback] = useState("");
   const [saving, setSaving] = useState(false);
   const [readingImage, setReadingImage] = useState(false);
@@ -31,15 +34,15 @@ function ProfileForm({ source, patient }) {
     reader.onerror = () => { setFeedback("Could not read this photo."); setReadingImage(false); };
     reader.readAsDataURL(file);
   }
-  const fields = patient ? [["name", "Full name", "text"], ["dob", "Date of birth", "date"], ["weightKg", "Weight (kg)", "number"], ["phone", "Contact number", "tel"], ["email", "Email address", "email"], ["emergency", "Emergency contact", "text"]] : [["name", "Professional name", "text"], ["speciality", "Speciality", "text"], ["registration", "Registration number", "text"], ["qualifications", "Qualifications", "text"], ["languages", "Languages (comma separated)", "text"]];
+  const fields = patient ? [["name", "Full name", "text"], ["dob", "Date of birth", "date"], ["weightKg", "Weight (kg)", "number"], ["phone", "Contact number", "tel"], ["email", "Email address", "email"], ["emergency", "Emergency contact", "text"], ["address", "Billing address", "text"], ["city", "City", "text"]] : [["name", "Professional name", "text"], ["phone", "Mobile number for session handovers", "tel"], ["speciality", "Speciality", "text"], ["registration", "Registration number", "text"], ["qualifications", "Qualifications", "text"], ["languages", "Languages (comma separated)", "text"]];
   async function save(event) {
     event.preventDefault();
     if (saving || readingImage || !form.name.trim()) return;
     setSaving(true);
     setFeedback("");
     try {
-      const action = await dispatch(saveProfile(patient ? { name: form.name.trim(), dob: form.dob, phone: form.phone, email: form.email, emergency: form.emergency, details: form.details, image: form.image || "", weightKg: form.weightKg === "" || form.weightKg == null ? null : Number(form.weightKg), medicalDetails: form.medicalDetails || "", legalDetails: form.legalDetails || "" } : { name: form.name.trim(), speciality: form.speciality, registration: form.registration, qualifications: form.qualifications, languages: form.languages.split(",").map((l) => l.trim()).filter(Boolean), bio: form.bio, image: form.image || "" }));
-      if (!action.error) setFeedback(patient ? "Profile saved." : "Profile saved. Changed credentials require administrator review.");
+      const action = await dispatch(saveProfile(patient ? { name: form.name.trim(), dob: form.dob, phone: form.phone, address: form.address || "", city: form.city || "", email: form.email, emergency: form.emergency, details: form.details, image: form.image || "", weightKg: form.weightKg === "" || form.weightKg == null ? null : Number(form.weightKg), medicalDetails: form.medicalDetails || "", legalDetails: form.legalDetails || "" } : { name: form.name.trim(), phone: form.phone || "", speciality: form.speciality, registration: form.registration, qualifications: form.qualifications, languages: form.languages.split(",").map((l) => l.trim()).filter(Boolean), bio: form.bio, image: form.image || "" }));
+      if (!action.error) markSaved();
     } finally { setSaving(false); }
   }
   const initials = (form.name || "Professional").split(/\s+/).filter(Boolean).slice(0, 2).map((word) => word[0]).join("");
@@ -70,13 +73,14 @@ function ProfileForm({ source, patient }) {
             </div>
             <label className="ws-field">{patient ? "Relevant consultation information" : "Professional introduction"}<textarea maxLength={2000} value={(patient ? form.details : form.bio) || ""} onChange={(event) => setForm({ ...form, [patient ? "details" : "bio"]: event.target.value })} /></label>
             {patient && <>
+              <p>Your saved billing address and city are used automatically for secure payments.</p>
               <label className="ws-field">Medical information for your doctor<textarea maxLength={5000} value={form.medicalDetails || ""} onChange={(event) => setForm({ ...form, medicalDetails: event.target.value })} placeholder="Allergies, current medicines, medical conditions and relevant history" /></label>
               <label className="ws-field">Legal information for your lawyer<textarea maxLength={5000} value={form.legalDetails || ""} onChange={(event) => setForm({ ...form, legalDetails: event.target.value })} placeholder="Relevant background for legal consultations" /></label>
               <p>Medical details and weight are shared with your consulting doctor. Legal details are shared with your consulting lawyer. General consultation information is shared with either.</p>
             </>}
             <div className="profile-save"><Button type="submit" disabled={saving || readingImage}>{saving ? "Saving profile…" : "Save profile"}</Button></div>
           </fieldset>
-          {feedback && <p role="status">{feedback}</p>}
+          {feedback && <MessageOverlay type="error" text={feedback} onClose={() => setFeedback("")} />}
         </form>
       </Panel>
       <Panel title={patient ? "Your information, with context." : "Professional verification"}>

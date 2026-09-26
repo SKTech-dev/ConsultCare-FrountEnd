@@ -1,4 +1,6 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { createBrowserRouter, createRoutesFromElements, Navigate, Outlet, Route, RouterProvider } from "react-router-dom";
+import { UnsavedChangesProvider } from "./components/ui/UnsavedChanges";
+import ValidationFeedback from "./components/ui/ValidationFeedback";
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { clearAuthUser, fetchCurrentUser } from "./features/auth/authSlice";
@@ -30,7 +32,11 @@ export default function App() {
     dispatch(fetchCurrentUser());
     return () => window.removeEventListener("auth:expired", expired);
   }, [dispatch]);
-  return <BrowserRouter><IncomingConsultation /><Routes>
+  return <RouterProvider router={router} />;
+}
+
+const router = createBrowserRouter(createRoutesFromElements(
+  <Route element={<UnsavedChangesProvider><IncomingConsultation /><ValidationFeedback /><Outlet /></UnsavedChangesProvider>}>
     <Route path="/" element={<Home />} />
     <Route path="/access-denied" element={<AccessDenied />} />
     <Route element={<PublicRoute />}>
@@ -67,5 +73,5 @@ export default function App() {
     </Route>
     {["/dashboard", "/doctor/dashboard", "/lawyer/dashboard", "/admin/dashboard"].map((path) => <Route key={path} path={path} element={<Navigate to="/app" replace />} />)}
     </Route>
-  </Routes></BrowserRouter>;
-}
+  </Route>
+));

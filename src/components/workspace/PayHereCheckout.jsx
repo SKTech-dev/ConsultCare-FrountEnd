@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
+import { useWorkspace } from "./Workspace";
 import { callApi } from "../../api/apiClient";
 import { MessageOverlay } from "../ui/MessageBox";
 
@@ -21,15 +23,15 @@ function postToPayHere(checkout) {
 }
 
 export default function PayHereCheckout({ endpoint, amount, disabled = false, label = "Pay with PayHere" }) {
-  const [address, setAddress] = useState("");
-  const [city, setCity] = useState("");
+  const { patient } = useWorkspace();
+  const billingReady = (patient.address || "").trim().length >= 3 && (patient.city || "").trim().length >= 2;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   async function pay() {
     setBusy(true); setError("");
     try {
-      const response = await callApi("POST", endpoint, { address, city });
+      const response = await callApi("POST", endpoint, {});
       const checkout = response.data;
       if (!checkout?.checkoutUrl || !checkout?.fields) throw new Error("Payment checkout could not be prepared. Please try again.");
       postToPayHere(checkout);
@@ -38,11 +40,8 @@ export default function PayHereCheckout({ endpoint, amount, disabled = false, la
 
   return <div className="ws-space">
     <p className="ws-muted">You will be redirected to PayHere’s secure checkout. ConsultCare confirms the payment only after PayHere verifies it.</p>
-    <div className="ws-grid-two">
-      <label className="ws-field">Billing address<input value={address} maxLength={200} onChange={(event) => setAddress(event.target.value)} autoComplete="street-address" /></label>
-      <label className="ws-field">City<input value={city} maxLength={80} onChange={(event) => setCity(event.target.value)} autoComplete="address-level2" /></label>
-    </div>
-    <button className="ws-link" disabled={disabled || busy || address.trim().length < 3 || city.trim().length < 2} onClick={pay}>{busy ? "Opening secure checkout…" : `${label} · ${amount}`}</button>
+    {!billingReady && <p className="ws-notice">Add your billing address and city once in <Link className="underline" to="/app/profile">My profile</Link> before paying.</p>}
+    <button className="ws-link" disabled={disabled || busy || !billingReady} onClick={pay}>{busy ? "Opening secure checkout…" : `${label} · ${amount}`}</button>
     {error && <MessageOverlay type="error" text={error} onClose={() => setError("")} />}
   </div>;
 }

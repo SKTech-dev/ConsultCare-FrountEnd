@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Video, Loader2 } from "lucide-react";
+import { MessageOverlay } from "../ui/MessageBox";
 import { callApi } from "../../api/apiClient";
 
 export default function VideoCall({ bookingId, clinicId }) {
@@ -60,7 +61,7 @@ export default function VideoCall({ bookingId, clinicId }) {
       {busy && <button className="ws-link secondary" onClick={() => { setAttempt(0); setState("idle"); }}>Cancel</button>}
       <span role="status">{state === "joined" ? "Connected · use the call controls to manage your camera and microphone." : busy ? "Preparing your call and device preview…" : ""}</span>
     </div>
-    {error && <p role="alert" className="ws-error">{error}</p>}
+    {error && <MessageOverlay type="error" text={error} onClose={() => setError("")} />}
     <div className="ws-notice">{clinicId ? "Leaving video does not complete the clinic. The professional can close it for everyone; the room also closes at the scheduled end time." : "Leaving video does not complete the consultation. Use consultation chat for messages saved to your record."}</div>
   </section>;
 }

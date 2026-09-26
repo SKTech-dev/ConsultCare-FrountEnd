@@ -10,6 +10,8 @@ import { MessageOverlay } from "../../components/ui/MessageBox";
 import VideoCall from "../../components/workspace/VideoCall";
 import PayHereCheckout from "../../components/workspace/PayHereCheckout";
 import "./clinics.css";
+import { useUnsavedChanges } from "../../components/ui/UnsavedChanges";
+import ErrorNotice from "../../components/ui/ErrorNotice";
 import ListFilters, { emptyFilters, filterParams } from "../../components/workspace/ListFilters";
 
 function useClinics(endpoint) {
@@ -37,7 +39,7 @@ function useClinics(endpoint) {
 }
 
 function LoadState({ data, error, refresh }) {
-  if (error) return <p className="ws-notice" role="alert">{error} <button className="underline" onClick={refresh}>Retry</button></p>;
+  if (error) return <ErrorNotice error={error} onRetry={refresh} />;
   if (!data) return <p role="status" className="ws-notice">Loading clinics…</p>;
   return null;
 }
@@ -50,6 +52,7 @@ export function ScheduleClinic() {
   const [form, setForm] = useState({ title: "", description: "", date: sriLankanDate(), start: "", end: "", capacity: 20, fee: "" });
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState(null);
+  const markSaved = useUnsavedChanges(form);
   const enabled = professional?.status === "verified";
   const field = (key) => ({ value: form[key], onChange: (event) => setForm((old) => ({ ...old, [key]: event.target.value })) });
   async function submit(event) {
@@ -62,6 +65,7 @@ export function ScheduleClinic() {
     try {
       const response = await callApi("POST", "/clinics", { ...form, title: form.title.trim(), description: form.description.trim(), capacity: Number(form.capacity), fee: Number(form.fee) });
       await dispatch(fetchWorkspace());
+      markSaved();
       setNotice({ type: "success", text: response.message, id: response.data.id });
     } catch (error) { setNotice({ type: "error", text: error.message }); }
     finally { setBusy(false); }
@@ -146,12 +150,14 @@ function ClinicDetailContent({ id }) {
   const [confirm, setConfirm] = useState(null);
   const [consent, setConsent] = useState(false);
   const [reason, setReason] = useState("");
+  const markSaved = useUnsavedChanges({ reason, consent });
   const clinic = result.data;
   async function action(path, body) {
     if (busy) return;
     setConfirm(null); setBusy(true);
     try {
       const response = await callApi("POST", `/clinics/${id}/${path}`, body);
+      markSaved();
       setNotice({ type: "success", text: response.message });
       result.refresh();
       await dispatch(fetchWorkspace());
@@ -201,7 +207,7 @@ function ClinicDetailContent({ id }) {
           {owner && scheduled && <button className="ws-link" disabled={disabled || !liveTime || !clinic.professionalAvailable} onClick={() => setConfirm({ title: "Start group clinic?", text: "Paid attendees will be able to enter the lecture room. Starting commits this clinic to the scheduled end time.", path: "start" })}><Video size={16} />Start clinic</button>}
           {clinic.status === "live" && <button className="ws-link" disabled={disabled} onClick={() => setConfirm({ title: "Complete clinic?", text: "The group room will close for everyone. Confirmed paid tickets will count toward the professional's clinic earnings, including attendees who did not join.", path: "complete" })}>Complete clinic</button>}
         </div>
-        {["scheduled", "live"].includes(clinic.status) && <div className="clinic-cancel"><label className="ws-field">Cancellation reason<textarea maxLength={1000} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Explain why the clinic cannot take place." /></label><button className="ws-link secondary" disabled={disabled || reason.trim().length < 3} onClick={() => setConfirm({ title: "Cancel the entire clinic?", text: "All registrations will be cancelled, paid test payments will need refunds, and the date will be released.", path: "cancel", body: { reason: reason.trim() } })}>Cancel clinic</button></div>}
+        {["scheduled", "live"].includes(clinic.status) && <div className="clinic-cancel"><label className="ws-field">Cancellation reason<textarea maxLength={1000} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Explain why the clinic cannot take place." /></label><button className="ws-link secondary" disabled={disabled || reason.trim().length < 3} onClick={() => setConfirm({ title: "Cancel the entire clinic?", text: "All registrations will be cancelled, confirmed payments will need refund review, and the date will be released.", path: "cancel", body: { reason: reason.trim() } })}>Cancel clinic</button></div>}
       </>}
       {busy && <p role="status">Saving clinic changes…</p>}
     </Panel></div>

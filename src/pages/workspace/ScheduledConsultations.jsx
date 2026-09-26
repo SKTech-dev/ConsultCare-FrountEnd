@@ -7,6 +7,7 @@ import { money } from "../../features/consultations/model";
 import { Empty, PageHeading, Panel, Status, useWorkspace } from "../../components/workspace/Workspace";
 import { MessageOverlay } from "../../components/ui/MessageBox";
 import "./appointments.css";
+import ErrorNotice from "../../components/ui/ErrorNotice";
 import ListFilters, { emptyFilters, filterParams } from "../../components/workspace/ListFilters";
 
 export default function ScheduledConsultations({ embedded = false, renderQueue }) {
@@ -58,7 +59,7 @@ export default function ScheduledConsultations({ embedded = false, renderQueue }
     <Panel title="One-off scheduled consultations">
       <p>Patients must accept and pay before the start time. Only paid appointments can be called from the consultation queue.</p>
       {!embedded && <label className="ws-field appointment-filter">Show<select aria-label="Appointment view" value={scope} onChange={(e) => { setScope(e.target.value); setPage(1); }}><option value="upcoming">Upcoming</option><option value="history">History</option><option value="all">All appointments</option></select></label>}
-      {error && <p className="ws-error" role="alert">{error} <button className="ws-link secondary" onClick={refresh}>Retry</button></p>}
+      <ErrorNotice error={error} onRetry={refresh} />
       {!result && !error && <p role="status">Loading scheduled consultations…</p>}
       {state.role === "admin" && <ListFilters label="Filter scheduled consultations" onApply={(value) => { setFilters(value); setPage(1); }} statuses={["PAYMENT PENDING", "WAITING", "NEXT", "IN CONSULTATION", "COMPLETED", "CANCELLED", "NO-SHOW"]} />}
       {result?.items.length === 0 && <Empty title="No scheduled consultations in this view">One-off appointments matching this view and any selected filters will appear here.</Empty>}

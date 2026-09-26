@@ -7,6 +7,9 @@ import { money } from "../../features/consultations/model";
 import { useWorkspace, Panel, PageHeading, Empty, Status } from "../../components/workspace/Workspace";
 import { MessageOverlay } from "../../components/ui/MessageBox";
 import "./transfers.css";
+import ErrorNotice from "../../components/ui/ErrorNotice";
+import Modal from "../../components/ui/Modal";
+import { useUnsavedChanges } from "../../components/ui/UnsavedChanges";
 import ListFilters, { emptyFilters, filterParams } from "../../components/workspace/ListFilters";
 
 const label = (s) => `${s.date} · ${s.start}–${s.end} (Sri Lanka)`;
@@ -31,10 +34,7 @@ export default function SessionTransfers({ embedded = false, view = "all" }) {
   const [response, setResponse] = useState("");
   const [busy, setBusy] = useState(false);
   const request = useRef(0);
-  const formAnchor = useRef(null);
-  const decisionAnchor = useRef(null);
-  useEffect(() => { if (selected) formAnchor.current?.focus(); }, [selected]);
-  useEffect(() => { if (decision) decisionAnchor.current?.focus(); }, [decision]);
+  useUnsavedChanges(response, Boolean(decision));
   const load = useCallback(async () => {
     if (!allowed) return;
     const version = ++request.current;
@@ -65,7 +65,7 @@ export default function SessionTransfers({ embedded = false, view = "all" }) {
   if (!allowed) return <Empty title="Professional and administrator access">Session handovers are managed by professionals and administrators.</Empty>;
   return <section className="session-transfers" aria-label="Session handovers">
     {!embedded && <PageHeading title="Session handovers.">Arrange cover for a booked session and follow every request and earnings reassignment.</PageHeading>}
-    {error && <p role="alert" className="ws-error">{error} <button className="ws-link secondary" onClick={load}>Retry</button></p>}
+    <ErrorNotice error={error} onRetry={load} />
     {showSessions && <Panel title="Hand over a booked session">
       {workspace.role === "admin" && <ListFilters label="Filter booked sessions" onApply={(value) => { setSessions(null); setSessionFilters(value); setSessionPage(1); }} statuses={["available", "pending"]} />}
       <p>Choose a dated session with patients in its queue. The receiver must accept before ownership changes. Booked prices, queue order and weekly schedules stay the same.</p>
@@ -80,7 +80,7 @@ export default function SessionTransfers({ embedded = false, view = "all" }) {
       </div>)}
       {sessions && <Pagination page={sessionPage} count={sessions.count} size={sessions.pageSize} onChange={setSessionPage} />}
     </Panel>}
-    {selected && <div ref={formAnchor} tabIndex={-1} aria-label="Request session handover"><TransferForm key={selected.id} session={selected} onClose={() => setSelected(null)} onSaved={async (text) => { setSelected(null); setNotice({ type: "success", text }); await Promise.all([load(), dispatch(fetchWorkspace())]); }} /></div>}
+    {selected && <TransferForm key={selected.id} session={selected} onClose={() => setSelected(null)} onSaved={async (text) => { setSelected(null); setNotice({ type: "success", text }); await Promise.all([load(), dispatch(fetchWorkspace())]); }} />}
     {showHistory && <Panel title={historyTitle}>
       {workspace.role === "admin" && <ListFilters label="Filter handover history" onApply={(value) => { setHistory(null); setHistoryFilters(value); setPage(1); }} statuses={["pending", "accepted", "rejected", "cancelled", "expired"]} />}
       <p>{view === "history" ? "Past sessions and resolved requests remain here for review, including their earnings attribution." : "Incoming requests have Accept and Reject actions. Accepted upcoming sessions remain here until they finish. Your original session stays assigned until acceptance."}</p>
@@ -89,6 +89,7 @@ export default function SessionTransfers({ embedded = false, view = "all" }) {
       {history?.items.map((item) => <article className="transfer-card" key={item.id}>
         <div className="transfer-heading"><h3>{label(item)}</h3><Status>{item.status}</Status></div>
         <p className="transfer-people">{item.fromName} <span aria-label="to">→</span> {item.toName}</p>
+        <div className="transfer-contacts"><p><strong>{item.fromName}</strong><br />{item.fromPhone ? <a href={`tel:${item.fromPhone}`}>{item.fromPhone}</a> : "Mobile number not provided"}</p><p><strong>{item.toName}</strong><br />{item.toPhone ? <a href={`tel:${item.toPhone}`}>{item.toPhone}</a> : "Mobile number not provided"}</p></div>
         <p>{item.reason}</p><small>Requested by {item.initiatedBy} · {new Date(item.createdAt).toLocaleString()}</small>
         <div className="transfer-totals"><span>{item.queueCount} queued at {item.status === "accepted" ? "acceptance" : "request"}</span><span>Estimated {money(item.expectedAmount)}</span>{item.status === "accepted" && <strong>Credited earnings {money(item.earnedAmount)}</strong>}</div>
         {item.responseReason && <p>Response: {item.responseReason}</p>}
@@ -100,12 +101,12 @@ export default function SessionTransfers({ embedded = false, view = "all" }) {
       </article>)}
       {history && <Pagination page={page} count={history.count} size={history.pageSize} onChange={setPage} />}
     </Panel>}
-    {decision && <div ref={decisionAnchor} tabIndex={-1} aria-label="Confirm handover decision"><Panel title={`${decision.action === "accept" ? "Accept this session?" : decision.action === "reject" ? "Reject this request?" : "Cancel this request?"}`}>
+    {decision && <Modal title="Review handover decision" busy={busy} onClose={() => setDecision(null)}><Panel title={`${decision.action === "accept" ? "Accept this session?" : decision.action === "reject" ? "Reject this request?" : "Cancel this request?"}`}>
       <p>{label(decision.item)} · {decision.item.fromName} → {decision.item.toName}</p>
       {decision.action === "accept" && <p>By accepting, you agree to conduct the session at the existing booked fees. Availability and queued patients will be checked again.</p>}
       <label className="ws-field">Response note (optional)<textarea value={response} maxLength={1000} onChange={(e) => setResponse(e.target.value)} disabled={busy} /></label>
       <div className="ws-actions"><button className="ws-link" disabled={busy} onClick={resolve}>{busy ? "Saving…" : "Confirm " + decision.action}</button><button className="ws-link secondary" disabled={busy} onClick={() => setDecision(null)}>Back</button></div>
-    </Panel></div>}
+    </Panel></Modal>}
     {notice && <MessageOverlay type={notice.type} text={notice.text} onClose={() => setNotice(null)} />}
   </section>;
 }
@@ -122,6 +123,9 @@ function TransferForm({ session, onClose, onSaved }) {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [closing, setClosing] = useState(false);
+  const close = () => { if (query || person || reason) setClosing(true); else onClose(); };
+  const markSaved = useUnsavedChanges({ person: person?.id, reason });
   async function search(e) {
     e.preventDefault(); setBusy(true); setError(""); setPerson(null);
     try { setPeople((await callApi("GET", `/sessions/${session.id}/transfer-candidates`, null, { q: query.trim() })).data); }
@@ -131,15 +135,16 @@ function TransferForm({ session, onClose, onSaved }) {
   async function send(e) {
     e.preventDefault(); if (!person || busy) return;
     setBusy(true); setError("");
-    try { const result = await callApi("POST", `/sessions/${session.id}/transfers`, { professionalId: person.id, reason: reason.trim() }); await onSaved(result.message); }
+    try { const result = await callApi("POST", `/sessions/${session.id}/transfers`, { professionalId: person.id, reason: reason.trim() }); markSaved(); await onSaved(result.message); }
     catch (failure) { setError(failure.message); setBusy(false); }
   }
-  return <Panel title="Find a replacement professional">
+  return <Modal title="Request session handover" busy={busy} onClose={close}><Panel title="Find a replacement professional">
     <p>{label(session)} · {session.queueCount} patients · estimated {money(session.expectedAmount)}</p>
     <form className="transfer-search" onSubmit={search}><label className="ws-field">Search by name or email<input value={query} minLength={2} maxLength={120} required disabled={busy} onChange={(e) => { setQuery(e.target.value); setPerson(null); setPeople(null); }} /></label><button className="ws-link" disabled={busy || query.trim().length < 2}><Search size={16} />{busy ? "Please wait…" : "Search"}</button></form>
     {people?.length === 0 && <p>No matching verified professionals found.</p>}
     <div role="group" aria-label="Replacement professionals">{people?.map((p) => <label className="transfer-candidate" key={p.id}><input type="radio" name="receiver" value={p.id} checked={person?.id === p.id} disabled={busy || Boolean(p.unavailable)} onChange={() => setPerson(p)} /><span><strong>{p.name}</strong><small>{p.speciality} · {p.registration} · {p.languages.join(", ")}</small>{p.unavailable && <small className="ws-error">{p.unavailable}</small>}</span></label>)}</div>
-    <form onSubmit={send}><label className="ws-field">Reason for handover<textarea required minLength={5} maxLength={1000} value={reason} disabled={busy} onChange={(e) => setReason(e.target.value)} placeholder="Explain why cover is needed. Avoid patient or private medical information." /></label><div className="ws-actions"><button className="ws-link" disabled={busy || !person || reason.trim().length < 5}>Send request</button><button type="button" className="ws-link secondary" disabled={busy} onClick={onClose}>Close</button></div></form>
+    <form onSubmit={send}><label className="ws-field">Reason for handover<textarea required minLength={5} maxLength={1000} value={reason} disabled={busy} onChange={(e) => setReason(e.target.value)} placeholder="Explain why cover is needed. Avoid patient or private medical information." /></label><div className="ws-actions"><button className="ws-link" disabled={busy || !person || reason.trim().length < 5}>Send request</button><button type="button" className="ws-link secondary" disabled={busy} onClick={close}>Close</button></div></form>
     {error && <MessageOverlay type="error" text={error} onClose={() => setError("")} />}
-  </Panel>;
+    {closing && <MessageOverlay type="confirm" title="Discard this handover draft?" text="Your replacement selection and reason have not been sent." confirmText="Discard draft" cancelText="Keep editing" onClose={() => setClosing(false)} onConfirm={onClose} />}
+  </Panel></Modal>;
 }

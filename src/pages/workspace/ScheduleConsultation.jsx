@@ -7,6 +7,7 @@ import { sriLankanDate } from "../../features/consultations/model";
 import { Panel, useWorkspace } from "../../components/workspace/Workspace";
 import { MessageOverlay } from "../../components/ui/MessageBox";
 import "./appointments.css";
+import { useUnsavedChanges } from "../../components/ui/UnsavedChanges";
 
 export default function ScheduleConsultation() {
   const state = useWorkspace();
@@ -20,6 +21,7 @@ export default function ScheduleConsultation() {
   const [fee, setFee] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState(null);
+  const markSaved = useUnsavedChanges({ email, date, start, end, reason, fee });
   const enabled = professional?.status === "verified";
 
   async function schedule(event) {
@@ -31,6 +33,7 @@ export default function ScheduleConsultation() {
     setBusy(true);
     try {
       const result = await callApi("POST", "/scheduled-consultations", { email: email.trim(), date, start, end, fee: Number(fee), reason: reason.trim() });
+      markSaved({ email: "", date, start: "", end: "", reason: "", fee: "" });
       setEmail(""); setReason(""); setStart(""); setEnd(""); setFee("");
       setNotice({ type: "success", text: result.message });
       await dispatch(fetchWorkspace());
@@ -53,9 +56,8 @@ export default function ScheduleConsultation() {
       <p id="individual-fee-help" className="ws-muted">The fee for this appointment only. It does not change your weekly session fee.</p>
       <label className="ws-field">Message to patient (optional)<textarea value={reason} maxLength={1000} disabled={busy} onChange={(e) => setReason(e.target.value)} placeholder="For example, a follow-up appointment. Do not include sensitive medical details." /></label>
       <p>The invitation will appear in My consultations. Payment confirms acceptance and is required before the start time. Your weekly schedule stays unchanged.</p>
-      <div className="ws-actions"><button className="ws-link" disabled={busy || !enabled}>{busy ? "Scheduling…" : "Schedule consultation"}</button></div>
+      <div className="ws-actions"><button className="ws-link" disabled={busy || !enabled}>{busy ? "Scheduling…" : "Schedule consultation"}</button><Link className="ws-link secondary" to="/app/queue">View scheduled consultations</Link></div>
     </form>
-    <div className="ws-actions"><Link className="ws-link secondary" to="/app/queue">View scheduled consultations</Link></div>
     {notice && <MessageOverlay type={notice.type} text={notice.text} onClose={() => setNotice(null)} />}
   </Panel>;
 }

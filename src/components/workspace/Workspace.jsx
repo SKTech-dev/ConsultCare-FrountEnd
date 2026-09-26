@@ -7,7 +7,9 @@ import { logoutUser } from "../../features/auth/authSlice";
 import { fetchWorkspace, clearWorkspaceError, clearFeedback } from "../../features/consultations/consultationSlice";
 import { MessageOverlay } from "../ui/MessageBox";
 import "./workspace.css";
+import ErrorNotice from "../ui/ErrorNotice";
 import TransferNotices from "./TransferNotices";
+import { useConfirmLeave } from "../ui/UnsavedChanges";
 
 export function useWorkspace() { return useSelector((s) => s.consultations); }
 export function PageHeading({ eyebrow = "YOUR CONSULTATION SPACE", title, children, action }) {
@@ -80,11 +82,12 @@ export default function Workspace() {
       : { title: "Set your weekly sessions first", text: "Please save at least one weekly session and its consultation fee before continuing to other pages." });
     navigate(destination, { replace: true });
   }, [state.loaded, state.onboarding, location.pathname, location.key, navigate]);
-  const signOut = async () => {
+  const confirmLeave = useConfirmLeave();
+  const signOut = () => confirmLeave(async () => {
     const action = await dispatch(logoutUser());
     if (!action.error) navigate("/login", { replace: true });
-  };
-  if (!state.loaded) return state.error ? <div className="p-12"><p role="alert">{state.error}</p><button className="underline mr-5" onClick={() => dispatch(fetchWorkspace())}>Retry</button><button className="underline" onClick={signOut}>Sign out</button></div> : <GlobalLoader fullPage message="Loading your workspace..." />;
+  });
+  if (!state.loaded) return state.error ? <div className="p-12"><ErrorNotice error={state.error} /><button className="underline mr-5" onClick={() => dispatch(fetchWorkspace())}>Retry</button><button className="underline" onClick={signOut}>Sign out</button></div> : <GlobalLoader fullPage message="Loading your workspace..." />;
   const professional = state.professionals.find((p) => p.id === state.professionalId);
   const name = state.role === "user" ? state.patient.name : state.role === "admin" ? "Platform administrator" : professional.name;
   const links = state.role === "user" ? [
@@ -107,7 +110,7 @@ export default function Workspace() {
       {sidebarCollapsed && <button className="ws-sidebar-restore" type="button" aria-label="Show sidebar" title="Show sidebar" onClick={() => setSidebarCollapsed(false)}><PanelLeftOpen size={18} /></button>}
       <header className="ws-topbar"><button ref={menuButton} type="button" className="ws-menu" aria-label="Toggle navigation" aria-expanded={open} aria-controls="workspace-navigation" onClick={() => setOpen(!open)}>{open ? <X /> : <Menu />}</button><div><span className="ws-eyebrow">WELCOME BACK</span><p>{name}</p></div><div className="ws-identity"><span className="ws-avatar">{name.split(" ").map((w) => w[0]).slice(0, 2).join("")}</span></div></header>
       <div className="ws-preview"><div><strong>{state.role === "user" ? "Patient / client" : state.role} workspace</strong><span> · Connected to your account</span></div><button className="underline font-semibold" onClick={signOut}>Sign out</button></div>
-      {state.error && <div className="ws-notice mx-6" role="alert">{state.error}<button className="underline ml-4" onClick={() => dispatch(clearWorkspaceError())}>Dismiss</button></div>}
+      {state.error && <div className="mx-6"><ErrorNotice error={state.feedback ? "" : state.error} onRetry={() => { dispatch(clearWorkspaceError()); dispatch(fetchWorkspace()); }} /></div>}
       {state.pending > 0 && <GlobalLoader fullPage message="Saving changes..." />}
       {state.feedback && <MessageOverlay type={state.feedback.type} text={state.feedback.text} onClose={() => dispatch(clearFeedback())} />}
       {onboardingNotice && <MessageOverlay type="error" title={onboardingNotice.title} text={onboardingNotice.text} onClose={() => setOnboardingNotice(null)} />}

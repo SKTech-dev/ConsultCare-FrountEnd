@@ -42,7 +42,7 @@ const slice = createSlice({
   name: "consultations", initialState: empty,
   reducers: {
     clearWorkspaceError: (state) => { state.error = ""; },
-    clearFeedback: (state) => { state.feedback = null; },
+    clearFeedback: (state) => { if (state.feedback?.type === "error" && state.error === state.feedback.text) state.error = ""; state.feedback = null; },
     refreshWarning: (state) => { state.error = "Your changes were saved, but the page could not refresh. Reload to see the latest information."; },
     liveStatus: (state, action) => { state.liveConnected = action.payload; },
     liveTick: (state) => { state.liveUpdatedAt = Date.now(); },

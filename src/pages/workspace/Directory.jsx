@@ -36,12 +36,15 @@ export function Directory({ profession }) {
   </>;
 }
 
+import { useUnsavedChanges } from "../../components/ui/UnsavedChanges";
+
 export function ProfessionalDetails() {
   const { id } = useParams();
   const s = useWorkspace();
   const p = s.professionals.find((p) => p.id === id && p.status === "verified");
   const [selected, setSelected] = useState("");
   const [reason, setReason] = useState("");
+  const markSaved = useUnsavedChanges({ selected, reason });
   const dispatch = useDispatch();
   const navigate = useNavigate();
   if (!p) return <Empty title="Profile unavailable">This professional is not currently accepting bookings.</Empty>;
@@ -51,7 +54,7 @@ export function ProfessionalDetails() {
   return <>
     <PageHeading eyebrow={p.role.toUpperCase() + " PROFILE"} title={p.name}>{p.speciality} · {p.qualifications}</PageHeading>
     <div className="ws-grid-two"><Panel title="Someone to talk it through with"><BadgeCheck className="mb-4" /><Status>verified</Status><p className="ws-space">{p.bio}</p><div className="ws-row"><span>Professional registration number</span><strong>{p.registration}</strong></div><div className="ws-row"><span>Languages</span><strong>{p.languages.join(", ")}</strong></div><div className="ws-row"><span>Consultation fee</span><strong>{money(p.fee)}</strong></div><p className="ws-muted mt-5">Credentials reviewed before activation.</p></Panel>
-      <Panel title="Choose your session"><form onSubmit={async (e) => { e.preventDefault(); const action = await dispatch(book({ sessionId: selected, reason: reason.trim() })); if (!action.error) navigate("/app/booking/" + action.payload.id); }}>
+      <Panel title="Choose your session"><form onSubmit={async (e) => { e.preventDefault(); const action = await dispatch(book({ sessionId: selected, reason: reason.trim() })); if (!action.error) { markSaved(); navigate("/app/booking/" + action.payload.id); } }}>
         <label className="ws-field">Available sessions<select required value={selected} onChange={(e) => setSelected(e.target.value)}><option value="">Select a session</option>{sessions.map((x) => <option key={x.id} value={x.id}>{sessionLabel(x)} · {x.remaining} place{x.remaining === 1 ? "" : "s"} available</option>)}</select></label>
         <label className="ws-field">What would you like to discuss? (optional)<textarea maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Briefly describe the questions you would like to discuss." /></label>
         {!s.payhereEnabled && <div className="ws-notice">Secure payments are temporarily unavailable. You can reserve a booking, but PayHere must be configured before it can be paid.</div>}

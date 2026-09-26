@@ -36,6 +36,7 @@ export const MessageOverlay = ({
   }, []);
 
   function keyDown(event) {
+    event.stopPropagation();
     if (event.key === "Escape" && !isProcessing) {
       event.preventDefault();
       onClose();
