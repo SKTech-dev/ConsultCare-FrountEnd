@@ -4,7 +4,7 @@ import { callApi } from "../../api/apiClient.js";
 const empty = {
   role: null, professionalId: null, patient: {}, patients: [], professionals: [],
   sessions: [], weeklyAvailability: [], bookings: [], loaded: false, loading: false,
-  pending: 0, error: "", requestId: null, mockPayments: false,
+  pending: 0, error: "", requestId: null, payhereEnabled: false,
   feedback: null, liveConnected: false, familyProfessionalIds: [], onboarding: null, transferNotifications: [],
 };
 
@@ -30,7 +30,6 @@ export const saveProfile = command("saveProfile", (p) => ["PUT", "/profile", p])
 export const saveFamily = command("saveFamily", ({ id, saved }) => ["PUT", "/family-professionals/" + id, { saved }]);
 export const saveWeeklyAvailability = command("saveWeeklyAvailability", ({ days, fee }) => ["PUT", "/weekly-availability", { days, fee }]);
 export const book = command("book", (p) => ["POST", "/bookings", { sessionId: p.sessionId, reason: p.reason || "" }]);
-export const pay = command("pay", (p) => ["POST", "/bookings/" + p.id + "/payment-simulation", { success: p.success }]);
 export const transition = command("transition", (p) => ["PATCH", "/bookings/" + p.id + "/status", { status: p.status }]);
 export const message = command("message", (p) => ["POST", "/bookings/" + p.id + "/messages", { text: p.text }]);
 export const saveNotes = command("saveNotes", ({ id, ...p }) => ["PUT", "/bookings/" + id + "/notes", p]);
@@ -38,7 +37,6 @@ export const sendPrescription = command("sendPrescription", ({ id, text }) => ["
 // Admin moderation has its own contextual popup (for example, incomplete credentials).
 // Keep that one message instead of also showing the generic workspace error popup.
 export const moderate = command("moderate", (p) => ["PATCH", "/admin/users/" + p.id, { status: p.status }]);
-export const refund = command("refund", (id) => ["POST", "/admin/bookings/" + id + "/refund-simulation"]);
 
 const slice = createSlice({
   name: "consultations", initialState: empty,
@@ -77,7 +75,7 @@ const slice = createSlice({
         if (action.type.endsWith("/rejected")) {
           if (!action.meta.arg?.localFeedback && !action.meta.arg?.localPending) state.feedback = { type: "error", text: String(action.payload || "Could not save changes.") };
         } else if (name !== "message") {
-          const messages = { book: "Booking reserved. Continue with payment to join the queue.", saveProfile: "Your profile has been saved.", saveWeeklyAvailability: "Your weekly sessions have been saved.", saveFamily: "Your family professionals have been updated.", transition: action.meta.arg.status === "CANCELLED" ? "Consultation cancelled." : "Consultation status updated.", pay: "Payment status updated.", saveNotes: "Notes saved.", sendPrescription: "Prescription sent to the patient." };
+          const messages = { book: "Booking reserved. Continue with payment to join the queue.", saveProfile: "Your profile has been saved.", saveWeeklyAvailability: "Your weekly sessions have been saved.", saveFamily: "Your family professionals have been updated.", transition: action.meta.arg.status === "CANCELLED" ? "Consultation cancelled." : "Consultation status updated.", saveNotes: "Notes saved.", sendPrescription: "Prescription sent to the patient." };
           state.feedback = { type: "success", text: messages[name] || "Changes saved successfully." };
         }
       });

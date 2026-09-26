@@ -116,6 +116,6 @@ export function BookingDetails() {
     <div className="ws-space"><PatientContext booking={b} /></div>
     <div className="ws-space"><Prescription key={b.id} booking={b} /></div>
     <div className="ws-space"><Panel title="Consultation chat"><div className="ws-chat"><ChatMessages booking={b} /></div></Panel></div>
-    {cancel && <MessageOverlay type="confirm" title="Cancel this booking?" text="Your place will be released. A paid mock booking will be marked for a simulated refund." onClose={() => setCancel(false)} onConfirm={() => { dispatch(transition({ id, status: "CANCELLED" })); setCancel(false); }} />}
+    {cancel && <MessageOverlay type="confirm" title="Cancel this booking?" text="Your place will be released. If payment was already verified, it will be marked for a refund review." onClose={() => setCancel(false)} onConfirm={() => { dispatch(transition({ id, status: "CANCELLED" })); setCancel(false); }} />}
   </>;
 }

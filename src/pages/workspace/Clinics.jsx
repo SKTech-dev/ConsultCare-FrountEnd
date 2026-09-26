@@ -8,6 +8,7 @@ import { money, sriLankanDate } from "../../features/consultations/model";
 import { Empty, PageHeading, Panel, Status, useWorkspace } from "../../components/workspace/Workspace";
 import { MessageOverlay } from "../../components/ui/MessageBox";
 import VideoCall from "../../components/workspace/VideoCall";
+import PayHereCheckout from "../../components/workspace/PayHereCheckout";
 import "./clinics.css";
 import ListFilters, { emptyFilters, filterParams } from "../../components/workspace/ListFilters";
 
@@ -136,7 +137,7 @@ export function ClinicDetails() {
 }
 
 function ClinicDetailContent({ id }) {
-  const { role, professionalId } = useWorkspace();
+  const { role, professionalId, payhereEnabled } = useWorkspace();
   const dispatch = useDispatch();
   const [page, setPage] = useState(1);
   const result = useClinics(`/clinics/${id}?page=${page}`);
@@ -164,7 +165,7 @@ function ClinicDetailContent({ id }) {
   const before = Date.now() < Date.parse(clinic.startsAt);
   const liveTime = !before && Date.now() < Date.parse(clinic.endsAt);
   const scheduled = clinic.status === "scheduled";
-  const paid = registration?.status === "confirmed" && registration.payment === "paid (mock)";
+  const paid = registration?.status === "confirmed" && registration.payment === "paid";
   const canJoin = clinic.status === "live" && liveTime && clinic.professionalAvailable && (owner || paid);
   const canPay = registration?.status === "pending" && Date.now() < Date.parse(registration.paymentDueAt) && scheduled && before && clinic.professionalAvailable;
   const disabled = busy || Boolean(result.error);
@@ -181,7 +182,7 @@ function ClinicDetailContent({ id }) {
       {clinic.cancellationReason && <p className="ws-notice">Cancellation: {clinic.cancellationReason}</p>}
     </Panel><Panel title={staff ? "Manage clinic" : "Your clinic registration"}>
       <div className="ws-notice">This is a shared lecture, not a private consultation. Attendees watch and listen with camera, microphone and chat disabled. Do not share personal medical or legal information. Reports and private consultation records are not shared here.</div>
-      {clinic.mockPayments ? <p className="ws-muted">Test payments only. No real money is charged or refunded.</p> : <p className="ws-notice">Online payments are not connected. Reservations cannot be paid until a payment provider is configured.</p>}
+      {payhereEnabled ? <p className="ws-muted">Payments are securely processed by PayHere. Your place is confirmed only after PayHere verifies payment.</p> : <p className="ws-notice">Online payments are not connected. Reservations cannot be paid until a payment provider is configured.</p>}
       {role === "user" && <>
         {registration && <div className="ws-row"><Status>{registration.status}</Status><span>{registration.payment} · {money(registration.fee)}</span></div>}
         {(!registration || registration.status === "expired") && scheduled && before && <>
@@ -190,9 +191,9 @@ function ClinicDetailContent({ id }) {
         </>}
         {registration?.status === "pending" && <p className="ws-muted">Pay before {new Date(registration.paymentDueAt).toLocaleString("en-GB", { timeZone: "Asia/Colombo" })} (Sri Lanka time). Unpaid places expire automatically.</p>}
         <div className="ws-actions">
-          {registration?.status === "pending" && <button className="ws-link" disabled={disabled || !canPay || !clinic.mockPayments} onClick={() => setConfirm({ title: "Confirm test clinic payment?", text: `Confirm the test payment of ${money(registration.fee)} for this group lecture. No real money is charged.`, path: "payment-simulation", body: { success: true } })}>Pay for clinic (test)</button>}
-          {registration && ["pending", "confirmed"].includes(registration.status) && scheduled && before && <button className="ws-link secondary" disabled={disabled} onClick={() => setConfirm({ title: "Cancel clinic registration?", text: "Your place will be released. Paid test registrations need an administrator's simulated refund. A cancelled registration cannot be rebooked.", path: "cancel-registration" })}>Cancel registration</button>}
+          {registration && ["pending", "confirmed"].includes(registration.status) && scheduled && before && <button className="ws-link secondary" disabled={disabled} onClick={() => setConfirm({ title: "Cancel clinic registration?", text: "Your place will be released. Verified payments are marked for refund review. A cancelled registration cannot be rebooked.", path: "cancel-registration" })}>Cancel registration</button>}
         </div>
+        {registration?.status === "pending" && payhereEnabled && <PayHereCheckout endpoint={`/clinics/${id}/payhere-checkout`} amount={money(registration.fee)} disabled={disabled || !canPay} />}
         {paid && scheduled && <p className="ws-notice">Your place is confirmed. The group room opens when the professional starts the clinic during its scheduled time.</p>}
       </>}
       {staff && <>
@@ -206,9 +207,9 @@ function ClinicDetailContent({ id }) {
     </Panel></div>
     {canJoin && <div className="ws-space"><VideoCall clinicId={id} /></div>}
     {staff && <div className="ws-space"><Panel title="Clinic registrations & payments">
-      <div className="clinic-payment-summary"><span>Collected (test): <strong>{money(clinic.paymentTotals?.["paid (mock)"] || 0)}</strong></span><span>Refund requested: <strong>{money(clinic.paymentTotals?.["refund requested"] || 0)}</strong></span><span>Refunded (test): <strong>{money(clinic.paymentTotals?.["refunded (mock)"] || 0)}</strong></span></div>
+      <div className="clinic-payment-summary"><span>Collected: <strong>{money(clinic.paymentTotals?.paid || 0)}</strong></span><span>Refund requested: <strong>{money(clinic.paymentTotals?.["refund requested"] || 0)}</strong></span></div>
       <p className="ws-muted">Clinic ticket revenue enters monthly earnings only after the clinic completes. Access authorization is not proof of attendance. No private records are linked to this roster.</p>
-      {clinic.registrations?.length ? <div className="ws-table-wrap"><table className="ws-table"><caption className="sr-only">Clinic registrations and test payments</caption><thead><tr><th>Patient / client</th><th>Registration</th><th>Payment</th><th>Amount</th><th>Paid at (Sri Lanka)</th>{role === "admin" && <th>Action</th>}</tr></thead><tbody>{clinic.registrations.map((row) => <tr key={row.id}><td>{row.patientName}</td><td>{row.status}</td><td>{row.payment}</td><td>{money(row.fee)}</td><td>{row.paidAt ? new Date(row.paidAt).toLocaleString("en-GB", { timeZone: "Asia/Colombo" }) : "Not paid"}</td>{role === "admin" && <td>{row.payment === "refund requested" && <button className="ws-link secondary" disabled={disabled || !clinic.mockPayments} onClick={() => setConfirm({ title: "Record test refund?", text: "This records a simulated refund only. No real money is transferred.", path: `registrations/${row.id}/refund-simulation` })}>Simulate refund</button>}</td>}</tr>)}</tbody></table></div> : <Empty title="No registrations yet">Paid and unpaid registrations will appear here.</Empty>}
+      {clinic.registrations?.length ? <div className="ws-table-wrap"><table className="ws-table"><caption className="sr-only">Clinic registrations and PayHere payment status</caption><thead><tr><th>Patient / client</th><th>Registration</th><th>Payment</th><th>Amount</th><th>Paid at (Sri Lanka)</th></tr></thead><tbody>{clinic.registrations.map((row) => <tr key={row.id}><td>{row.patientName}</td><td>{row.status}</td><td>{row.payment}</td><td>{money(row.fee)}</td><td>{row.paidAt ? new Date(row.paidAt).toLocaleString("en-GB", { timeZone: "Asia/Colombo" }) : "Not paid"}</td></tr>)}</tbody></table></div> : <Empty title="No registrations yet">Paid and unpaid registrations will appear here.</Empty>}
       {clinic.registrationCount > clinic.pageSize && <div className="clinic-pagination"><button className="ws-link secondary" disabled={page === 1} onClick={() => setPage((n) => n - 1)}>Previous</button><span>Page {page}</span><button className="ws-link secondary" disabled={page * clinic.pageSize >= clinic.registrationCount} onClick={() => setPage((n) => n + 1)}>Next</button></div>}
     </Panel></div>}
     {confirm && <MessageOverlay type="confirm" title={confirm.title} text={confirm.text} onClose={() => setConfirm(null)} onConfirm={() => action(confirm.path, confirm.body)} />}

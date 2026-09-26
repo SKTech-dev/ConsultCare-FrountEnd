@@ -13,7 +13,7 @@ export function useWorkspace() { return useSelector((s) => s.consultations); }
 export function PageHeading({ eyebrow = "YOUR CONSULTATION SPACE", title, children, action }) {
   return <div className="ws-heading"><div><p className="ws-eyebrow">{eyebrow}</p><h1>{title}</h1>{children && <p>{children}</p>}</div>{action}</div>;
 }
-export function Status({ children }) { return <span className={"ws-status " + (["COMPLETED", "verified", "NEXT", "paid (mock)"].includes(children) ? "ws-good" : "")}>{children}</span>; }
+export function Status({ children }) { return <span className={"ws-status " + (["COMPLETED", "verified", "NEXT", "paid"].includes(children) ? "ws-good" : "")}>{children}</span>; }
 export function Empty({ title, children }) { return <div className="ws-empty"><CalendarDays size={30} /><h3>{title}</h3><p>{children}</p></div>; }
 export function Panel({ title, children }) { return <section className="ws-panel">{title && <h2>{title}</h2>}{children}</section>; }
 
@@ -106,7 +106,7 @@ export default function Workspace() {
     <div inert={mobile && open ? "" : undefined} className={"ws-body " + (sidebarCollapsed ? "ws-body-expanded" : "")}>
       {sidebarCollapsed && <button className="ws-sidebar-restore" type="button" aria-label="Show sidebar" title="Show sidebar" onClick={() => setSidebarCollapsed(false)}><PanelLeftOpen size={18} /></button>}
       <header className="ws-topbar"><button ref={menuButton} type="button" className="ws-menu" aria-label="Toggle navigation" aria-expanded={open} aria-controls="workspace-navigation" onClick={() => setOpen(!open)}>{open ? <X /> : <Menu />}</button><div><span className="ws-eyebrow">WELCOME BACK</span><p>{name}</p></div><div className="ws-identity"><span className="ws-avatar">{name.split(" ").map((w) => w[0]).slice(0, 2).join("")}</span></div></header>
-      <div className="ws-preview"><div><strong>{state.role === "user" ? "Patient / client" : state.role} workspace</strong><span> · Connected to your account{state.mockPayments ? " · Test payments enabled" : ""}</span></div><button className="underline font-semibold" onClick={signOut}>Sign out</button></div>
+      <div className="ws-preview"><div><strong>{state.role === "user" ? "Patient / client" : state.role} workspace</strong><span> · Connected to your account</span></div><button className="underline font-semibold" onClick={signOut}>Sign out</button></div>
       {state.error && <div className="ws-notice mx-6" role="alert">{state.error}<button className="underline ml-4" onClick={() => dispatch(clearWorkspaceError())}>Dismiss</button></div>}
       {state.pending > 0 && <GlobalLoader fullPage message="Saving changes..." />}
       {state.feedback && <MessageOverlay type={state.feedback.type} text={state.feedback.text} onClose={() => dispatch(clearFeedback())} />}

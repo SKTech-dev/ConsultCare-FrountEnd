@@ -2,7 +2,7 @@ import { useDispatch } from "react-redux";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useWorkspace, PageHeading, Panel, Empty, Status } from "../../components/workspace/Workspace";
-import { moderate, refund } from "../../features/consultations/consultationSlice";
+import { moderate } from "../../features/consultations/consultationSlice";
 import { money } from "../../features/consultations/model";
 import { MessageOverlay } from "../../components/ui/MessageBox";
 
@@ -59,7 +59,6 @@ export function AdminPersonDetails() {
 
 export function AdminPayments() {
   const s = useWorkspace();
-  const dispatch = useDispatch();
   if (s.role !== "admin") return <Empty title="Administrator workspace">This page requires an administrator account.</Empty>;
-  return <><PageHeading title="Payments and refunds.">Review simulated payment outcomes. Consultation notes and documents are not shown here.</PageHeading><div className="ws-space"><Panel title="Clinic payments & refunds"><p>Group clinic payments are tracked separately. Open a clinic to review registrations and process requested test refunds.</p><Link className="ws-link secondary" to="/app/clinics">Review clinic payments</Link></Panel></div><Panel title="Private consultation payments & refunds">{s.bookings.length ? s.bookings.map((b) => <div className="ws-row" key={b.id}><div><h3>{b.patientName} · {money(b.fee)}</h3><p>Booking {b.id.slice(0, 8)} · {b.status}</p></div><Status>{b.payment}</Status>{b.payment === "refund requested" && <button className="ws-link" onClick={() => dispatch(refund(b.id))}>Simulate refund</button>}</div>) : <Empty title="No payments yet">Complete a mock booking to populate this view.</Empty>}</Panel></>;
+  return <><PageHeading title="Payments and refunds.">Review PayHere payment records. Consultation notes and documents are not shown here.</PageHeading><div className="ws-space"><Panel title="Clinic payments"><p>Group clinic payments are tracked separately. Open a clinic to review registrations and payment status.</p><Link className="ws-link secondary" to="/app/clinics">Review clinic payments</Link></Panel></div><Panel title="Private consultation payments">{s.bookings.length ? s.bookings.map((b) => <div className="ws-row" key={b.id}><div><h3>{b.patientName} · {money(b.fee)}</h3><p>Booking {b.id.slice(0, 8)} · {b.status}</p></div><Status>{b.payment}</Status>{b.payment === "refund requested" && <span className="ws-muted">Refund review required</span>}</div>) : <Empty title="No payments yet">Verified PayHere payments will appear here.</Empty>}</Panel></>;
 }
