@@ -3,7 +3,7 @@
 .appointment-form { display: grid; gap: 18px; margin-top: 24px; }
 .appointment-form .ws-field { margin-bottom: 0; }
 .appointment-times { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 16px; }
-.appointment-card { padding: 22px; margin-top: 18px; border: 1px solid var(--ws-border); border-radius: 14px; background: var(--ws-appBg); }
+.appointment-card { padding: 22px; margin-top: 18px; border: 1px solid var(--ws-border); border-radius: 14px; background: var(--ws-cardBg); }
 .appointment-card > .ws-row:first-child { padding-top:0; }
 .appointment-card h3 { font-size:19px; }
 .appointment-card p { line-height:1.7; overflow-wrap:anywhere; }

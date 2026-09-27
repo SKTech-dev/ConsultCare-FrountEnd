@@ -6,7 +6,7 @@
 .clinic-card { display:flex; flex-direction:column; gap:10px; }
 .clinic-card > .ws-link { align-self:flex-start; margin-top:auto; }
 .clinic-list .transfer-search .ws-field { margin-bottom:0; }
-.clinic-card { background: var(--ws-appBg); border: 1px solid var(--ws-border); border-radius: 14px; padding: 22px; }
+.clinic-card { background: var(--ws-cardBg); border: 1px solid var(--ws-border); border-radius: 14px; padding: 22px; }
 .clinic-card h3 { font-size: 19px; margin: 16px 0 8px; }
 .clinic-card h3 a:hover { text-decoration: underline; }
 .clinic-card-top, .clinic-card-bottom, .clinic-payment-summary { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
