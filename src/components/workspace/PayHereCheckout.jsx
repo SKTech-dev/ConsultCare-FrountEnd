@@ -31,7 +31,7 @@ export default function PayHereCheckout({ endpoint, amount, disabled = false, la
   async function pay() {
     setBusy(true); setError("");
     try {
-      const response = await callApi("POST", endpoint, {});
+      const response = await callApi("POST", endpoint, { frontendOrigin: window.location.origin });
       const checkout = response.data;
       if (!checkout?.checkoutUrl || !checkout?.fields) throw new Error("Payment checkout could not be prepared. Please try again.");
       postToPayHere(checkout);

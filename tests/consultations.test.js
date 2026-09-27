@@ -64,7 +64,7 @@ test("admin moderation can use one contextual error instead of a duplicate globa
   const s = store();
   const action = await s.dispatch(moderate({ id: "professional", status: "verified", localFeedback: true }));
   assert.ok(action.error);
-  assert.equal(s.getState().consultations.error, "Complete credentials first.");
+  assert.equal(s.getState().consultations.error, "");
   assert.equal(s.getState().consultations.feedback, null);
 });
 

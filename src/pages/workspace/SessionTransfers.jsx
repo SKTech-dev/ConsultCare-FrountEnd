@@ -14,10 +14,11 @@ import ListFilters, { emptyFilters, filterParams } from "../../components/worksp
 
 const label = (s) => `${s.date} · ${s.start}–${s.end} (Sri Lanka)`;
 
-export default function SessionTransfers({ embedded = false, view = "all" }) {
+export default function SessionTransfers({ embedded = false, view = "all", allowRequest = false }) {
   const workspace = useWorkspace();
   const allowed = ["admin", "doctor", "lawyer"].includes(workspace.role);
-  const showSessions = view === "all" || view === "request";
+  const [chooseSession, setChooseSession] = useState(false);
+  const showSessions = view === "all" || view === "request" || chooseSession;
   const showHistory = view !== "request";
   const historyTitle = view === "upcoming" ? "Upcoming handovers" : view === "history" ? "Handover history" : "Requests & handover history";
   const dispatch = useDispatch();
@@ -66,7 +67,7 @@ export default function SessionTransfers({ embedded = false, view = "all" }) {
   return <section className="session-transfers" aria-label="Session handovers">
     {!embedded && <PageHeading title="Session handovers.">Arrange cover for a booked session and follow every request and earnings reassignment.</PageHeading>}
     <ErrorNotice error={error} onRetry={load} />
-    {showSessions && <Panel title="Hand over a booked session">
+    {showSessions && (!allowRequest || chooseSession) && <SessionPicker modal={allowRequest} onClose={() => setChooseSession(false)}><Panel title="Hand over a booked session">
       {workspace.role === "admin" && <ListFilters label="Filter booked sessions" onApply={(value) => { setSessions(null); setSessionFilters(value); setSessionPage(1); }} statuses={["available", "pending"]} />}
       <p>Choose a dated session with patients in its queue. The receiver must accept before ownership changes. Booked prices, queue order and weekly schedules stay the same.</p>
       <div className="ws-notice">Requests expire at the session start. Only sessions that have not started can be handed over. Amounts below are estimates; earnings count completed, paid consultations.</div>
@@ -76,12 +77,13 @@ export default function SessionTransfers({ embedded = false, view = "all" }) {
         <div><h3>{label(session)}</h3><p>{session.professionalName} · {session.queueCount} queued · {money(session.expectedAmount)}</p>
           {session.pending && <small>Awaiting the receiver’s decision. You remain responsible until acceptance.</small>}
           {session.adminOnly && <small>An administrator must arrange any further handover.</small>}</div>
-        <button className="ws-link" disabled={Boolean(session.pending) || session.adminOnly || busy} onClick={() => setSelected(session)}><ArrowRightLeft size={16} />Request handover</button>
+        <button className="ws-link" disabled={Boolean(session.pending) || session.adminOnly || busy} onClick={() => { setSelected(session); setChooseSession(false); }}><ArrowRightLeft size={16} />Request handover</button>
       </div>)}
       {sessions && <Pagination page={sessionPage} count={sessions.count} size={sessions.pageSize} onChange={setSessionPage} />}
-    </Panel>}
+    </Panel></SessionPicker>}
     {selected && <TransferForm key={selected.id} session={selected} onClose={() => setSelected(null)} onSaved={async (text) => { setSelected(null); setNotice({ type: "success", text }); await Promise.all([load(), dispatch(fetchWorkspace())]); }} />}
     {showHistory && <Panel title={historyTitle}>
+      {allowRequest && <div className="ws-actions"><button className="ws-link secondary" onClick={() => setChooseSession(true)}><ArrowRightLeft size={16} />Hand over a booked session</button></div>}
       {workspace.role === "admin" && <ListFilters label="Filter handover history" onApply={(value) => { setHistory(null); setHistoryFilters(value); setPage(1); }} statuses={["pending", "accepted", "rejected", "cancelled", "expired"]} />}
       <p>{view === "history" ? "Past sessions and resolved requests remain here for review, including their earnings attribution." : "Incoming requests have Accept and Reject actions. Accepted upcoming sessions remain here until they finish. Your original session stays assigned until acceptance."}</p>
       {!history && !error && <p role="status">Loading requests…</p>}
@@ -109,6 +111,10 @@ export default function SessionTransfers({ embedded = false, view = "all" }) {
     </Panel></Modal>}
     {notice && <MessageOverlay type={notice.type} text={notice.text} onClose={() => setNotice(null)} />}
   </section>;
+}
+
+function SessionPicker({ modal, onClose, children }) {
+  return modal ? <Modal title="Choose a booked session" onClose={onClose}>{children}</Modal> : children;
 }
 
 function Pagination({ page, count, size, onChange }) {

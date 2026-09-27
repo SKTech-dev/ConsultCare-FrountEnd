@@ -9,6 +9,7 @@ import { MessageOverlay } from "../../components/ui/MessageBox";
 import "./appointments.css";
 import ErrorNotice from "../../components/ui/ErrorNotice";
 import ListFilters, { emptyFilters, filterParams } from "../../components/workspace/ListFilters";
+import EditSessionTime from "../../components/workspace/EditSessionTime";
 
 export default function ScheduledConsultations({ embedded = false, renderQueue }) {
   const state = useWorkspace();
@@ -21,6 +22,7 @@ export default function ScheduledConsultations({ embedded = false, renderQueue }
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
   const [cancel, setCancel] = useState(null);
+  const [editing, setEditing] = useState(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState(null);
   const refresh = useCallback(() => setRetry((n) => n + 1), []);
@@ -69,13 +71,15 @@ export default function ScheduledConsultations({ embedded = false, renderQueue }
         {item.status === "PAYMENT PENDING" && <p className="ws-notice">Awaiting patient acceptance and payment before {item.start} on {item.date}. This appointment cannot start unpaid.</p>}
         {renderQueue?.(item.id)}
         <div className="ws-actions">
+          {item.canUpdate && <button className="ws-link secondary" disabled={busy} onClick={() => setEditing(item)}>Update time</button>}
           {state.role !== "admin" && item.acceptedAt && <Link className="ws-link secondary" to={`/app/booking/${item.id}`}>View consultation</Link>}
           {item.canCancel && <button className="ws-link secondary" disabled={busy} onClick={() => setCancel(item)}>Cancel appointment</button>}
         </div>
       </article>)}
       {result && (result.count > result.pageSize || page > 1) && <div className="ws-actions"><button className="ws-link secondary" disabled={page <= 1} onClick={() => setPage((n) => n - 1)}>Previous</button><span>Page {page}</span><button className="ws-link secondary" disabled={page * result.pageSize >= result.count} onClick={() => setPage((n) => n + 1)}>Next</button></div>}
     </Panel>
-    {cancel && <MessageOverlay type="confirm" title="Cancel scheduled consultation?" text={`Cancel the appointment for ${cancel.patientName}? The patient will see the updated status. Paid appointments follow the refund process.`} isProcessing={busy} onClose={() => { if (!busy) setCancel(null); }} onConfirm={cancelAppointment} />}
+    {editing && <EditSessionTime item={editing} endpoint={`/scheduled-consultations/${editing.id}`} onClose={() => setEditing(null)} onSaved={async (text) => { setEditing(null); setNotice({ type: "success", text }); refresh(); await dispatch(fetchWorkspace()); }} />}
+    {cancel && <MessageOverlay type="confirm" title="Cancel scheduled consultation?" text={`Cancel the unpaid appointment for ${cancel.patientName}? The patient will see the updated status.`} isProcessing={busy} onClose={() => { if (!busy) setCancel(null); }} onConfirm={cancelAppointment} />}
     {notice && <MessageOverlay type={notice.type} text={notice.text} onClose={() => setNotice(null)} />}
   </section>;
 }

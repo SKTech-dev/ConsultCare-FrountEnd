@@ -70,7 +70,7 @@ const slice = createSlice({
       })
       .addMatcher((action) => action.type.startsWith("consultations/") && !action.type.startsWith("consultations/fetch") && /\/(fulfilled|rejected)$/.test(action.type), (state, action) => {
         if (!action.meta.arg?.localPending) state.pending = Math.max(0, state.pending - 1);
-        if (action.type.endsWith("/rejected") && !action.meta.arg?.localPending) state.error = action.payload || "Could not save changes.";
+        if (action.type.endsWith("/rejected") && !action.meta.arg?.localPending && !action.meta.arg?.localFeedback) state.error = action.payload || "Could not save changes.";
         const name = action.type.split("/")[1];
         if (action.type.endsWith("/rejected")) {
           if (!action.meta.arg?.localFeedback && !action.meta.arg?.localPending) state.feedback = { type: "error", text: String(action.payload || "Could not save changes.") };

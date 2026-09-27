@@ -34,6 +34,41 @@ async function fillClinic(page) {
   await page.getByLabel("Clinic places", { exact: true }).fill("20");
 }
 
+test("available clinics search by professional name on the server", async ({ page }) => {
+  await account(page, "user");
+  let query;
+  await page.route("**/api/clinics?*", (route) => {
+    query = new URL(route.request().url()).searchParams;
+    return route.fulfill({ json: { data: { items: [], count: 0, pageSize: 30 } } });
+  });
+  await page.goto("/consult/doctors");
+  await page.getByLabel("Search clinics by professional name").fill("Test Doctor");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await expect.poll(() => query?.get("q")).toBe("Test Doctor");
+  expect(query.get("profession")).toBe("doctor");
+});
+
+test("paid clinic allows time and places changes without cancellation or fee editing", async ({ page }) => {
+  const current = { ...clinic, canUpdate: true, canCancel: false, remaining: 17 };
+  await account(page, "doctor", current);
+  let saved;
+  await page.route("**/api/clinics/clinic", (route) => {
+    if (route.request().method() !== "PATCH") return route.fallback();
+    saved = route.request().postDataJSON();
+    return route.fulfill({ json: { message: "Clinic updated." } });
+  });
+  await page.goto("/app/clinics/clinic");
+  await expect(page.getByRole("button", { name: "Cancel clinic", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Update time & places" }).click();
+  const dialog = page.getByRole("dialog", { name: "Update clinic time & places" });
+  await dialog.getByLabel("Start time").fill("14:00");
+  await dialog.getByLabel("End time").fill("15:00");
+  await dialog.getByLabel("Places").fill("25");
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await expect.poll(() => saved).toEqual({ start: "14:00", end: "15:00", capacity: 25 });
+  await expect(page.getByText("Clinic updated.", { exact: true })).toBeVisible();
+});
+
 for (const role of ["doctor", "lawyer"]) {
   test(`${role} schedules a clinic with its own date, time, places and fee`, async ({ page }) => {
     await account(page, role);
@@ -63,7 +98,7 @@ test("patient reserves and is redirected to PayHere sandbox without local confir
     return route.fulfill({ status: 201, json: { message: "Clinic place reserved." } });
   });
   await page.route("**/api/clinics/clinic/payhere-checkout", (route) => {
-    expect(route.request().postDataJSON()).toEqual({});
+    expect(route.request().postDataJSON()).toEqual({ frontendOrigin: new URL(page.url()).origin });
     return route.fulfill({ json: { data: { checkoutUrl: "https://sandbox.payhere.lk/pay/checkout", fields: { order_id: "clinic", amount: "900.50" } } } });
   });
   await page.route("https://sandbox.payhere.lk/pay/checkout", (route) => route.fulfill({ contentType: "text/html", body: "<h1>Sandbox checkout</h1>" }));

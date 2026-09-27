@@ -220,13 +220,15 @@ test("protected routes redirect signed-out visitors to login", async ({ page }) 
   await expect(page.locator('input[type="password"]')).toBeVisible();
 });
 
-test("my sessions replaces generated sessions with handover controls", async ({ page }) => {
+test("handover starts from a queue button rather than a My sessions card", async ({ page }) => {
   await mockAccount(page, snapshot());
   await page.goto("/app/sessions");
   await expect(page.getByRole("heading", { name: "Upcoming generated sessions" })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Hand over a booked session" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Hand over a booked session" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Requests & handover history" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Schedule a patient consultation" })).toBeVisible();
+  await page.goto("/app/queue");
+  await page.getByRole("button", { name: "Hand over a booked session" }).click();
   await expect(page.getByRole("heading", { name: "No sessions available for handover" })).toBeVisible();
 });
 
@@ -240,15 +242,39 @@ test("a professional searches for a receiver and requests a handover", async ({ 
     submitted = route.request().postDataJSON();
     return route.fulfill({ status: 201, json: { message: "Handover requested." } });
   });
-  await page.goto("/app/sessions");
+  await page.goto("/app/queue");
+  await page.getByRole("button", { name: "Hand over a booked session" }).click();
   await page.getByRole("button", { name: "Request handover", exact: true }).click();
   await page.getByLabel("Search by name or email").fill("Cover");
   await page.getByRole("button", { name: "Search", exact: true }).click();
   await page.getByRole("radio", { name: /Cover Doctor/ }).check();
+  await expect(page.getByRole("radio", { name: /Cover Doctor/ })).toBeChecked();
+  const inputBox = await page.getByLabel("Search by name or email").boundingBox();
+  const searchBox = await page.getByRole("button", { name: "Search", exact: true }).boundingBox();
+  expect(Math.abs(inputBox.y + inputBox.height - searchBox.y - searchBox.height)).toBeLessThan(2);
   await page.getByLabel("Reason for handover").fill("Unavoidable absence");
   await page.getByRole("button", { name: "Send request" }).click();
   await expect(page.getByText("Handover requested.", { exact: true })).toBeVisible();
   expect(submitted).toEqual({ professionalId: "receiver", reason: "Unavoidable absence" });
+});
+
+test("paid private appointment exposes time editing and preserves date and fee", async ({ page }) => {
+  await mockAccount(page, snapshot());
+  const item = { id: "private", patientName: "Patient", professionalName: "Doctor", date: "2026-09-23", start: "10:00", end: "11:00", fee: 5000, payment: "paid", status: "NEXT", canUpdate: true, canCancel: false };
+  await page.route("**/api/scheduled-consultations?*", (route) => route.fulfill({ json: { data: { items: [item], count: 1, pageSize: 30 } } }));
+  let saved;
+  await page.route("**/api/scheduled-consultations/private", (route) => {
+    saved = route.request().postDataJSON();
+    return route.fulfill({ json: { message: "Time updated." } });
+  });
+  await page.goto("/app/queue");
+  await expect(page.getByRole("button", { name: "Cancel appointment" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Update time", exact: true }).click();
+  await page.getByLabel("Start time", { exact: true }).fill("14:00");
+  await page.getByLabel("End time", { exact: true }).fill("15:00");
+  await page.getByRole("button", { name: "Save changes", exact: true }).click();
+  await expect.poll(() => saved).toEqual({ start: "14:00", end: "15:00" });
+  await expect(page.getByText("Time updated.", { exact: true })).toBeVisible();
 });
 
 test("receiver confirms acceptance before the request is submitted", async ({ page }) => {
@@ -340,12 +366,14 @@ test("patient can accept and pay for an invitation from My consultations", async
   state.bookings = [{ ...booking("invited", "private", "PAYMENT PENDING"), payment: "unpaid", scheduledById: professional.id, paymentDueAt: "2026-09-23T10:00:00+05:30" }];
   await mockAccount(page, state);
   await page.route("**/api/bookings/invited/payhere-checkout", (route) => {
-    expect(route.request().postDataJSON()).toEqual({});
+    expect(route.request().postDataJSON()).toEqual({ frontendOrigin: new URL(page.url()).origin });
     return route.fulfill({ json: { data: { checkoutUrl: "https://sandbox.payhere.lk/pay/checkout", fields: { order_id: "invited", amount: "2500.00" } } } });
   });
   await page.route("https://sandbox.payhere.lk/pay/checkout", (route) => route.fulfill({ contentType: "text/html", body: "<h1>Sandbox checkout</h1>" }));
   await page.goto("/app/bookings");
   await expect(page.getByLabel("Billing address")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /pay with PayHere/i })).toHaveCount(0);
+  await page.getByRole("link", { name: "Continue to payment" }).click();
   const posted = page.waitForRequest("https://sandbox.payhere.lk/pay/checkout");
   await page.getByRole("button", { name: /Accept & pay with PayHere/ }).click();
   const request = await posted;
@@ -360,6 +388,7 @@ test("expired invitations cannot be paid and admins can inspect scheduled appoin
   state.bookings = [{ ...booking("expired", "private", "PAYMENT PENDING"), scheduledById: professional.id, paymentDueAt: "2026-09-22T10:00:00+05:30" }];
   await mockAccount(page, state);
   await page.goto("/app/bookings");
+  await page.getByRole("link", { name: "Continue to payment" }).click();
   await expect(page.getByRole("button", { name: /Accept & pay with PayHere/ })).toBeDisabled();
   await mockAccount(page, snapshot("admin"));
   await page.goto("/app/appointments");

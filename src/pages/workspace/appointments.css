@@ -3,13 +3,16 @@
 .appointment-form { display: grid; gap: 18px; margin-top: 24px; }
 .appointment-form .ws-field { margin-bottom: 0; }
 .appointment-times { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 16px; }
-.appointment-card { padding: 20px; margin-top: 18px; border: 1px solid var(--ws-border); border-radius: 14px; background: var(--ws-appBg); }
+.appointment-card { padding: 22px; margin-top: 18px; border: 1px solid var(--ws-border); border-radius: 14px; background: var(--ws-appBg); }
+.appointment-card > .ws-row:first-child { padding-top:0; }
+.appointment-card h3 { font-size:19px; }
+.appointment-card p { line-height:1.7; overflow-wrap:anywhere; }
 .appointment-summary { display: flex; flex-wrap: wrap; gap: 12px 24px; margin: 12px 0; font-size: 14px; }
 .appointment-filter { max-width: 280px; margin-top: 18px; }
 @media (max-width: 600px) {
   .appointment-search { flex-direction: column; align-items: stretch; }
   .appointment-times { grid-template-columns: 1fr; }
-  .appointment-card { padding: 14px; }
+  .appointment-card { padding: 16px; }
 }
 .weekly-editor { min-width: 0; border: 0; margin: 0; padding: 0; }
 .weekly-fee { display: grid; gap: 12px; margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--ws-border); }
