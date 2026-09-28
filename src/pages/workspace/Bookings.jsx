@@ -5,7 +5,7 @@ import { useWorkspace, PageHeading, Panel, Empty, Status } from "../../component
 import { ACTIVE, canRead, money, sessionEndsAt, sessionLabel } from "../../features/consultations/model";
 import { fetchWorkspace, transition } from "../../features/consultations/consultationSlice";
 import BookingPayment from "./BookingPayment";
-import { MessageOverlay } from "../../components/ui/MessageBox";
+import ReasonDialog from "../../components/ui/ReasonDialog";
 import { Documents } from "./Room";
 import PatientQueues from "./PatientQueues";
 import SessionTransfers from "./SessionTransfers";
@@ -132,6 +132,6 @@ export function BookingDetails() {
     <div className="ws-space"><PatientContext booking={b} /></div>
     <div className="ws-space"><Prescription key={b.id} booking={b} /></div>
     <div className="ws-space"><Panel title="Consultation chat"><div className="ws-chat"><ChatMessages booking={b} /></div></Panel></div>
-    {cancel && <MessageOverlay type="confirm" title="Cancel this booking?" text="Your place will be released. If payment was already verified, it will be marked for a refund review." onClose={() => setCancel(false)} onConfirm={() => { dispatch(transition({ id, status: "CANCELLED" })); setCancel(false); }} />}
+    {cancel && <ReasonDialog title="Cancel this booking?" text="Your place will be released. If payment was already verified, it will be marked for refund review." busy={s.pending > 0} onClose={() => setCancel(false)} onConfirm={async (reason) => { await dispatch(transition({ id, status: "CANCELLED", reason })); setCancel(false); }} />}
   </>;
 }

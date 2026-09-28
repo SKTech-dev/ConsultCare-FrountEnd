@@ -272,8 +272,9 @@ test("paid private appointment exposes time editing and preserves date and fee",
   await page.getByRole("button", { name: "Update time", exact: true }).click();
   await page.getByLabel("Start time", { exact: true }).fill("14:00");
   await page.getByLabel("End time", { exact: true }).fill("15:00");
+  await page.getByLabel("Reason for change").fill("Unavoidable schedule change");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
-  await expect.poll(() => saved).toEqual({ start: "14:00", end: "15:00" });
+  await expect.poll(() => saved).toEqual({ start: "14:00", end: "15:00", reason: "Unavoidable schedule change" });
   await expect(page.getByText("Time updated.", { exact: true })).toBeVisible();
 });
 

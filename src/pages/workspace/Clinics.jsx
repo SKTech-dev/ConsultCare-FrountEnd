@@ -14,6 +14,7 @@ import { useUnsavedChanges } from "../../components/ui/UnsavedChanges";
 import ErrorNotice from "../../components/ui/ErrorNotice";
 import ListFilters, { emptyFilters, filterParams } from "../../components/workspace/ListFilters";
 import EditSessionTime from "../../components/workspace/EditSessionTime";
+import ReasonDialog from "../../components/ui/ReasonDialog";
 
 function useClinics(endpoint) {
   const [result, setResult] = useState({ endpoint: null, data: null, error: "" });
@@ -226,7 +227,7 @@ function ClinicDetailContent({ id }) {
       {clinic.registrationCount > clinic.pageSize && <div className="clinic-pagination"><button className="ws-link secondary" disabled={page === 1} onClick={() => setPage((n) => n - 1)}>Previous</button><span>Page {page}</span><button className="ws-link secondary" disabled={page * clinic.pageSize >= clinic.registrationCount} onClick={() => setPage((n) => n + 1)}>Next</button></div>}
     </Panel></div>}
     {editing && <EditSessionTime clinic item={clinic} endpoint={`/clinics/${id}`} onClose={() => setEditing(false)} onSaved={async (text) => { setEditing(false); setNotice({ type: "success", text }); result.refresh(); await dispatch(fetchWorkspace()); }} />}
-    {confirm && <MessageOverlay type="confirm" title={confirm.title} text={confirm.text} onClose={() => setConfirm(null)} onConfirm={() => action(confirm.path, confirm.body)} />}
+    {confirm && (confirm.path === "cancel-registration" ? <ReasonDialog title={confirm.title} text={confirm.text} busy={busy} onClose={() => setConfirm(null)} onConfirm={(reason) => action(confirm.path, { reason })} /> : <MessageOverlay type="confirm" title={confirm.title} text={confirm.text} onClose={() => setConfirm(null)} onConfirm={() => action(confirm.path, confirm.body)} />)}
     {notice && <MessageOverlay type={notice.type} text={notice.text} onClose={() => setNotice(null)} />}
   </>;
 }

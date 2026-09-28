@@ -5,7 +5,7 @@ const empty = {
   role: null, professionalId: null, patient: {}, patients: [], professionals: [],
   sessions: [], weeklyAvailability: [], bookings: [], loaded: false, loading: false,
   pending: 0, error: "", requestId: null, payhereEnabled: false,
-  feedback: null, liveConnected: false, familyProfessionalIds: [], onboarding: null, transferNotifications: [],
+  feedback: null, liveConnected: false, familyProfessionalIds: [], onboarding: null, notificationSummary: null,
 };
 
 export const fetchWorkspace = createAsyncThunk("consultations/fetch", async (_, { rejectWithValue }) => {
@@ -30,13 +30,13 @@ export const saveProfile = command("saveProfile", (p) => ["PUT", "/profile", p])
 export const saveFamily = command("saveFamily", ({ id, saved }) => ["PUT", "/family-professionals/" + id, { saved }]);
 export const saveWeeklyAvailability = command("saveWeeklyAvailability", ({ days, fee }) => ["PUT", "/weekly-availability", { days, fee }]);
 export const book = command("book", (p) => ["POST", "/bookings", { sessionId: p.sessionId, reason: p.reason || "" }]);
-export const transition = command("transition", (p) => ["PATCH", "/bookings/" + p.id + "/status", { status: p.status }]);
+export const transition = command("transition", (p) => ["PATCH", "/bookings/" + p.id + "/status", { status: p.status, ...(p.reason ? { reason: p.reason } : {}) }]);
 export const message = command("message", (p) => ["POST", "/bookings/" + p.id + "/messages", { text: p.text }]);
 export const saveNotes = command("saveNotes", ({ id, ...p }) => ["PUT", "/bookings/" + id + "/notes", p]);
 export const sendPrescription = command("sendPrescription", ({ id, text }) => ["PUT", "/bookings/" + id + "/prescription", { text }]);
 // Admin moderation has its own contextual popup (for example, incomplete credentials).
 // Keep that one message instead of also showing the generic workspace error popup.
-export const moderate = command("moderate", (p) => ["PATCH", "/admin/users/" + p.id, { status: p.status }]);
+export const moderate = command("moderate", (p) => ["PATCH", "/admin/users/" + p.id, { status: p.status, ...(p.reason ? { reason: p.reason } : {}) }]);
 
 const slice = createSlice({
   name: "consultations", initialState: empty,

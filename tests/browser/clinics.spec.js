@@ -64,8 +64,9 @@ test("paid clinic allows time and places changes without cancellation or fee edi
   await dialog.getByLabel("Start time").fill("14:00");
   await dialog.getByLabel("End time").fill("15:00");
   await dialog.getByLabel("Places").fill("25");
+  await dialog.getByLabel("Reason for change").fill("Unavoidable schedule change");
   await dialog.getByRole("button", { name: "Save changes" }).click();
-  await expect.poll(() => saved).toEqual({ start: "14:00", end: "15:00", capacity: 25 });
+  await expect.poll(() => saved).toEqual({ start: "14:00", end: "15:00", capacity: 25, reason: "Unavoidable schedule change" });
   await expect(page.getByText("Clinic updated.", { exact: true })).toBeVisible();
 });
 

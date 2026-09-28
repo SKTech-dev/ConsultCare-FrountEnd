@@ -55,6 +55,7 @@ export default function SessionTransfers({ embedded = false, view = "all", allow
   }, [load]);
   async function resolve() {
     if (busy || !decision) return;
+    if (decision.action !== "accept" && response.trim().length < 3) { setNotice({ type: "error", text: "Explain why this handover is being rejected or withdrawn (at least 3 characters)." }); return; }
     setBusy(true);
     try {
       const result = await callApi("POST", `/session-transfers/${decision.item.id}/decision`, { action: decision.action, reason: response });
@@ -106,7 +107,7 @@ export default function SessionTransfers({ embedded = false, view = "all", allow
     {decision && <Modal title="Review handover decision" busy={busy} onClose={() => setDecision(null)}><Panel title={`${decision.action === "accept" ? "Accept this session?" : decision.action === "reject" ? "Reject this request?" : "Cancel this request?"}`}>
       <p>{label(decision.item)} · {decision.item.fromName} → {decision.item.toName}</p>
       {decision.action === "accept" && <p>By accepting, you agree to conduct the session at the existing booked fees. Availability and queued patients will be checked again.</p>}
-      <label className="ws-field">Response note (optional)<textarea value={response} maxLength={1000} onChange={(e) => setResponse(e.target.value)} disabled={busy} /></label>
+      <label className="ws-field">{decision.action === "accept" ? "Response note (optional)" : "Reason for this decision"}<textarea value={response} required={decision.action !== "accept"} minLength={decision.action !== "accept" ? 3 : undefined} maxLength={1000} onChange={(e) => setResponse(e.target.value)} disabled={busy} /></label><p className="ws-muted">Response notes are shared with the professionals and administrators, not patients.</p>
       <div className="ws-actions"><button className="ws-link" disabled={busy} onClick={resolve}>{busy ? "Saving…" : "Confirm " + decision.action}</button><button className="ws-link secondary" disabled={busy} onClick={() => setDecision(null)}>Back</button></div>
     </Panel></Modal>}
     {notice && <MessageOverlay type={notice.type} text={notice.text} onClose={() => setNotice(null)} />}
@@ -149,7 +150,7 @@ function TransferForm({ session, onClose, onSaved }) {
     <form className="transfer-search" onSubmit={search}><label className="ws-field">Search by name or email<input value={query} minLength={2} maxLength={120} required disabled={busy} onChange={(e) => { setQuery(e.target.value); setPerson(null); setPeople(null); }} /></label><button className="ws-link" disabled={busy || query.trim().length < 2}><Search size={16} />{busy ? "Please wait…" : "Search"}</button></form>
     {people?.length === 0 && <p>No matching verified professionals found.</p>}
     <div role="group" aria-label="Replacement professionals">{people?.map((p) => <label className="transfer-candidate" key={p.id}><input type="radio" name="receiver" value={p.id} checked={person?.id === p.id} disabled={busy || Boolean(p.unavailable)} onChange={() => setPerson(p)} /><span><strong>{p.name}</strong><small>{p.speciality} · {p.registration} · {p.languages.join(", ")}</small>{p.unavailable && <small className="ws-error">{p.unavailable}</small>}</span></label>)}</div>
-    <form onSubmit={send}><label className="ws-field">Reason for handover<textarea required minLength={5} maxLength={1000} value={reason} disabled={busy} onChange={(e) => setReason(e.target.value)} placeholder="Explain why cover is needed. Avoid patient or private medical information." /></label><div className="ws-actions"><button className="ws-link" disabled={busy || !person || reason.trim().length < 5}>Send request</button><button type="button" className="ws-link secondary" disabled={busy} onClick={close}>Close</button></div></form>
+    <form onSubmit={send}><label className="ws-field">Reason for handover<textarea required minLength={5} maxLength={1000} value={reason} disabled={busy} onChange={(e) => setReason(e.target.value)} placeholder="This reason will be shared with booked patients after acceptance. Do not include private medical or legal information." /></label><p className="ws-muted">After acceptance, booked patients and administrators are notified with this reason and the replacement professional's name.</p><div className="ws-actions"><button className="ws-link" disabled={busy || !person || reason.trim().length < 5}>Send request</button><button type="button" className="ws-link secondary" disabled={busy} onClick={close}>Close</button></div></form>
     {error && <MessageOverlay type="error" text={error} onClose={() => setError("")} />}
     {closing && <MessageOverlay type="confirm" title="Discard this handover draft?" text="Your replacement selection and reason have not been sent." confirmText="Discard draft" cancelText="Keep editing" onClose={() => setClosing(false)} onConfirm={onClose} />}
   </Panel></Modal>;

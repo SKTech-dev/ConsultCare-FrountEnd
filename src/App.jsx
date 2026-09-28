@@ -12,6 +12,7 @@ import AccessDenied from "./pages/AccessDenied";
 import Home from "./pages/Home";
 import Workspace, { Empty } from "./components/workspace/Workspace";
 import Overview from "./pages/workspace/Overview";
+import Notifications from "./components/workspace/Notifications";
 import { Directory, ProfessionalDetails } from "./pages/workspace/Directory";
 import { Bookings, BookingDetails, ProfessionalSessionHistory } from "./pages/workspace/Bookings";
 import { Queue, Sessions } from "./pages/workspace/Professional";
@@ -47,6 +48,7 @@ const router = createBrowserRouter(createRoutesFromElements(
     <Route element={<ProtectedRoute />}>
     <Route element={<Workspace />}>
       <Route path="/app" element={<Overview />} />
+      <Route path="/app/notifications" element={<Notifications />} />
       <Route path="/consult/doctors" element={<Directory key="doctors" profession="doctor" />} />
       <Route path="/consult/lawyers" element={<Directory key="lawyers" profession="lawyer" />} />
       <Route path="/app/professionals/:id" element={<ProfessionalDetails />} />

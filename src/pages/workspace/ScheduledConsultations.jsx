@@ -10,6 +10,7 @@ import "./appointments.css";
 import ErrorNotice from "../../components/ui/ErrorNotice";
 import ListFilters, { emptyFilters, filterParams } from "../../components/workspace/ListFilters";
 import EditSessionTime from "../../components/workspace/EditSessionTime";
+import ReasonDialog from "../../components/ui/ReasonDialog";
 
 export default function ScheduledConsultations({ embedded = false, renderQueue }) {
   const state = useWorkspace();
@@ -45,11 +46,11 @@ export default function ScheduledConsultations({ embedded = false, renderQueue }
     return () => { active = false; clearInterval(interval); controller.abort(); };
   }, [allowed, scope, page, retry, filters]);
 
-  async function cancelAppointment() {
+  async function cancelAppointment(reason) {
     if (busy || !cancel) return;
     setBusy(true);
     try {
-      const response = await callApi("POST", `/scheduled-consultations/${cancel.id}/cancel`);
+      const response = await callApi("POST", `/scheduled-consultations/${cancel.id}/cancel`, { reason });
       setCancel(null); setNotice({ type: "success", text: response.message });
       refresh(); await dispatch(fetchWorkspace());
     } catch (failure) { setCancel(null); setNotice({ type: "error", text: failure.message }); refresh(); }
@@ -79,7 +80,7 @@ export default function ScheduledConsultations({ embedded = false, renderQueue }
       {result && (result.count > result.pageSize || page > 1) && <div className="ws-actions"><button className="ws-link secondary" disabled={page <= 1} onClick={() => setPage((n) => n - 1)}>Previous</button><span>Page {page}</span><button className="ws-link secondary" disabled={page * result.pageSize >= result.count} onClick={() => setPage((n) => n + 1)}>Next</button></div>}
     </Panel>
     {editing && <EditSessionTime item={editing} endpoint={`/scheduled-consultations/${editing.id}`} onClose={() => setEditing(null)} onSaved={async (text) => { setEditing(null); setNotice({ type: "success", text }); refresh(); await dispatch(fetchWorkspace()); }} />}
-    {cancel && <MessageOverlay type="confirm" title="Cancel scheduled consultation?" text={`Cancel the unpaid appointment for ${cancel.patientName}? The patient will see the updated status.`} isProcessing={busy} onClose={() => { if (!busy) setCancel(null); }} onConfirm={cancelAppointment} />}
+    {cancel && <ReasonDialog title="Cancel scheduled consultation?" text={`Cancel the unpaid appointment for ${cancel.patientName}? The patient will receive your explanation.`} busy={busy} onClose={() => { if (!busy) setCancel(null); }} onConfirm={cancelAppointment} />}
     {notice && <MessageOverlay type={notice.type} text={notice.text} onClose={() => setNotice(null)} />}
   </section>;
 }

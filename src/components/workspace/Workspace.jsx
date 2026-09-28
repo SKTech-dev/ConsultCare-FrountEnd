@@ -8,7 +8,7 @@ import { fetchWorkspace, clearWorkspaceError, clearFeedback } from "../../featur
 import { MessageOverlay } from "../ui/MessageBox";
 import "./workspace.css";
 import ErrorNotice from "../ui/ErrorNotice";
-import TransferNotices from "./TransferNotices";
+import { NotificationBell, NotificationAlerts } from "./Notifications";
 import { useConfirmLeave } from "../ui/UnsavedChanges";
 
 export function useWorkspace() { return useSelector((s) => s.consultations); }
@@ -61,7 +61,7 @@ export default function Workspace() {
   }, [dispatch]);
   // This runs before paint: an incomplete account never briefly shows another workspace page.
   useLayoutEffect(() => {
-    if (!state.loaded || !state.onboarding) return;
+    if (!state.loaded || !state.onboarding || location.pathname === "/app/notifications") return;
     const destination = "/app/" + state.onboarding;
     if (location.pathname === destination) {
       onboardingStep.current = state.onboarding;
@@ -108,16 +108,16 @@ export default function Workspace() {
     </aside>
     <div inert={mobile && open ? "" : undefined} className={"ws-body " + (sidebarCollapsed ? "ws-body-expanded" : "")}>
       {sidebarCollapsed && <button className="ws-sidebar-restore" type="button" aria-label="Show sidebar" title="Show sidebar" onClick={() => setSidebarCollapsed(false)}><PanelLeftOpen size={18} /></button>}
-      <header className="ws-topbar"><button ref={menuButton} type="button" className="ws-menu" aria-label="Toggle navigation" aria-expanded={open} aria-controls="workspace-navigation" onClick={() => setOpen(!open)}>{open ? <X /> : <Menu />}</button><div><span className="ws-eyebrow">WELCOME BACK</span><p>{name}</p></div><div className="ws-identity"><span className="ws-avatar">{name.split(" ").map((w) => w[0]).slice(0, 2).join("")}</span></div></header>
+      <header className="ws-topbar"><button ref={menuButton} type="button" className="ws-menu" aria-label="Toggle navigation" aria-expanded={open} aria-controls="workspace-navigation" onClick={() => setOpen(!open)}>{open ? <X /> : <Menu />}</button><div><span className="ws-eyebrow">WELCOME BACK</span><p>{name}</p></div><NotificationBell /><div className="ws-identity"><span className="ws-avatar">{name.split(" ").map((w) => w[0]).slice(0, 2).join("")}</span></div></header>
       <div className="ws-preview"><div><strong>{state.role === "user" ? "Patient / client" : state.role} workspace</strong><span> · Connected to your account</span></div><button className="underline font-semibold" onClick={signOut}>Sign out</button></div>
       {state.error && <div className="mx-6"><ErrorNotice error={state.feedback ? "" : state.error} onRetry={() => { dispatch(clearWorkspaceError()); dispatch(fetchWorkspace()); }} /></div>}
       {state.pending > 0 && <GlobalLoader fullPage message="Saving changes..." />}
       {state.feedback && <MessageOverlay type={state.feedback.type} text={state.feedback.text} onClose={() => dispatch(clearFeedback())} />}
       {onboardingNotice && <MessageOverlay type="error" title={onboardingNotice.title} text={onboardingNotice.text} onClose={() => setOnboardingNotice(null)} />}
       <main className="ws-main">
-        {!state.onboarding && <TransferNotices />}
+        <NotificationAlerts />
         {state.onboarding && <div className="ws-notice">{state.onboarding === "profile" ? "Welcome. Complete your required profile details to continue." : "Next, save at least one weekly session and its consultation fee to finish your professional setup."}</div>}
-        {(!state.onboarding || location.pathname === "/app/" + state.onboarding) ? <Outlet /> : <GlobalLoader message="Opening your required setup page..." />}
+        {(!state.onboarding || location.pathname === "/app/" + state.onboarding || location.pathname === "/app/notifications") ? <Outlet /> : <GlobalLoader message="Opening your required setup page..." />}
       </main>
     </div>
   </div>;

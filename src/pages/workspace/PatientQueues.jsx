@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { useWorkspace, PageHeading, Panel, Empty, Status } from "../../components/workspace/Workspace";
 import { ACTIVE, money, sessionStartsAt, sessionEndsAt, sessionLabel } from "../../features/consultations/model";
 import { transition } from "../../features/consultations/consultationSlice";
-import { MessageOverlay } from "../../components/ui/MessageBox";
+import ReasonDialog from "../../components/ui/ReasonDialog";
 import { ClinicList } from "./Clinics";
 
 const timeLabel = (at) => new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Colombo" }).format(at);
@@ -41,6 +41,6 @@ export default function PatientQueues() {
     })}</div>
     {!bookings.length && <Empty title="No active bookings">Book a doctor or lawyer to see your consultation queue here.</Empty>}
     </Panel></div>
-    {cancel && <MessageOverlay type="confirm" title="Cancel consultation?" text="Your queue place will be released. Any paid booking will follow the existing refund process." isProcessing={state.pending > 0} onClose={() => setCancel(null)} onConfirm={async () => { await dispatch(transition({ id: cancel, status: "CANCELLED" })); setCancel(null); }} />}
+    {cancel && <ReasonDialog title="Cancel consultation?" text="Your queue place will be released. Any paid booking will require refund review. Your reason will be shared with the professional." busy={state.pending > 0} onClose={() => setCancel(null)} onConfirm={async (reason) => { await dispatch(transition({ id: cancel, status: "CANCELLED", reason })); setCancel(null); }} />}
   </>;
 }
