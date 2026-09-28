@@ -90,13 +90,17 @@ export default function SessionTransfers({ embedded = false, view = "all", allow
       {!history && !error && <p role="status">Loading requests…</p>}
       {history?.items.length === 0 && <Empty title="No handovers yet">Incoming requests, your requests and their outcomes appear here.</Empty>}
       {history?.items.map((item) => <article className="transfer-card" key={item.id}>
-        <div className="transfer-heading"><h3>{label(item)}</h3><Status>{item.status}</Status></div>
-        <p className="transfer-people">{item.fromName} <span aria-label="to">→</span> {item.toName}</p>
-        <div className="transfer-contacts"><p><strong>{item.fromName}</strong><br />{item.fromPhone ? <a href={`tel:${item.fromPhone}`}>{item.fromPhone}</a> : "Mobile number not provided"}</p><p><strong>{item.toName}</strong><br />{item.toPhone ? <a href={`tel:${item.toPhone}`}>{item.toPhone}</a> : "Mobile number not provided"}</p></div>
-        <p>{item.reason}</p><small>Requested by {item.initiatedBy} · {new Date(item.createdAt).toLocaleString()}</small>
-        <div className="transfer-totals"><span>{item.queueCount} queued at {item.status === "accepted" ? "acceptance" : "request"}</span><span>Estimated {money(item.expectedAmount)}</span>{item.status === "accepted" && <strong>Credited earnings {money(item.earnedAmount)}</strong>}</div>
-        {item.responseReason && <p>Response: {item.responseReason}</p>}
+        <div className="transfer-heading"><div><span className="transfer-eyebrow">{item.toId === workspace.professionalId ? "Incoming handover" : item.fromId === workspace.professionalId ? "Outgoing handover" : "Session handover"}</span><h3>{label(item)}</h3></div><Status>{item.status}</Status></div>
+        <div className="transfer-participants">
+          <div><span className="transfer-eyebrow">Original professional</span><strong>{item.fromName}</strong>{item.fromPhone ? <a href={`tel:${item.fromPhone}`}>{item.fromPhone}</a> : <span className="ws-muted">Mobile number not provided</span>}</div>
+          <ArrowRightLeft size={20} aria-hidden="true" className="transfer-direction" />
+          <div><span className="transfer-eyebrow">Replacement professional</span><strong>{item.toName}</strong>{item.toPhone ? <a href={`tel:${item.toPhone}`}>{item.toPhone}</a> : <span className="ws-muted">Mobile number not provided</span>}</div>
+        </div>
+        <div className="transfer-explanation"><span className="transfer-eyebrow">Reason for handover</span><p>{item.reason}</p></div>
+        <dl className="transfer-totals"><div><dt>Queued at {item.status === "accepted" ? "acceptance" : "request"}</dt><dd>{item.queueCount} patients</dd></div><div><dt>Estimated consultation total</dt><dd>{money(item.expectedAmount)}</dd></div>{item.status === "accepted" && <div><dt>Credited earnings</dt><dd>{money(item.earnedAmount)}</dd></div>}</dl>
+        {item.responseReason && <div className="transfer-explanation"><span className="transfer-eyebrow">Professional response · staff only</span><p>{item.responseReason}</p></div>}
         {item.status === "accepted" && <p className="ws-muted">Completed consultations are credited to the conducting professional. This is an earnings reassignment, not a bank payout.</p>}
+        <p className="transfer-request-meta">Requested by {item.initiatedBy} · {new Date(item.createdAt).toLocaleString("en-GB", { timeZone: "Asia/Colombo", dateStyle: "medium", timeStyle: "short" })} (Sri Lanka)</p>
         {item.status === "pending" && <div className="ws-actions">
           {item.toId === workspace.professionalId && <><button className="ws-link" disabled={busy} onClick={() => { setResponse(""); setDecision({ item, action: "accept" }); }}>Accept</button><button className="ws-link secondary" disabled={busy} onClick={() => { setResponse(""); setDecision({ item, action: "reject" }); }}>Reject</button></>}
           {(workspace.role === "admin" || item.fromId === workspace.professionalId) && <button className="ws-link secondary" disabled={busy} onClick={() => { setResponse(""); setDecision({ item, action: "cancel" }); }}>Cancel request</button>}

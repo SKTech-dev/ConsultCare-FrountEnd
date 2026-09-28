@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { useWorkspace, PageHeading, Panel, Empty, Status } from "../../components/workspace/Workspace";
-import { ACTIVE, canRead, money, sessionEndsAt, sessionLabel } from "../../features/consultations/model";
+import { ACTIVE, canRead, money, sessionEndsAt, sessionLabel, isUpcomingBooking } from "../../features/consultations/model";
 import { fetchWorkspace, transition } from "../../features/consultations/consultationSlice";
 import BookingPayment from "./BookingPayment";
 import ReasonDialog from "../../components/ui/ReasonDialog";
@@ -16,7 +16,7 @@ export function Bookings({ history = false }) {
   const s = useWorkspace();
   if (!history && s.role === "user") return <PatientQueues />;
   if (history && ["doctor", "lawyer"].includes(s.role)) return <ProfessionalHistory />;
-  const list = s.bookings.filter((b) => canRead(s, b) && (history ? ["COMPLETED", "CANCELLED", "NO-SHOW"].includes(b.status) : !["COMPLETED", "CANCELLED", "NO-SHOW"].includes(b.status)));
+  const list = s.bookings.filter((b) => canRead(s, b) && (history !== isUpcomingBooking(b, s.sessions.find((session) => session.id === b.sessionId))));
   return <><PageHeading title={history ? "Your consultation history." : "Your upcoming conversations."}>{history ? "Revisit consultation records, shared notes, and professional documents." : "Follow your booking from payment to the waiting room."}</PageHeading><div className="workspace-sections">{history && <ClinicList embedded view="history" title="Past group clinics" />}<Panel title={history ? "Past private consultations" : "Private consultations"}>{list.length ? <div>{list.slice().reverse().map((b) => <div className="ws-row" key={b.id}><div><h3>{s.professionals.find((p) => p.id === b.professionalId)?.name}</h3><p>{s.role !== "user" && b.patientName + " · "}{s.sessions.find((x) => x.id === b.sessionId)?.date} · {money(b.fee)}</p></div><Status>{b.status}</Status><Link className="ws-link secondary" to={"/app/booking/" + b.id}>View record →</Link></div>)}</div> : <Empty title={history ? "No past consultations yet" : "No bookings yet"}>Your consultations will appear here as you work through the booking flow.</Empty>}</Panel></div></>;
 }
 const DATE_FORMAT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Colombo" });

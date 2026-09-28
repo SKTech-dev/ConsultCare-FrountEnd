@@ -258,7 +258,7 @@ test("a professional searches for a receiver and requests a handover", async ({ 
   expect(submitted).toEqual({ professionalId: "receiver", reason: "Unavoidable absence" });
 });
 
-test("paid private appointment exposes time editing and preserves date and fee", async ({ page }) => {
+test("paid private appointment allows date and time editing without changing fee", async ({ page }) => {
   await mockAccount(page, snapshot());
   const item = { id: "private", patientName: "Patient", professionalName: "Doctor", date: "2026-09-23", start: "10:00", end: "11:00", fee: 5000, payment: "paid", status: "NEXT", canUpdate: true, canCancel: false };
   await page.route("**/api/scheduled-consultations?*", (route) => route.fulfill({ json: { data: { items: [item], count: 1, pageSize: 30 } } }));
@@ -269,12 +269,13 @@ test("paid private appointment exposes time editing and preserves date and fee",
   });
   await page.goto("/app/queue");
   await expect(page.getByRole("button", { name: "Cancel appointment" })).toHaveCount(0);
-  await page.getByRole("button", { name: "Update time", exact: true }).click();
+  await page.getByRole("button", { name: "Update date & time", exact: true }).click();
+  await page.getByLabel("Date", { exact: true }).fill("2026-09-25");
   await page.getByLabel("Start time", { exact: true }).fill("14:00");
   await page.getByLabel("End time", { exact: true }).fill("15:00");
   await page.getByLabel("Reason for change").fill("Unavoidable schedule change");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
-  await expect.poll(() => saved).toEqual({ start: "14:00", end: "15:00", reason: "Unavoidable schedule change" });
+  await expect.poll(() => saved).toEqual({ date: "2026-09-25", start: "14:00", end: "15:00", reason: "Unavoidable schedule change" });
   await expect(page.getByText("Time updated.", { exact: true })).toBeVisible();
 });
 
@@ -288,12 +289,35 @@ test("receiver confirms acceptance before the request is submitted", async ({ pa
     return route.fulfill({ json: { message: "Handover accepted." } });
   });
   await page.goto("/app/queue");
+  await page.setViewportSize({ width: 390, height: 844 });
+  const card = page.locator(".transfer-card");
+  await expect(card.getByText("Incoming handover", { exact: true })).toBeVisible();
+  await expect(card.getByText("Original professional", { exact: true })).toBeVisible();
+  await expect(card.getByText("Replacement professional", { exact: true })).toBeVisible();
+  expect(await card.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
   await page.getByRole("button", { name: "Accept", exact: true }).click();
   expect(submitted).toBeUndefined();
   await expect(page.getByRole("heading", { name: "Accept this session?" })).toBeVisible();
   await page.getByRole("button", { name: "Confirm accept" }).click();
   await expect(page.getByText("Handover accepted.", { exact: true })).toBeVisible();
   expect(submitted.action).toBe("accept");
+});
+
+test("patient upcoming excludes ended queues but preserves running calls and history", async ({ page }) => {
+  const state = snapshot("user");
+  state.sessions = [session("ended", "2026-09-21"), session("running", "2026-09-21"), session("future", "2026-09-23")];
+  state.bookings = [booking("expired", "ended", "WAITING"), booking("ongoing", "running", "IN CONSULTATION"), booking("upcoming", "future", "NEXT")];
+  await mockAccount(page, state);
+  await page.goto("/app/bookings");
+  // Incoming calls redirect once; return through the SPA to inspect the queue.
+  await expect(page).toHaveURL(/\/app\/room\/ongoing/);
+  await page.getByRole("navigation", { name: "Workspace" }).getByRole("link", { name: "My consultations" }).click();
+  await expect(page.locator('a[href="/app/booking/expired"]')).toHaveCount(0);
+  await expect(page.locator('a[href="/app/room/ongoing"]').first()).toBeVisible();
+  await expect(page.locator('a[href="/app/booking/upcoming"]')).toBeVisible();
+  await page.getByRole("navigation", { name: "Workspace" }).getByRole("link", { name: "My history" }).click();
+  await expect(page.locator('a[href="/app/booking/expired"]')).toBeVisible();
+  await expect(page.locator('a[href="/app/booking/upcoming"]')).toHaveCount(0);
 });
 
 test("handover queue and history request separate server-filtered views", async ({ page }) => {

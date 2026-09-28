@@ -24,6 +24,13 @@ export function isUpcomingSession(session, at = Date.now()) {
   return Boolean(session?.date && session.date >= sriLankanDate(at) && sessionEndsAt(session) > at);
 }
 
+export function isUpcomingBooking(booking, session, at = Date.now()) {
+  if (["COMPLETED", "CANCELLED", "NO-SHOW"].includes(booking.status)) return false;
+  // An over-running call must remain reachable even after its scheduled end.
+  if (booking.status === "IN CONSULTATION") return true;
+  return Boolean(session && sessionEndsAt(session) > at);
+}
+
 export function isBookableSession(session, at = Date.now()) {
   return Boolean(session?.online && isUpcomingSession(session, at));
 }

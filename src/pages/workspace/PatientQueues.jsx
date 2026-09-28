@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { Link } from "react-router-dom";
 import { useWorkspace, PageHeading, Panel, Empty, Status } from "../../components/workspace/Workspace";
-import { ACTIVE, money, sessionStartsAt, sessionEndsAt, sessionLabel } from "../../features/consultations/model";
+import { ACTIVE, money, sessionStartsAt, sessionEndsAt, sessionLabel, isUpcomingBooking } from "../../features/consultations/model";
 import { transition } from "../../features/consultations/consultationSlice";
 import ReasonDialog from "../../components/ui/ReasonDialog";
 import { ClinicList } from "./Clinics";
@@ -13,8 +13,14 @@ export default function PatientQueues() {
   const state = useWorkspace();
   const dispatch = useDispatch();
   const [cancel, setCancel] = useState(null);
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
   const bookings = state.bookings.filter((b) => b.patientId === state.patient.id && !["COMPLETED", "CANCELLED", "NO-SHOW"].includes(b.status))
     .map((booking) => ({ booking, session: state.sessions.find((s) => s.id === booking.sessionId) }))
+    .filter(({ booking, session }) => isUpcomingBooking(booking, session, now))
     .sort((a, b) => (a.session ? sessionStartsAt(a.session) : Infinity) - (b.session ? sessionStartsAt(b.session) : Infinity));
   return <>
     <PageHeading title="Your consultations.">Each booking has its own queue. {state.liveConnected ? "Live updates connected." : "Reconnecting live updates; checking periodically."}</PageHeading>

@@ -5,8 +5,19 @@
 .transfer-session small,.transfer-candidate small { display:block; margin-top:6px; color:var(--ws-textSecondary); }
 .transfer-card { padding:22px; margin-top:18px; border:1px solid var(--ws-border); border-radius:14px; background:var(--ws-cardBg); }
 .transfer-card p { margin-top:10px; overflow-wrap:anywhere; }
-.transfer-people { font-weight:600; }
-.transfer-totals { display:flex; flex-wrap:wrap; gap:12px 24px; padding:16px 0; font-size:13px; }
+.transfer-heading h3 { margin-top:6px; }
+.transfer-eyebrow { display:block; color:var(--ws-textSecondary); font-size:12px; font-weight:600; line-height:1.5; }
+.transfer-participants { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); align-items:center; gap:20px; margin:20px 0; padding:18px 0; border-block:1px solid var(--ws-border); }
+.transfer-participants > div { display:grid; gap:6px; min-width:0; overflow-wrap:anywhere; }
+.transfer-participants a { color:var(--ws-primary); text-decoration:underline; width:fit-content; }
+.transfer-direction { color:var(--ws-textSecondary); }
+.transfer-explanation { margin-top:16px; }
+.transfer-explanation p { margin-top:4px; white-space:pre-wrap; line-height:1.6; }
+.transfer-totals { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr)); gap:16px; padding:18px 0; margin:0; }
+.transfer-totals dt { color:var(--ws-textSecondary); font-size:12px; }
+.transfer-totals dd { margin:6px 0 0; font-size:16px; font-weight:600; }
+.transfer-request-meta { border-top:1px solid var(--ws-border); padding-top:14px; color:var(--ws-textSecondary); font-size:12px; line-height:1.6; }
+.transfer-card > .ws-actions { margin-top:16px; }
 .transfer-search { display:flex; align-items:end; gap:12px; margin:20px 0; }
 .transfer-search label { flex:1; min-width:0; margin-bottom:0; }
 .transfer-search > button { min-height:42px; flex-shrink:0; }
@@ -17,5 +28,4 @@
 .transfer-candidate:has(input:disabled) { cursor:not-allowed; opacity:.65; }
 .transfer-candidate:has(input:focus-visible) { outline:2px solid var(--ws-primary); outline-offset:2px; }
 @media(max-width:600px) { .transfer-search { flex-direction:column; align-items:stretch; } .transfer-card { padding:16px; } }
-.transfer-contacts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; margin: 16px 0; padding: 14px; border-radius: 12px; background: var(--ws-cardBg); }
-.transfer-contacts a { color: var(--ws-primary); text-decoration: underline; }
+@media(max-width:600px) { .transfer-participants { grid-template-columns:minmax(0,1fr); gap:16px; } .transfer-direction { display:none; } .transfer-heading { align-items:flex-start; } }

@@ -72,7 +72,7 @@ export default function ScheduledConsultations({ embedded = false, renderQueue }
         {item.status === "PAYMENT PENDING" && <p className="ws-notice">Awaiting patient acceptance and payment before {item.start} on {item.date}. This appointment cannot start unpaid.</p>}
         {renderQueue?.(item.id)}
         <div className="ws-actions">
-          {item.canUpdate && <button className="ws-link secondary" disabled={busy} onClick={() => setEditing(item)}>Update time</button>}
+          {item.canUpdate && <button className="ws-link secondary" disabled={busy} onClick={() => setEditing(item)}>Update date & time</button>}
           {state.role !== "admin" && item.acceptedAt && <Link className="ws-link secondary" to={`/app/booking/${item.id}`}>View consultation</Link>}
           {item.canCancel && <button className="ws-link secondary" disabled={busy} onClick={() => setCancel(item)}>Cancel appointment</button>}
         </div>
