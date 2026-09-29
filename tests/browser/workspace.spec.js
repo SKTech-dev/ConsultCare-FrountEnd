@@ -16,6 +16,32 @@ async function expectNamedControls(page) {
   expect(duplicates).toEqual([]);
 }
 
+test("patient email lookup works before appointment details and clears stale matches", async ({ page }) => {
+  await mockAccount(page, snapshot());
+  let searches = 0;
+  await page.route("**/api/scheduled-consultations/patient-search", (route) => {
+    searches++;
+    const { email } = route.request().postDataJSON();
+    return email === "patient@example.com"
+      ? route.fulfill({ json: { data: { name: "Matching Patient", email } } })
+      : route.fulfill({ status: 404, json: { message: "No active patient/client account matches that email." } });
+  });
+  await page.goto("/app/sessions");
+  const email = page.getByLabel("Patient / client email", { exact: true });
+  await page.getByRole("button", { name: "Find patient", exact: true }).click();
+  expect(searches).toBe(0);
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.getByRole("button", { name: "OK", exact: true }).click();
+  await email.fill("patient@example.com");
+  await page.getByRole("button", { name: "Find patient", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Matching Patient" })).toBeVisible();
+  expect(searches).toBe(1);
+  await email.fill("missing@example.com");
+  await expect(page.getByText("Matching Patient", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Find patient", exact: true }).click();
+  await expect(page.getByRole("dialog")).toContainText("No active patient/client account matches that email.");
+});
+
 test("auth form controls have accessible names and clickable labels", async ({ page }) => {
   await page.route("**/api/**", (route) => route.fulfill({ status: 401, json: { message: "Sign in" } }));
   for (const path of ["/login", "/signup"]) {
