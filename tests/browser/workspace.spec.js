@@ -3,6 +3,48 @@ import { test, expect } from "@playwright/test";
 const currentTime = "2026-09-22T10:30:00+05:30";
 const professional = { id: "professional", name: "Test Professional", role: "doctor", status: "verified", speciality: "General practice", qualifications: "Test qualification", registration: "REG-1", languages: ["English"], fee: 2500 };
 
+async function expectNamedControls(page) {
+  const controls = page.locator('input:not([type="hidden"]):visible, select:visible, textarea:visible');
+  expect(await controls.count()).toBeGreaterThan(0);
+  for (const control of await controls.all()) {
+    await expect(control).toHaveAccessibleName(/\S/);
+  }
+  const duplicates = await page.locator('[id]').evaluateAll((elements) => {
+    const ids = elements.map((element) => element.id);
+    return ids.filter((id, index) => ids.indexOf(id) !== index);
+  });
+  expect(duplicates).toEqual([]);
+}
+
+test("auth form controls have accessible names and clickable labels", async ({ page }) => {
+  await page.route("**/api/**", (route) => route.fulfill({ status: 401, json: { message: "Sign in" } }));
+  for (const path of ["/login", "/signup"]) {
+    await page.goto(path);
+    await expect(page.getByLabel("Email address", { exact: true })).toBeVisible();
+    await expectNamedControls(page);
+    await page.locator('label[for="email"]').click();
+    await expect(page.getByLabel("Email address", { exact: true })).toBeFocused();
+    await page.locator('label[for="password"]').click();
+    await expect(page.getByLabel("Password", { exact: true })).toBeFocused();
+  }
+});
+
+for (const role of ["user", "doctor", "lawyer", "admin"]) {
+  test(`${role} workspace form controls have accessible names`, async ({ page }) => {
+    await mockAccount(page, snapshot(role));
+    const paths = role === "admin"
+      ? ["/app/appointments", "/app/clinics", "/app/transfers"]
+      : role === "user"
+        ? ["/app/profile", "/consult/doctors", "/consult/lawyers"]
+        : ["/app/profile", "/app/sessions"];
+    for (const path of paths) {
+      await page.goto(path);
+      await expect(page.locator(".ws-main")).toBeVisible();
+      await expectNamedControls(page);
+    }
+  });
+}
+
 test("queue and history use consistent empty states and section gaps", async ({ page }) => {
   await mockAccount(page, snapshot());
   await page.goto("/app/queue");
