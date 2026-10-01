@@ -26,7 +26,7 @@ export default function IncomingConsultation() {
         dispatch(liveStatus(false));
         if (stopped) return;
         clearInterval(fallback);
-        fallback = setInterval(() => dispatch(fetchWorkspace()), 10000);
+        fallback = setInterval(() => dispatch(fetchWorkspace({ live: true })), 10000);
         reconnect = setTimeout(connect, Math.min(30000, 1000 * 2 ** attempt++));
       };
     }

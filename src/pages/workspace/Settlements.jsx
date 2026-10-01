@@ -6,6 +6,7 @@ import { Empty, PageHeading, Panel, useWorkspace } from "../../components/worksp
 import { MessageOverlay } from "../../components/ui/MessageBox";
 import "./settlements.css";
 import ErrorNotice from "../../components/ui/ErrorNotice";
+import ExternalPaymentDialog from "../../components/workspace/ExternalPaymentDialog";
 
 const cash = (value) => new Intl.NumberFormat("en-LK", {
   style: "currency", currency: "LKR", minimumFractionDigits: 2,
@@ -88,6 +89,7 @@ export function MonthlyEarnings() {
     <LoadState {...result} />
     {data && <>
       <TestNotice visible={data.testPayments} />
+      {data.accountingNotice && <p className="ws-notice">{data.accountingNotice}</p>}
       <p className="ws-muted mb-5">Accepted handovers are credited to the conducting professional at the original booked fee. Handed-over payments are labelled in the monthly payment details.</p>
       <p className="ws-muted mb-5">All amounts in LKR. Dates use Sri Lanka time. Payment status updates automatically.</p>
       {!data.months.length && <Empty title="No completed paid consultations yet">Monthly totals will appear here once paid consultations are completed.</Empty>}
@@ -134,6 +136,7 @@ export function MonthlyEarningsDetails() {
   const key = `${month}/${target}`;
   const page = pagination.key === key ? pagination.page : 1;
   const [popup, setPopup] = useState(false);
+  const [saved, setSaved] = useState(false);
   const result = useEarnings(allowed(role) && target ? `/settlements/${encodeURIComponent(month)}/${encodeURIComponent(target)}?page=${page}` : null);
   if (!allowed(role)) return <Empty title="Page unavailable">Monthly earnings are available to administrators and professionals.</Empty>;
   if (!target) return <Empty title="Choose a professional">Open a professional from the Monthly settlements page to view their payments.</Empty>;
@@ -149,7 +152,8 @@ export function MonthlyEarningsDetails() {
         <Panel title="Payout"><PayoutStatus payout={data.payout} />{data.payout.paidAt ? <p className="mt-3">Paid {dateLabel(data.payout.paidAt)} at {timeLabel(data.payout.paidAt)}<br />Reference: {data.payout.reference}</p> : <p className="mt-3">{data.closed ? "Awaiting monthly payout" : "This month is still in progress"}</p>}</Panel>
       </div>
       <TestNotice visible={data.testPayments} />
-      {admin && <div className="earnings-pay"><div><h3>Pay this professional</h3><p>Bank payouts will be available once the institution connects a payment provider.</p></div><button className="ws-link" disabled={Boolean(error) || !data.closed || ["paid", "processing"].includes(data.payout.status)} onClick={() => setPopup(true)}>Pay professional</button>{!data.closed && <p className="w-full">Monthly payouts are available after the month ends.</p>}</div>}
+      {Number(data.adjustment) !== 0 && data.adjustment != null && <p className="ws-notice" role="status">Earnings changed after payment. Adjustment to reconcile: {cash(data.adjustment)}. The original payout record has not been changed.</p>}
+      {admin && <div className="earnings-pay"><div><h3>Record external payment</h3><p>Record a verified bank transfer already made to this professional. ConsultCare does not send money.</p></div><button className="ws-link" disabled={Boolean(error) || !data.canPay} onClick={() => setPopup(true)}>Record external payment</button>{!data.closed && <p className="w-full">Record monthly settlements after the month ends.</p>}</div>}
       <Panel title="Private consultation payments">
         <p className="mb-4">Included by consultation completion date. Payment dates may fall in an earlier month. All dates and times are in Sri Lanka time.</p>
         <div className="ws-table-wrap"><table className="ws-table earnings-table"><caption className="sr-only">Payments for {data.professional.name}, {monthLabel(data.month)}</caption>
@@ -165,6 +169,7 @@ export function MonthlyEarningsDetails() {
       </Panel></div>
       <div className="earnings-pagination"><button className="ws-link secondary" disabled={page <= 1} onClick={() => setPagination({ key, page: page - 1 })}>Previous</button><span>Payments page {page} of {Math.max(1, Math.ceil(data.count / data.pageSize))} (both sections)</span><button className="ws-link secondary" disabled={page * data.pageSize >= data.count} onClick={() => setPagination({ key, page: page + 1 })}>Next</button></div>
     </>}
-    {popup && <MessageOverlay type="error" title="Payments are not connected yet" text="The institution needs to connect a payout provider before sending money. No money has been sent and this month remains unpaid." confirmText="Got it" onClose={() => setPopup(false)} />}
+    {popup && data && <ExternalPaymentDialog title="Record verified professional payment" amount={data.total} endpoint={`/admin/settlements/${encodeURIComponent(month)}/${encodeURIComponent(target)}/record-payment`} onClose={() => setPopup(false)} onSaved={() => { setPopup(false); setSaved(true); result.retry(); }} />}
+    {saved && <MessageOverlay type="success" text="External payment recorded. The professional has been notified. No money was transferred by this application." onClose={() => setSaved(false)} />}
   </>;
 }

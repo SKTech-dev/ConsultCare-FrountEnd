@@ -73,6 +73,18 @@ export function Documents({ booking }) {
 export default function Room() {
   const { id } = useParams();
   const s = useWorkspace();
+  const booking = s.bookings.find((item) => item.id === id);
+  if (!canRead(s, booking) || booking?.status !== "IN CONSULTATION") {
+    return <Empty title="The consultation room is not open">The assigned professional must call this booking before either participant can enter.</Empty>;
+  }
+  // React reuses route elements when only a route parameter changes. Scope the
+  // entire editor (including drafts, upload privacy and dirty-state tracking)
+  // to one booking, and initialize it only after that booking is available.
+  return <ConsultationRoom key={id} id={id} />;
+}
+
+function ConsultationRoom({ id }) {
+  const s = useWorkspace();
   const b = s.bookings.find((x) => x.id === id);
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -82,6 +94,7 @@ export default function Room() {
   const [notes, setNotes] = useState(b?.notes || "");
   const [privateNotes, setPrivateNotes] = useState(b?.privateNotes || "");
   const [followUp, setFollowUp] = useState(b?.followUp || "");
+  const [notesRevision, setNotesRevision] = useState(b?.notesRevision ?? 0);
   const markNotesSaved = useUnsavedChanges({ notes, privateNotes, followUp }, s.role !== "user");
   const markChatSaved = useUnsavedChanges(text);
   const [completing, setCompleting] = useState(false);
@@ -91,8 +104,8 @@ export default function Room() {
   useEffect(() => { if (chat.current) chat.current.scrollTop = chat.current.scrollHeight; }, [b?.messages.length]);
   const accessible = canRead(s, b) && b?.status === "IN CONSULTATION";
   async function storeNotes() {
-    const action = await dispatch(saveNotes({ id, notes, privateNotes, followUp }));
-    if (!action.error) markNotesSaved();
+    const action = await dispatch(saveNotes({ id, notes, privateNotes, followUp, revision: notesRevision }));
+    if (!action.error) { setNotesRevision(action.payload.revision); markNotesSaved(); }
     return action;
   }
   async function sendMessage(event) {
@@ -116,6 +129,6 @@ export default function Room() {
     <div className="ws-space"><Prescription key={b.id} booking={b} /></div>
     {s.role !== "user" && <div className="ws-space"><Panel title="Professional notes"><label className="ws-field">Notes shared with the patient / client<textarea value={notes} maxLength={5000} onChange={(e) => setNotes(e.target.value)} /></label><label className="ws-field">Private notes (professional workspace only)<textarea value={privateNotes} maxLength={5000} onChange={(e) => setPrivateNotes(e.target.value)} /></label><label className="ws-field">Follow-up recommendation<textarea value={followUp} maxLength={2000} onChange={(e) => setFollowUp(e.target.value)} /></label><div className="ws-actions room-note-actions"><button className="ws-link secondary" onClick={async () => { const action = await storeNotes(); if (!action.error) setFeedback("Notes saved."); }}>Save notes</button><button className="ws-link" onClick={() => setConfirm(true)}>Complete consultation</button></div><p role="status" className="mt-3">{feedback}</p></Panel></div>}
     {chatError && <MessageOverlay type="error" text={chatError} onClose={() => setChatError("")} />}
-    {confirm && <MessageOverlay type="confirm" title="Complete this consultation?" text="Your notes will be saved, this record will move to history, and the next person in this session will be promoted." confirmText="Complete" isProcessing={completing} onClose={() => setConfirm(false)} onConfirm={async () => { if (completing) return; setCompleting(true); try { const saved = await storeNotes(); if (saved.error) { setConfirm(false); return; } const action = await dispatch(transition({ id, status: "COMPLETED" })); setConfirm(false); if (!action.error) navigate("/app/booking/" + id); } finally { setCompleting(false); } }} />}
+    {confirm && <MessageOverlay type="confirm" title="Complete this consultation?" text="Your notes will be saved, this record will move to history, and the next person in this session will be promoted." confirmText="Complete" isProcessing={completing} onClose={() => setConfirm(false)} onConfirm={async () => { if (completing) return; setCompleting(true); try { const saved = await storeNotes(); if (saved.error) { setConfirm(false); return; } const action = await dispatch(transition({ id, status: "COMPLETED", notesRevision: saved.payload.revision })); setConfirm(false); if (!action.error) navigate("/app/booking/" + id); } finally { setCompleting(false); } }} />}
   </div>;
 }

@@ -189,6 +189,11 @@ function booking(id, sessionId, status = "NEXT") {
 }
 
 async function mockAccount(page, state, options = {}) {
+  // These browser fixtures must never contact deployed APIs or providers.
+  await page.route("**/*", (route) => {
+    const hostname = new URL(route.request().url()).hostname;
+    return ["127.0.0.1", "localhost"].includes(hostname) ? route.continue() : route.abort();
+  });
   await page.clock.setFixedTime(new Date(currentTime));
   await page.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
@@ -204,8 +209,98 @@ async function mockAccount(page, state, options = {}) {
   });
   // These tests exercise rendering/routing with deterministic data; backend tests
   // independently exercise real authenticated WebSocket queue updates.
-  await page.routeWebSocket("**/api/workspace/live", (socket) => socket.send(JSON.stringify(state)));
+  let stream;
+  await page.routeWebSocket("**/api/workspace/live", (socket) => {
+    stream = socket;
+    socket.send(JSON.stringify(state));
+  });
+  return { push: () => stream.send(JSON.stringify(state)) };
 }
+
+test("switching incoming consultation rooms discards the previous patient's chat draft", async ({ page }) => {
+  const state = snapshot("user");
+  state.professionals.push({ ...professional, id: "replacement", name: "Second Professional" });
+  state.sessions = [session("first", "2026-09-22"), { ...session("second", "2026-09-22"), professionalId: "replacement" }];
+  state.bookings = [booking("first", "first", "IN CONSULTATION"), { ...booking("second", "second"), professionalId: "replacement" }];
+  const live = await mockAccount(page, state);
+  await page.goto("/app/room/first");
+  const message = page.getByRole("textbox", { name: "Message", exact: true });
+  await message.fill("Private draft for the first professional only");
+  state.bookings[1].status = "IN CONSULTATION";
+  live.push();
+  await expect(page.getByRole("dialog", { name: "Leave without saving?" })).toBeVisible();
+  await page.getByRole("button", { name: "Leave without saving", exact: true }).click();
+  await expect(page).toHaveURL(/\/app\/room\/second$/);
+  await expect(page.getByRole("heading", { name: "Second Professional", exact: true })).toBeVisible();
+  await expect(message).toHaveValue("");
+  await expect(page.getByRole("button", { name: "Send message", exact: true })).toBeDisabled();
+  await page.getByRole("navigation").getByRole("link", { name: "My consultations" }).click();
+  await expect(page).toHaveURL(/\/app\/bookings$/);
+  await expect(page.getByRole("dialog", { name: "Leave without saving?" })).toHaveCount(0);
+});
+
+test("admin records an external settlement with evidence instead of simulating a transfer", async ({ page }) => {
+  await mockAccount(page, snapshot("admin"));
+  const data = { month: "2024-04", professional: { id: "professional", name: "Test Professional", role: "doctor" }, total: "5000.00", consultationTotal: "5000.00", clinicTotal: "0.00", count: 1, pageSize: 50, closed: true, canPay: true, adjustment: "0.00", payout: { status: "unpaid" }, payments: [] };
+  await page.route("**/api/settlements/2024-04/professional*", (route) => route.fulfill({ json: { data } }));
+  let submitted;
+  await page.route("**/api/admin/settlements/2024-04/professional/record-payment", (route) => {
+    submitted = route.request().postDataJSON();
+    data.canPay = false;
+    data.payout = { status: "paid", reference: submitted.reference, paidAt: submitted.paidAt };
+    return route.fulfill({ json: { message: "Recorded." } });
+  });
+  await page.goto("/app/settlements/2024-04/professional");
+  await page.getByRole("button", { name: "Record external payment", exact: true }).click();
+  await page.getByLabel("Bank / provider reference").fill("BANK-TEST-1");
+  await page.getByLabel("Actual payment date and time (your local time)").fill("2024-05-01T10:00");
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "Record completed payment" }).click();
+  await expect(page.getByRole("dialog")).toContainText("No money was transferred");
+  expect(submitted).toMatchObject({ amount: "5000.00", reference: "BANK-TEST-1", confirmed: true });
+  await page.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Record external payment", exact: true })).toBeDisabled();
+});
+
+test("admin records an external refund and the evidence remains visible", async ({ page }) => {
+  await mockAccount(page, snapshot("admin"));
+  const row = { id: "OLD-ORDER", patientName: "Test Patient", amount: "2500.00", environment: "live", status: "refund requested" };
+  await page.route("**/api/admin/refunds?*", (route) => route.fulfill({ json: { data: { items: [row], count: 1, pageSize: 30 } } }));
+  await page.route("**/api/admin/refunds/OLD-ORDER/record", (route) => {
+    row.status = "refunded"; row.reference = route.request().postDataJSON().reference;
+    return route.fulfill({ json: { message: "Recorded." } });
+  });
+  await page.goto("/app/payments");
+  await page.getByRole("button", { name: "Record external refund" }).click();
+  await page.getByLabel("Bank / provider reference").fill("REFUND-TEST-1");
+  await page.getByLabel("Actual payment date and time (your local time)").fill("2024-05-01T10:00");
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "Record completed payment" }).click();
+  await expect(page.getByRole("dialog")).toContainText("Refund recorded");
+  await page.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByText("Reference: REFUND-TEST-1")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Record external refund" })).toHaveCount(0);
+});
+
+test("an ended weekly consultation can be resolved without blaming the patient", async ({ page }) => {
+  const state = snapshot();
+  state.sessions = [session("past", "2026-09-21")];
+  state.bookings = [booking("unfinished", "past")];
+  await mockAccount(page, state);
+  let submitted;
+  await page.route("**/api/bookings/unfinished/resolve", (route) => {
+    submitted = route.request().postDataJSON();
+    state.bookings[0].status = submitted.outcome;
+    state.bookings[0].payment = "refund requested";
+    return route.fulfill({ json: { message: "Resolved." } });
+  });
+  await page.goto("/app/booking/unfinished");
+  await page.getByRole("button", { name: "Consultation not provided" }).click();
+  await page.getByLabel(/reason/i).fill("Professional was unavailable");
+  await page.getByRole("dialog").getByRole("button", { name: "Confirm", exact: true }).click();
+  await expect(page.getByRole("dialog")).toContainText("Consultation resolved");
+  expect(submitted).toEqual({ outcome: "CANCELLED", reason: "Professional was unavailable" });
+});
 
 test("unsaved profile blocks navigation and successful save clears the warning", async ({ page }) => {
   const state = snapshot("user");

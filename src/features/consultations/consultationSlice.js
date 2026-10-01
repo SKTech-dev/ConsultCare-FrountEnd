@@ -5,11 +5,11 @@ const empty = {
   role: null, professionalId: null, patient: {}, patients: [], professionals: [],
   sessions: [], weeklyAvailability: [], bookings: [], loaded: false, loading: false,
   pending: 0, error: "", requestId: null, payhereEnabled: false,
-  feedback: null, liveConnected: false, familyProfessionalIds: [], onboarding: null, notificationSummary: null,
+  feedback: null, liveConnected: false, familyProfessionalIds: [], onboarding: null, notificationSummary: null, livePending: null,
 };
 
-export const fetchWorkspace = createAsyncThunk("consultations/fetch", async (_, { rejectWithValue }) => {
-  try { return (await callApi("GET", "/workspace")).data; }
+export const fetchWorkspace = createAsyncThunk("consultations/fetch", async (options, { rejectWithValue }) => {
+  try { return (await callApi("GET", options?.live ? "/workspace?live=true" : "/workspace")).data; }
   catch (e) { return rejectWithValue(e.message); }
 });
 
@@ -19,7 +19,7 @@ function command(name, request) {
       const [method, url, body] = request(payload, context.getState().consultations);
       const response = await callApi(method, url, body);
       // A failed refresh must not report an already-committed write as failed.
-      const refresh = await context.dispatch(fetchWorkspace());
+      const refresh = await context.dispatch(fetchWorkspace({ live: true }));
       if (refresh.error) context.dispatch(refreshWarning());
       return response.data || response;
     } catch (e) { return context.rejectWithValue(e.message || e); }
@@ -30,13 +30,31 @@ export const saveProfile = command("saveProfile", (p) => ["PUT", "/profile", p])
 export const saveFamily = command("saveFamily", ({ id, saved }) => ["PUT", "/family-professionals/" + id, { saved }]);
 export const saveWeeklyAvailability = command("saveWeeklyAvailability", ({ days, fee }) => ["PUT", "/weekly-availability", { days, fee }]);
 export const book = command("book", (p) => ["POST", "/bookings", { sessionId: p.sessionId, reason: p.reason || "" }]);
-export const transition = command("transition", (p) => ["PATCH", "/bookings/" + p.id + "/status", { status: p.status, ...(p.reason ? { reason: p.reason } : {}) }]);
+export const transition = command("transition", (p) => ["PATCH", "/bookings/" + p.id + "/status", { status: p.status, ...(p.reason ? { reason: p.reason } : {}), ...(p.notesRevision != null ? { notesRevision: p.notesRevision } : {}) }]);
 export const message = command("message", (p) => ["POST", "/bookings/" + p.id + "/messages", { text: p.text }]);
 export const saveNotes = command("saveNotes", ({ id, ...p }) => ["PUT", "/bookings/" + id + "/notes", p]);
 export const sendPrescription = command("sendPrescription", ({ id, text }) => ["PUT", "/bookings/" + id + "/prescription", { text }]);
 // Admin moderation has its own contextual popup (for example, incomplete credentials).
 // Keep that one message instead of also showing the generic workspace error popup.
 export const moderate = command("moderate", (p) => ["PATCH", "/admin/users/" + p.id, { status: p.status, ...(p.reason ? { reason: p.reason } : {}) }]);
+
+function applyWorkspace(state, payload) {
+  if (payload.bookingsScope !== "live") {
+    Object.assign(state, payload);
+    return;
+  }
+  const allowed = new Set(payload.visibleBookingIds);
+  const records = new Map(state.bookings.filter((row) => allowed.has(row.id)).map((row) => [row.id, row]));
+  for (const row of payload.bookings) records.set(row.id, row);
+  // History sessions remain available while their authorized bookings remain.
+  const retainedSessions = new Set([...records.values()].map((row) => row.sessionId));
+  const sessions = new Map(state.sessions.filter((row) => retainedSessions.has(row.id)).map((row) => [row.id, row]));
+  for (const row of payload.sessions) sessions.set(row.id, row);
+  const historicalProfessionals = new Set([...records.values()].map((row) => row.professionalId));
+  const professionals = new Map(state.professionals.filter((row) => historicalProfessionals.has(row.id)).map((row) => [row.id, row]));
+  for (const row of payload.professionals) professionals.set(row.id, row);
+  Object.assign(state, payload, { bookings: [...records.values()], sessions: [...sessions.values()], professionals: [...professionals.values()] });
+}
 
 const slice = createSlice({
   name: "consultations", initialState: empty,
@@ -47,7 +65,10 @@ const slice = createSlice({
     liveStatus: (state, action) => { state.liveConnected = action.payload; },
     liveTick: (state) => { state.liveUpdatedAt = Date.now(); },
     receiveWorkspace: (state, action) => {
-      Object.assign(state, action.payload, { loaded: true, loading: false, requestId: null });
+      if (action.payload.bookingsScope === "live" && (!state.loaded || state.loading)) state.livePending = action.payload;
+      if (action.payload.bookingsScope === "live" && !state.loaded) return;
+      applyWorkspace(state, action.payload);
+      if (action.payload.bookingsScope !== "live") Object.assign(state, { loaded: true, loading: false, requestId: null });
     },
   },
   extraReducers: (builder) => {
@@ -57,7 +78,9 @@ const slice = createSlice({
       .addCase(fetchWorkspace.pending, (state, action) => { state.loading = true; state.requestId = action.meta.requestId; })
       .addCase(fetchWorkspace.fulfilled, (state, action) => {
         if (state.requestId !== action.meta.requestId) return;
-        Object.assign(state, action.payload, { loaded: true, loading: false });
+        applyWorkspace(state, action.payload);
+        if (state.livePending) { applyWorkspace(state, state.livePending); state.livePending = null; }
+        Object.assign(state, { loaded: true, loading: false });
       })
       .addCase(fetchWorkspace.rejected, (state, action) => {
         if (state.requestId !== action.meta.requestId) return;

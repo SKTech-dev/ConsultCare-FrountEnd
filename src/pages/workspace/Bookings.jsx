@@ -11,6 +11,7 @@ import PatientQueues from "./PatientQueues";
 import SessionTransfers from "./SessionTransfers";
 import { ClinicList } from "./Clinics";
 import { PatientContext, ChatMessages, Prescription } from "./ConsultationRecord";
+import ResolveUnfinished from "../../components/workspace/ResolveUnfinished";
 
 export function Bookings({ history = false }) {
   const s = useWorkspace();
@@ -128,6 +129,7 @@ export function BookingDetails() {
     </Panel><Panel title={b.status === "COMPLETED" ? "Consultation record" : "Your waiting room"}>
       {ACTIVE.includes(b.status) ? <><span className="ws-queue-number">{b.status === "IN CONSULTATION" ? "Ready" : position}</span><h3>{b.status === "IN CONSULTATION" ? "Your professional has called you." : b.status === "NEXT" ? "You're next. Please be ready." : Math.max(0, position - 1) + " people ahead of you."}</h3><p className="mt-3">Your position updates automatically. Wait for {p.name} to call you before joining the room.</p>{b.status === "IN CONSULTATION" && <Link to={"/app/room/" + b.id} className="ws-link mt-6">Join consultation →</Link>}</> : b.status === "COMPLETED" ? <><h3>Notes shared with you</h3><p className="whitespace-pre-wrap mt-3">{b.notes || "No shared notes were added."}</p><h3 className="mt-6">Follow-up recommendation</h3><p className="whitespace-pre-wrap mt-3">{b.followUp || "No follow-up recommendation recorded."}</p>{s.role !== "user" && <><h3 className="mt-6">Private professional notes</h3><p className="whitespace-pre-wrap mt-3">{b.privateNotes || "No private notes."}</p></>}</> : <p>{b.status === "PAYMENT PENDING" ? "Complete secure payment to join this professional's queue." : "This consultation is no longer in the active queue."}</p>}
     </Panel></div>
+    <div className="ws-space"><ResolveUnfinished booking={b} /></div>
     <div className="ws-space"><Documents booking={b} /></div>
     <div className="ws-space"><PatientContext booking={b} /></div>
     <div className="ws-space"><Prescription key={b.id} booking={b} /></div>

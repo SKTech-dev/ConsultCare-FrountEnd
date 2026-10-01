@@ -6,6 +6,7 @@ import { moderate } from "../../features/consultations/consultationSlice";
 import { money } from "../../features/consultations/model";
 import { MessageOverlay } from "../../components/ui/MessageBox";
 import ReasonDialog from "../../components/ui/ReasonDialog";
+import Refunds from "./Refunds";
 
 function ModerationPopups({ pending, error, submitting, onClose, onConfirm, onDismissError }) {
   return <>{pending && (["rejected", "suspended"].includes(pending.status) ? <ReasonDialog title="Explain account decision" text={`${pending.name} will be marked ${pending.status}. Your reason is saved in their notification inbox.`} busy={submitting} onClose={onClose} onConfirm={onConfirm} /> : <MessageOverlay type="confirm" title="Update account status?" text={`${pending.name} will be marked ${pending.status}.`} onClose={onClose} onConfirm={() => onConfirm("")} isProcessing={submitting} />)}{error && <MessageOverlay type="error" title={error.title} text={error.text} onClose={onDismissError} />}</>;
@@ -59,6 +60,14 @@ export function AdminPersonDetails() {
 }
 
 export function AdminPayments() {
+  return <><PaymentOverview /><div className="ws-space"><AdminRefunds /></div></>;
+}
+
+function AdminRefunds() {
+  return useWorkspace().role === "admin" ? <Refunds /> : null;
+}
+
+function PaymentOverview() {
   const s = useWorkspace();
   if (s.role !== "admin") return <Empty title="Administrator workspace">This page requires an administrator account.</Empty>;
   return <><PageHeading title="Payments and refunds.">Review PayHere payment records. Consultation notes and documents are not shown here.</PageHeading><div className="ws-space"><Panel title="Clinic payments"><p>Group clinic payments are tracked separately. Open a clinic to review registrations and payment status.</p><Link className="ws-link secondary" to="/app/clinics">Review clinic payments</Link></Panel></div><Panel title="Private consultation payments">{s.bookings.length ? s.bookings.map((b) => <div className="ws-row" key={b.id}><div><h3>{b.patientName} · {money(b.fee)}</h3><p>Booking {b.id.slice(0, 8)} · {b.status}</p></div><Status>{b.payment}</Status>{b.payment === "refund requested" && <span className="ws-muted">Refund review required</span>}</div>) : <Empty title="No payments yet">Verified PayHere payments will appear here.</Empty>}</Panel></>;

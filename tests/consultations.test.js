@@ -55,7 +55,7 @@ test("booking uses server identity and fee, includes CSRF, and refreshes state",
   assert.equal(value.id, "server-booking");
   assert.deepEqual(JSON.parse(requests[0].data), { sessionId: "session-id", reason: "Question" });
   assert.equal(requests[0].headers["X-CSRF-Token"], "test-csrf");
-  assert.equal(requests[1].url, "/workspace");
+  assert.equal(requests[1].url, "/workspace?live=true");
   assert.equal(s.getState().consultations.pending, 0);
 });
 
