@@ -136,7 +136,7 @@ export default function Clinics() {
   if (["doctor", "lawyer"].includes(role)) return <Navigate to="/app/queue?tab=clinics" replace />;
   if (role === "user") return <Navigate to="/app/bookings?tab=clinics" replace />;
   return <><PageHeading title={role === "admin" ? "Clinics & registrations." : "Your group clinics."}>Review schedules, confirmed registrations and clinic payments separately from private consultations.</PageHeading>
-    <label className="ws-field clinic-filter">Clinic view<select value={view} onChange={(event) => setView(event.target.value)}><option value="upcoming">Upcoming and live</option><option value="history">Past and cancelled</option><option value="all">All clinics</option>{role === "user" && <option value="available">Available clinics</option>}</select></label>
+    <label className="ws-field clinic-filter">Clinic view<select value={view} onChange={(event) => setView(event.target.value)}><option value="upcoming">Upcoming</option><option value="ongoing">Ongoing</option><option value="history">Past and cancelled</option><option value="all">All clinics</option>{role === "user" && <option value="available">Available clinics</option>}</select></label>
     <ListFilters label="Filter group clinics" onApply={setFilters} statuses={["scheduled", "live", "completed", "cancelled"]} />
     <ClinicList view={view} filters={filters} />
   </>;

@@ -61,7 +61,7 @@ export default function ScheduledConsultations({ embedded = false, renderQueue }
     {!embedded && <PageHeading title="Scheduled consultations.">Monitor one-off invitations, patient acceptance, payments and consultation outcomes. Clinical records remain private.</PageHeading>}
     <Panel title="One-off scheduled consultations">
       <p>Patients must accept and pay before the start time. Only paid appointments can be called from the consultation queue.</p>
-      {!embedded && <label className="ws-field appointment-filter">Show<select aria-label="Appointment view" value={scope} onChange={(e) => { setScope(e.target.value); setPage(1); }}><option value="upcoming">Upcoming</option><option value="history">History</option><option value="all">All appointments</option></select></label>}
+      {!embedded && <label className="ws-field appointment-filter">Show<select aria-label="Appointment view" value={scope} onChange={(e) => { setScope(e.target.value); setPage(1); }}><option value="upcoming">Upcoming</option><option value="ongoing">Ongoing</option><option value="history">History</option><option value="all">All appointments</option></select></label>}
       <ErrorNotice error={error} onRetry={refresh} />
       {!result && !error && <p role="status">Loading scheduled consultations…</p>}
       {state.role === "admin" && <ListFilters label="Filter scheduled consultations" onApply={(value) => { setFilters(value); setPage(1); }} statuses={["PAYMENT PENDING", "WAITING", "NEXT", "IN CONSULTATION", "COMPLETED", "CANCELLED", "NO-SHOW"]} />}

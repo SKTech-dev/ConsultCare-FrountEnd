@@ -24,6 +24,7 @@ import Room from "./pages/workspace/Room";
 import IncomingConsultation from "./components/workspace/IncomingConsultation";
 import { AdminPeople, AdminPersonDetails, AdminPayments } from "./pages/workspace/Admin";
 import { MonthlyEarnings, MonthlyEarningsDetails } from "./pages/workspace/Settlements";
+import AdminSchedules from "./pages/workspace/AdminSchedules";
 
 export default function App() {
   const dispatch = useDispatch();
@@ -65,6 +66,7 @@ const router = createBrowserRouter(createRoutesFromElements(
       <Route path="/app/admin" element={<AdminPeople />} />
       <Route path="/app/transfers" element={<SessionTransfers />} />
       <Route path="/app/appointments" element={<ScheduledConsultations />} />
+      <Route path="/app/weekly-schedules" element={<AdminSchedules />} />
       <Route path="/app/admin/person/:type/:id" element={<AdminPersonDetails />} />
       <Route path="/app/payments" element={<AdminPayments />} />
       <Route path="/app/settlements" element={<MonthlyEarnings />} />
