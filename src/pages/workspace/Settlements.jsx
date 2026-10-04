@@ -84,7 +84,7 @@ export function MonthlyEarnings() {
   if (!allowed(role)) return <Empty title="Page unavailable">Monthly earnings are available to administrators and professionals.</Empty>;
   const { data } = result;
   return <>
-    <PageHeading eyebrow={admin ? "PROFESSIONAL PAYOUTS" : "YOUR EARNINGS"} title={admin ? "Monthly settlements" : "My earnings"} action={<Link className="ws-link secondary" to={admin ? "/app/transfers" : "/app/history"}>View handovers</Link>}>
+    <PageHeading eyebrow={admin ? "PROFESSIONAL PAYOUTS" : "YOUR EARNINGS"} title={admin ? "Monthly settlements" : "My earnings"} action={<Link className="ws-link secondary" to={admin ? "/app/transfers?tab=history" : "/app/history?tab=handovers"}>View handovers</Link>}>
       Earnings are grouped by the month each consultation or clinic was completed. Professionals receive the full payment; clinic ticket revenue is shown separately.
     </PageHeading>
     <LoadState {...result} />
@@ -155,7 +155,7 @@ export function MonthlyEarningsDetails() {
       <TestNotice visible={data.testPayments} />
       {Number(data.adjustment) !== 0 && data.adjustment != null && <p className="ws-notice" role="status">Earnings changed after payment. Adjustment to reconcile: {cash(data.adjustment)}. The original payout record has not been changed.</p>}
       {admin && <div className="earnings-pay"><div><h3>{data.testPayments ? "Record sandbox settlement" : "Record external payment"}</h3><p>{data.testPayments ? "Test the complete settlement workflow with sandbox amounts. This does not record a real bank transfer." : "Record a verified bank transfer already made to this professional. ConsultCare does not send money."}</p></div><button className="ws-link" disabled={Boolean(error) || !data.canPay} onClick={() => setPopup(true)}>{data.testPayments ? "Record sandbox settlement" : "Record external payment"}</button>{!data.closed && <p className="w-full">Record monthly settlements after the month ends.</p>}</div>}
-      <SectionTabs><Panel title="Private consultation payments">
+      <SectionTabs ids={["consultations", "clinics"]}><Panel title="Private consultation payments">
         <p className="mb-4">Included by consultation completion date. Payment dates may fall in an earlier month. All dates and times are in Sri Lanka time.</p>
         <div className="ws-table-wrap"><table className="ws-table earnings-table"><caption className="sr-only">Payments for {data.professional.name}, {monthLabel(data.month)}</caption>
           <thead><tr><th scope="col">Patient / client</th><th scope="col">Date paid</th><th scope="col">Time paid</th><th scope="col">Consultation completed</th><th scope="col">Amount</th></tr></thead>

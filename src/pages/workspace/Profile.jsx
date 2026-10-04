@@ -51,7 +51,7 @@ function ProfileForm({ source, patient }) {
     <PageHeading title={patient ? "A profile that's yours." : "Your professional profile."}>
       {patient ? "Keep your contact information accurate and up to date." : "Introduce yourself, keep your credentials up to date and help patients or clients get to know you. Consultation fees are managed in My sessions."}
     </PageHeading>
-    <SectionTabs>
+    <SectionTabs ids={["details", "verification"]}>
       <Panel title="Your details">
         <form className="ws-form" onSubmit={save}>
           <fieldset className="profile-fields" disabled={saving || readingImage}>

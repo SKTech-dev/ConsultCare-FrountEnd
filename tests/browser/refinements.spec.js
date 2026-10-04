@@ -1,6 +1,44 @@
 import { test, expect } from "@playwright/test";
 
 const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aTlcAAAAASUVORK5CYII=";
+
+test("video-only fullscreen retains the panel and exits cleanly", async ({ page }) => {
+  await account(page);
+  await page.goto("/app/room/record");
+  await page.locator(".room-video-panel").evaluate((panel) => { window.originalVideoPanel = panel; });
+  await page.getByRole("button", { name: "Video full screen", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Exit video full screen", exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.fullscreenElement === window.originalVideoPanel || window.originalVideoPanel.classList.contains("video-expanded"))).toBe(true);
+  await page.getByRole("button", { name: "Exit video full screen", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Video full screen", exact: true })).toBeVisible();
+  expect(await page.locator(".room-video-panel").evaluate((panel) => panel === window.originalVideoPanel)).toBe(true);
+});
+
+test("video fullscreen falls back when browser fullscreen is unavailable", async ({ page }) => {
+  await page.addInitScript(() => { HTMLElement.prototype.requestFullscreen = undefined; });
+  await account(page, "user");
+  await page.goto("/app/room/record");
+  await page.getByRole("button", { name: "Video full screen", exact: true }).click();
+  await expect(page.locator(".room-video-panel")).toHaveClass(/video-expanded/);
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".room-video-panel")).not.toHaveClass(/video-expanded/);
+});
+
+test("tab deep links survive reload and browser history and preserve other query parameters", async ({ page }) => {
+  await account(page);
+  await page.goto("/app/queue?tab=clinics&source=notification");
+  await expect(page.getByRole("tab", { name: "Group clinics", exact: true })).toHaveAttribute("aria-selected", "true");
+  await page.getByRole("tab", { name: "One-off consultations", exact: true }).click();
+  await expect(page).toHaveURL(/tab=appointments&source=notification/);
+  await page.goBack();
+  await expect(page.getByRole("tab", { name: "Group clinics", exact: true })).toHaveAttribute("aria-selected", "true");
+  await page.goForward();
+  await page.reload();
+  await expect(page.getByRole("tab", { name: "One-off consultations", exact: true })).toHaveAttribute("aria-selected", "true");
+  await page.goto("/app/queue?tab=obsolete");
+  await expect(page.getByRole("tab").first()).toHaveText("Weekly queues");
+  await expect(page.getByRole("tab").first()).toHaveAttribute("aria-selected", "true");
+});
 async function account(page, role = "doctor") {
   await page.routeWebSocket("**/api/workspace/live", () => {});
   const professional = { id: "doc", name: "Dr Test", role: "doctor", status: "verified", speciality: "General", qualifications: "MBBS", registration: "123", languages: [" sinhala ", "ENGLISH"], fee: 5000, phone: "0771234567", image: png };
@@ -90,4 +128,96 @@ test("uploads show progress, failure reason, and retry with the same identifier"
   const key = (body) => body.match(/name="upload_id"\r\n\r\n([^\r]+)/)?.[1];
   expect(key(requests[0])).toBeTruthy();
   expect(key(requests[1])).toBe(key(requests[0]));
+});
+
+test("room video and tools match heights and actions remain visible outside Notes", async ({ page }) => {
+  await account(page);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/app/room/record");
+  const video = await page.locator(".room-video-panel").boundingBox();
+  const tools = await page.locator(".room-tools").boundingBox();
+  expect(video.x + video.width).toBeLessThan(tools.x);
+  expect(Math.abs(video.height - tools.height)).toBeLessThan(2);
+  expect(Math.abs(video.y - tools.y)).toBeLessThan(2);
+  const actions = page.getByRole("region", { name: "Professional consultation actions" });
+  await expect(actions.getByRole("button", { name: "Save notes", exact: true })).toBeVisible();
+  await expect(actions.getByRole("button", { name: "Complete consultation", exact: true })).toBeVisible();
+  await expect(actions.getByRole("button", { name: "Complete & call next", exact: true })).toBeVisible();
+  await page.screenshot({ path: "test-results/room-desktop.png", fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.getByRole("tab", { name: "Chat", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Send message", exact: true })).toBeVisible();
+  await page.screenshot({ path: "test-results/room-mobile.png", fullPage: true });
+});
+
+test("completing saves notes first and calls only the server-promoted patient in this session", async ({ page }) => {
+  const state = await account(page);
+  state.bookings.push({ ...state.bookings[0], id: "next", status: "WAITING", patientName: "Next Patient", position: 2 });
+  state.bookings.push({ ...state.bookings[0], id: "other-session", status: "NEXT", sessionId: "another-session", patientName: "Other Session" });
+  const operations = [];
+  await page.route("**/api/bookings/*/notes", async (route) => {
+    operations.push("notes");
+    const body = route.request().postDataJSON();
+    state.bookings[0].notes = body.notes;
+    state.bookings[0].notesRevision = 1;
+    await route.fulfill({ json: { data: { revision: 1 } } });
+  });
+  await page.route("**/api/bookings/*/status", async (route) => {
+    const id = new URL(route.request().url()).pathname.split("/")[3];
+    const body = route.request().postDataJSON();
+    operations.push(`${id}:${body.status}`);
+    state.bookings.find((booking) => booking.id === id).status = body.status;
+    if (body.status === "COMPLETED") {
+      expect(body.notesRevision).toBe(1);
+      state.bookings.find((booking) => booking.id === "next").status = "NEXT";
+    }
+    await route.fulfill({ json: { message: "Updated" } });
+  });
+  await page.goto("/app/room/record");
+  await page.getByRole("tab", { name: "Notes", exact: true }).click();
+  await page.getByLabel("Notes shared with the patient / client").fill("Shared advice");
+  await page.getByRole("tab", { name: "Chat", exact: true }).click();
+  await page.getByRole("button", { name: "Complete & call next", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Complete & call next", exact: true }).click();
+  await expect(page).toHaveURL(/\/app\/room\/next$/);
+  expect(operations).toEqual(["notes", "record:COMPLETED", "next:IN CONSULTATION"]);
+  expect(state.bookings[0].notes).toBe("Shared advice");
+});
+
+test("failed notes save keeps the consultation open and never calls the next patient", async ({ page }) => {
+  await account(page);
+  let statusWrites = 0;
+  await page.route("**/api/bookings/record/notes", (route) => route.fulfill({ status: 409, json: { message: "Notes changed in another tab. Reload before saving." } }));
+  await page.route("**/api/bookings/*/status", (route) => { statusWrites++; return route.fulfill({ json: {} }); });
+  await page.goto("/app/room/record");
+  await page.getByRole("button", { name: "Complete consultation", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Complete", exact: true }).click();
+  await expect(page.getByRole("dialog")).toContainText("Notes changed in another tab");
+  await expect(page).toHaveURL(/\/app\/room\/record$/);
+  expect(statusWrites).toBe(0);
+});
+
+test("patients cannot see professional completion actions", async ({ page }) => {
+  await account(page, "user");
+  await page.goto("/app/room/record");
+  await expect(page.getByRole("button", { name: "Complete consultation", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: "Notes", exact: true })).toHaveCount(0);
+});
+
+test("booking details show loading feedback while refreshing their server state", async ({ page }) => {
+  const state = await account(page, "user");
+  state.bookings[0].status = "PAYMENT PENDING";
+  state.bookings[0].payment = "pending";
+  let reads = 0;
+  await page.route("**/api/workspace", async (route) => {
+    reads++;
+    if (reads > 1) await new Promise((resolve) => setTimeout(resolve, 800));
+    return route.fulfill({ json: { data: state } });
+  });
+  await page.goto("/app/booking/record?payment=return");
+  await expect(page.locator(".booking-loading")).toBeVisible();
+  await expect(page.getByLabel("Checking payment confirmation")).toBeVisible();
+  await expect(page.locator(".booking-loading")).toHaveCount(0);
+  await expect(page.getByText(/Waiting for PayHere to confirm/)).toBeVisible();
 });

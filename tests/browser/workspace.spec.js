@@ -115,7 +115,7 @@ test("patient pages embed clinics with matching empty sections and remove the cl
 
   }
   await page.goto("/app/clinics");
-  await expect(page).toHaveURL(/\/app\/bookings$/);
+  await expect(page).toHaveURL(/\/app\/bookings(?:\?tab=(?:clinics|consultations))?$/);
 });
 
 test("professional verification has its own profile tab", async ({ page }) => {
@@ -154,6 +154,7 @@ test("admin list filters send search criteria and reset pagination", async ({ pa
     ["/app/transfers", "Filter handover history", "/api/session-transfers"],
   ]) {
     await page.goto(path);
+    if (label === "Filter booked sessions") await page.getByRole("tab", { name: "Hand over a booked session", exact: true }).click();
     if (label === "Filter handover history") await page.getByRole("tab", { name: "Requests & handover history", exact: true }).click();
     const form = page.getByRole("form", { name: label });
     await form.getByLabel("Professional name or email").fill("  Receiver  ");
@@ -238,7 +239,7 @@ test("switching incoming consultation rooms discards the previous patient's chat
   await expect(message).toHaveValue("");
   await expect(page.getByRole("button", { name: "Send message", exact: true })).toBeDisabled();
   await page.getByRole("navigation").getByRole("link", { name: "My consultations" }).click();
-  await expect(page).toHaveURL(/\/app\/bookings$/);
+  await expect(page).toHaveURL(/\/app\/bookings(?:\?tab=(?:clinics|consultations))?$/);
   await expect(page.getByRole("dialog", { name: "Leave without saving?" })).toHaveCount(0);
 });
 
@@ -322,7 +323,7 @@ test("unsaved profile blocks navigation and successful save clears the warning",
   await page.getByRole("button", { name: "Save profile", exact: true }).click();
   await page.getByRole("button", { name: "OK", exact: true }).click();
   await page.getByRole("navigation").getByRole("link", { name: "My consultations" }).click();
-  await expect(page).toHaveURL(/\/app\/bookings$/);
+  await expect(page).toHaveURL(/\/app\/bookings(?:\?tab=(?:clinics|consultations))?$/);
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
@@ -352,7 +353,7 @@ test("payment return waits for verified payment then opens patient queues", asyn
   await expect(page).toHaveURL(/payment=return/);
   state.bookings[0].payment = "paid";
   state.bookings[0].status = "NEXT";
-  await expect(page).toHaveURL(/\/app\/bookings$/, { timeout: 12000 });
+  await expect(page).toHaveURL(/\/app\/bookings\?tab=consultations$/, { timeout: 12000 });
 });
 
 test("weekly overlap errors use the error popup", async ({ page }) => {
@@ -396,8 +397,10 @@ test("handover starts from a queue button rather than a My sessions card", async
   await expect(page.getByRole("heading", { name: "Upcoming generated sessions" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Hand over a booked session" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Requests & handover history" })).toHaveCount(0);
+  await page.getByRole("tab", { name: "Patient consultation", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Schedule a patient consultation" })).toBeVisible();
   await page.goto("/app/queue");
+  await page.getByRole("tab", { name: "Handovers", exact: true }).click();
   await page.getByRole("button", { name: "Hand over a booked session" }).click();
   await expect(page.getByRole("heading", { name: "No sessions available for handover" })).toBeVisible();
 });
@@ -413,6 +416,7 @@ test("a professional searches for a receiver and requests a handover", async ({ 
     return route.fulfill({ status: 201, json: { message: "Handover requested." } });
   });
   await page.goto("/app/queue");
+  await page.getByRole("tab", { name: "Handovers", exact: true }).click();
   await page.getByRole("button", { name: "Hand over a booked session" }).click();
   await page.getByRole("button", { name: "Request handover", exact: true }).click();
   await page.getByLabel("Search by name or email").fill("Cover");
@@ -461,6 +465,7 @@ test("receiver confirms acceptance before the request is submitted", async ({ pa
   });
   await page.goto("/app/queue");
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("tab", { name: "Handovers", exact: true }).click();
   const card = page.locator(".transfer-card");
   await expect(card.getByText("Incoming handover", { exact: true })).toBeVisible();
   await expect(card.getByText("Original professional", { exact: true })).toBeVisible();
@@ -501,8 +506,10 @@ test("handover queue and history request separate server-filtered views", async 
     return route.fulfill({ json: { data: { items: [], count: 0, pageSize: 30 } } });
   });
   await page.goto("/app/queue");
+  await page.getByRole("tab", { name: "Handovers", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Upcoming handovers" })).toBeVisible();
   await page.getByRole("navigation", { name: "Workspace" }).getByRole("link", { name: "Consultation history" }).click();
+  await page.getByRole("tab", { name: "Handover history", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Handover history" })).toBeVisible();
   await expect.poll(() => scopes).toContain("history");
   expect(scopes).toContain("upcoming");
@@ -640,9 +647,9 @@ test("professional queue separates one-off appointments and includes future offl
   await mockAccount(page, state);
   await page.route("**/api/scheduled-consultations?*", (route) => route.fulfill({ json: { data: { items: [{ ...state.bookings[0], date: "2026-09-22", start: "10:00", end: "11:00", acceptedAt: currentTime }], count: 1, pageSize: 30 } } }));
   await page.goto("/app/clinics");
-  await expect(page).toHaveURL(/\/app\/queue$/);
+  await expect(page).toHaveURL(/\/app\/queue\?tab=clinics$/);
   await expect(page.locator(".ws-sidebar").getByRole("link", { name: "Group clinics" })).toHaveCount(0);
-  await expect(page.getByRole("tab")).toHaveText(["Handovers", "One-off consultations", "Group clinics", "Weekly queues"]);
+  await expect(page.getByRole("tab")).toHaveText(["Weekly queues", "One-off consultations", "Group clinics", "Handovers"]);
   await page.getByRole("tab", { name: "Weekly queues", exact: true }).click();
   const weekly = page.locator("section.ws-panel").filter({ has: page.getByRole("heading", { name: "Weekly queues", exact: true }) });
   await expect(weekly.getByText("Offline", { exact: true })).toBeVisible();
@@ -752,7 +759,8 @@ test("chat failures remain local and image previews explain failure with retry",
   const input = page.getByRole("textbox", { name: "Message", exact: true });
   await input.fill("Can you hear me?");
   await page.getByRole("button", { name: "Send message" }).click();
-  await expect(page.getByRole("alert")).toContainText("Message service is temporarily unavailable.");
+  await expect(page.getByRole("dialog")).toContainText("Message service is temporarily unavailable.");
+  await page.getByRole("button", { name: "OK", exact: true }).click();
   await expect(input).toHaveValue("Can you hear me?");
   await expect(page.getByText("Saving changes...")).toHaveCount(0);
 });

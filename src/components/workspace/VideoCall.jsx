@@ -1,13 +1,31 @@
 import { useEffect, useRef, useState } from "react";
-import { Video, Loader2 } from "lucide-react";
+import { Video, Loader2, Maximize, Minimize } from "lucide-react";
 import { MessageOverlay } from "../ui/MessageBox";
 import { callApi } from "../../api/apiClient";
 
 export default function VideoCall({ bookingId, clinicId }) {
   const container = useRef(null);
+  const panel = useRef(null);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [fallbackFullscreen, setFallbackFullscreen] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState("idle");
   const [error, setError] = useState("");
+  useEffect(() => {
+    const sync = () => setFullscreen(document.fullscreenElement === panel.current);
+    const escape = (event) => { if (event.key === "Escape") setFallbackFullscreen(false); };
+    document.addEventListener("fullscreenchange", sync);
+    document.addEventListener("keydown", escape);
+    return () => { document.removeEventListener("fullscreenchange", sync); document.removeEventListener("keydown", escape); };
+  }, []);
+  async function toggleVideoFullscreen() {
+    if (fallbackFullscreen) { setFallbackFullscreen(false); return; }
+    try {
+      if (document.fullscreenElement === panel.current) await document.exitFullscreen();
+      else if (panel.current?.requestFullscreen) await panel.current.requestFullscreen();
+      else setFallbackFullscreen(true);
+    } catch { setFallbackFullscreen(true); }
+  }
 
   useEffect(() => {
     if (!attempt) return;
@@ -53,15 +71,16 @@ export default function VideoCall({ bookingId, clinicId }) {
   }, [bookingId, clinicId, attempt]);
 
   const busy = state === "joining";
-  return <section className="room-video-panel" aria-label="Consultation video call">
-    <div ref={container} className="daily-video-frame" hidden={!["joining", "joined"].includes(state)} />
-    {!["joining", "joined"].includes(state) && <div className="ws-video"><Video size={48} /><h2 className="text-2xl font-serif">{clinicId ? "Your group clinic lecture" : "Your private video consultation"}</h2><p>{state === "left" ? "You left the video call. You can rejoin while the session is open." : clinicId ? "Join the group clinic. Your microphone starts muted and you can turn it on to speak. Attendee cameras and chat are disabled." : "Join to speak with the other participant. Check your devices before entering."}</p></div>}
-    <div className="ws-actions">
+  return <section ref={panel} className={"room-video-panel " + (fallbackFullscreen ? "video-expanded" : "")} aria-label="Consultation video call">
+    <header className="room-video-heading"><div><Video size={18} aria-hidden="true" /><h2>{clinicId ? "Group clinic video" : "Video consultation"}</h2></div><div className="room-video-heading-actions"><span className={"room-connection-status " + (state === "joined" ? "connected" : "")}><span aria-hidden="true" />{state === "joined" ? "Connected" : busy ? "Connecting" : "Ready to join"}</span><button type="button" className="room-video-expand" aria-label={fullscreen || fallbackFullscreen ? "Exit video full screen" : "Video full screen"} title={fullscreen || fallbackFullscreen ? "Exit video full screen" : "Video full screen"} onClick={toggleVideoFullscreen}>{fullscreen || fallbackFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}<span>{fullscreen || fallbackFullscreen ? "Exit full screen" : "Full screen"}</span></button></div></header>
+    <div className="room-video-stage"><div ref={container} className="daily-video-frame" hidden={!["joining", "joined"].includes(state)} />
+    {!["joining", "joined"].includes(state) && <div className="ws-video"><Video size={48} /><h2>{clinicId ? "Your group clinic lecture" : "Your private video consultation"}</h2><p>{state === "left" ? "You left the video call. You can rejoin while the session is open." : clinicId ? "Join the group clinic. Your microphone starts muted and you can turn it on to speak. Attendee cameras and chat are disabled." : "Join to speak with the other participant. Check your devices before entering."}</p></div>}</div>
+    <div className="ws-actions room-video-controls">
       {state !== "joined" && <button className="ws-link" disabled={busy} onClick={() => setAttempt((value) => value + 1)}>{busy ? <Loader2 size={17} className="animate-spin" /> : <Video size={17} />}{busy ? "Connecting…" : state === "idle" ? "Join video call" : "Rejoin video call"}</button>}
       {busy && <button className="ws-link secondary" onClick={() => { setAttempt(0); setState("idle"); }}>Cancel</button>}
       <span role="status">{state === "joined" ? "Connected · use the call controls to manage your camera and microphone." : busy ? "Preparing your call and device preview…" : ""}</span>
     </div>
     {error && <MessageOverlay type="error" text={error} onClose={() => setError("")} />}
-    <div className="ws-notice">{clinicId ? "Leaving video does not complete the clinic. The professional can close it for everyone; the room also closes at the scheduled end time." : "Leaving video does not complete the consultation. Use consultation chat for messages saved to your record."}</div>
+    <p className="room-video-help">{clinicId ? "Leaving video does not complete the clinic. The professional closes it for everyone; the room also closes at its scheduled end." : "Camera and microphone controls appear inside the call. Leaving video keeps this consultation open."}</p>
   </section>;
 }

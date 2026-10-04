@@ -69,7 +69,7 @@ export default function SessionTransfers({ embedded = false, view = "all", allow
   return <section className="session-transfers" aria-label="Session handovers">
     {!embedded && <PageHeading title="Session handovers.">Arrange cover for a booked session and follow every request and earnings reassignment.</PageHeading>}
     <ErrorNotice error={error} onRetry={load} />
-    <SectionTabs disabled={embedded}>
+    <SectionTabs disabled={embedded} ids={["handover", "history"]} order={["history", "handover"]}>
     {showSessions && (!allowRequest || chooseSession) && <SessionPicker modal={allowRequest} onClose={() => setChooseSession(false)}><Panel title="Hand over a booked session">
       {workspace.role === "admin" && <ListFilters label="Filter booked sessions" onApply={(value) => { setSessions(null); setSessionFilters(value); setSessionPage(1); }} statuses={["available", "pending"]} />}
       <p>Choose a dated session with patients in its queue. The receiver must accept before ownership changes. Booked prices, queue order and weekly schedules stay the same.</p>

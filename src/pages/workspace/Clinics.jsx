@@ -91,7 +91,7 @@ export function ScheduleClinic() {
           <label className="ws-field">Clinic places<input type="number" required min="2" max="100" step="1" {...field("capacity")} /></label>
         </div>
         <p className="ws-muted">Fee per attendee, for this clinic only. All times use Sri Lanka time. Attendees must pay before joining. Microphones start muted and can be enabled; attendee cameras and chat are disabled.</p>
-        <div className="ws-actions"><button className="ws-link" disabled={busy || !enabled}>{busy ? "Scheduling clinic…" : "Schedule clinic"}</button><Link className="ws-link secondary" to="/app/queue">View my clinics</Link></div>
+        <div className="ws-actions"><button className="ws-link" disabled={busy || !enabled}>{busy ? "Scheduling clinic…" : "Schedule clinic"}</button><Link className="ws-link secondary" to="/app/queue?tab=clinics">View my clinics</Link></div>
       </fieldset>
     </form>
     {notice && <MessageOverlay type={notice.type} text={notice.text} onClose={() => { const id = notice.id; setNotice(null); if (id) navigate(`/app/clinics/${id}`); }} />}
@@ -99,6 +99,7 @@ export function ScheduleClinic() {
 }
 
 export function ClinicList({ view = "upcoming", profession, title = "Group clinics", embedded = false, filters = emptyFilters }) {
+  const { role } = useWorkspace();
   const [pagination, setPagination] = useState({ key: "", page: 1 });
   const [search, setSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
@@ -115,12 +116,12 @@ export function ClinicList({ view = "upcoming", profession, title = "Group clini
         {!result.data.items.length && <Empty title="No clinics in this view">{view === "available" ? "Available group clinics will appear here when professionals schedule them." : "Clinics matching this view and any selected filters will appear here."}</Empty>}
         {result.data.items.length > 0 && <div className="clinic-cards">{result.data.items.map((clinic) => <article className="clinic-card" key={clinic.id}>
           <div className="clinic-card-top"><span className="clinic-type"><Users size={16} />Group lecture</span><Status>{clinic.status}</Status></div>
-          <h3><Link to={`/app/clinics/${clinic.id}`}>{clinic.title}</Link></h3>
+          <h3><Link to={`/app/clinics/${clinic.id}?tab=${clinic.registration?.status === "pending" ? "registration" : role === "admin" ? "payments" : ["doctor", "lawyer"].includes(role) ? "manage" : "registration"}`}>{clinic.title}</Link></h3>
           <p>{clinic.professionalName} · {clinic.profession}</p>
           <p className="clinic-date"><CalendarDays size={16} />{clinic.date} · {clinic.start}–{clinic.end}</p>
           <div className="clinic-card-bottom"><strong>{money(clinic.registration?.fee || clinic.fee)}</strong><span>{clinic.remaining} of {clinic.capacity} places available</span></div>
           {clinic.registration && <p>Your registration: {clinic.registration.status} · {clinic.registration.payment}</p>}
-          <Link className="ws-link secondary" to={`/app/clinics/${clinic.id}`}>{clinic.registration?.status === "pending" ? "Continue to clinic payment" : clinic.status === "live" ? "Open clinic room" : "View clinic"}</Link>
+          <Link className="ws-link secondary" to={`/app/clinics/${clinic.id}?tab=${role === "admin" ? "payments" : ["doctor", "lawyer"].includes(role) ? "manage" : "registration"}`}>{clinic.registration?.status === "pending" ? "Continue to clinic payment" : clinic.status === "live" ? "Open clinic room" : "View clinic"}</Link>
         </article>)}</div>}
         {result.data.count > result.data.pageSize && <div className="clinic-pagination"><button className="ws-link secondary" disabled={page === 1} onClick={() => setPagination({ key, page: page - 1 })}>Previous</button><span>Page {page} of {Math.ceil(result.data.count / result.data.pageSize)}</span><button className="ws-link secondary" disabled={page * result.data.pageSize >= result.data.count} onClick={() => setPagination({ key, page: page + 1 })}>Next</button></div>}
       </>}
@@ -132,8 +133,8 @@ export default function Clinics() {
   const { role } = useWorkspace();
   const [view, setView] = useState("upcoming");
   const [filters, setFilters] = useState({ ...emptyFilters });
-  if (["doctor", "lawyer"].includes(role)) return <Navigate to="/app/queue" replace />;
-  if (role === "user") return <Navigate to="/app/bookings" replace />;
+  if (["doctor", "lawyer"].includes(role)) return <Navigate to="/app/queue?tab=clinics" replace />;
+  if (role === "user") return <Navigate to="/app/bookings?tab=clinics" replace />;
   return <><PageHeading title={role === "admin" ? "Clinics & registrations." : "Your group clinics."}>Review schedules, confirmed registrations and clinic payments separately from private consultations.</PageHeading>
     <label className="ws-field clinic-filter">Clinic view<select value={view} onChange={(event) => setView(event.target.value)}><option value="upcoming">Upcoming and live</option><option value="history">Past and cancelled</option><option value="all">All clinics</option>{role === "user" && <option value="available">Available clinics</option>}</select></label>
     <ListFilters label="Filter group clinics" onApply={setFilters} statuses={["scheduled", "live", "completed", "cancelled"]} />
@@ -183,10 +184,10 @@ function ClinicDetailContent({ id }) {
   const canPay = registration?.status === "pending" && Date.now() < Date.parse(registration.paymentDueAt) && scheduled && before && clinic.professionalAvailable;
   const disabled = busy || Boolean(result.error);
   return <>
-    <Link className="ws-name-link" to={["doctor", "lawyer"].includes(role) ? (["completed", "cancelled"].includes(clinic.status) || Date.parse(clinic.endsAt) <= Date.now() ? "/app/history" : "/app/queue") : role === "user" ? (["completed", "cancelled"].includes(clinic.status) || Date.parse(clinic.endsAt) <= Date.now() ? "/app/history" : "/app/bookings") : "/app/clinics"}>← Back to {["doctor", "lawyer"].includes(role) ? "consultations" : role === "user" ? "my consultations" : "clinics"}</Link>
+    <Link className="ws-name-link" to={["doctor", "lawyer"].includes(role) ? (["completed", "cancelled"].includes(clinic.status) || Date.parse(clinic.endsAt) <= Date.now() ? "/app/history?tab=clinics" : "/app/queue?tab=clinics") : role === "user" ? (["completed", "cancelled"].includes(clinic.status) || Date.parse(clinic.endsAt) <= Date.now() ? "/app/history?tab=clinics" : "/app/bookings?tab=clinics") : "/app/clinics"}>← Back to {["doctor", "lawyer"].includes(role) ? "consultations" : role === "user" ? "my consultations" : "clinics"}</Link>
     <PageHeading eyebrow="GROUP CLINIC · LECTURE" title={clinic.title} action={<Status>{clinic.status}</Status>}>{clinic.professionalName} · {clinic.profession}</PageHeading>
     <LoadState {...result} />
-    <SectionTabs><Panel title="Clinic information">
+    <SectionTabs ids={["info", staff ? "manage" : "registration", ...(staff ? ["payments"] : [])]} order={role === "admin" ? ["payments", "manage", "info"] : staff ? ["manage", "payments", "info"] : ["registration", "info"]}><Panel title="Clinic information">
       <p className="clinic-description">{clinic.description || "No additional description."}</p>
       <div className="ws-row"><span>Date and time</span><strong>{clinic.date} · {clinic.start}–{clinic.end}</strong></div>
       <p className="ws-muted">Sri Lanka time</p>

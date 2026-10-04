@@ -129,6 +129,7 @@ test("patient directories and My consultations show separate clinic cards", asyn
   await page.getByRole("link", { name: "Healthy living lecture", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Healthy living lecture", exact: true })).toBeVisible();
   await page.goto("/app/bookings");
+  await page.getByRole("tab", { name: "Your upcoming group clinics", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Your upcoming group clinics" })).toBeVisible();
 });
 

@@ -74,7 +74,7 @@ export default function ScheduleConsultation() {
       <p id="individual-fee-help" className="ws-muted">The fee for this appointment only. It does not change your weekly session fee.</p>
       <label className="ws-field">Message to patient (optional)<textarea value={reason} maxLength={1000} disabled={busy} onChange={(e) => setReason(e.target.value)} placeholder="For example, a follow-up appointment. Do not include sensitive medical details." /></label>
       <p>The invitation will appear in My consultations. Payment confirms acceptance and is required before the start time. Your weekly schedule stays unchanged.</p>
-      <div className="ws-actions"><button className="ws-link" disabled={busy || searching || !enabled}>{busy ? "Scheduling…" : "Schedule consultation"}</button><Link className="ws-link secondary" to="/app/queue">View scheduled consultations</Link></div>
+      <div className="ws-actions"><button className="ws-link" disabled={busy || searching || !enabled}>{busy ? "Scheduling…" : "Schedule consultation"}</button><Link className="ws-link secondary" to="/app/queue?tab=appointments">View scheduled consultations</Link></div>
     </form>
     {notice && <MessageOverlay type={notice.type} text={notice.text} onClose={() => setNotice(null)} />}
   </Panel>;

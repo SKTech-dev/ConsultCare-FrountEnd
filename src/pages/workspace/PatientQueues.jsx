@@ -25,7 +25,7 @@ export default function PatientQueues() {
     .sort((a, b) => (a.session ? sessionStartsAt(a.session) : Infinity) - (b.session ? sessionStartsAt(b.session) : Infinity));
   return <>
     <PageHeading title="Your consultations.">Each booking has its own queue. {state.liveConnected ? "Live updates connected." : "Reconnecting live updates; checking periodically."}</PageHeading>
-    <SectionTabs><ClinicList embedded title="Your upcoming group clinics" />
+    <SectionTabs ids={["clinics", "consultations"]} order={["consultations", "clinics"]}><ClinicList embedded title="Your upcoming group clinics" />
     <Panel title="Your private consultations">
     <div className="patient-queues">{bookings.map(({ booking: b, session }) => {
       const position = b.position || 0;
