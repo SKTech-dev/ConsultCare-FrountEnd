@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { useEffect, useId, useRef } from "react";
 import { useSelector } from "react-redux";
 
@@ -54,7 +55,7 @@ export const MessageOverlay = ({
     }
   }
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center"
       style={{ backgroundColor: colors.overlay }}
@@ -123,6 +124,6 @@ export const MessageOverlay = ({
           </button>
         )}
       </div>
-    </div>
+    </div>, document.fullscreenElement || document.querySelector(".room-expanded") || document.body
   );
 };

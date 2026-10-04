@@ -1,3 +1,4 @@
+import SectionTabs from "../../components/ui/SectionTabs";
 import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { Link } from "react-router-dom";
@@ -24,7 +25,7 @@ export default function PatientQueues() {
     .sort((a, b) => (a.session ? sessionStartsAt(a.session) : Infinity) - (b.session ? sessionStartsAt(b.session) : Infinity));
   return <>
     <PageHeading title="Your consultations.">Each booking has its own queue. {state.liveConnected ? "Live updates connected." : "Reconnecting live updates; checking periodically."}</PageHeading>
-    <div className="workspace-sections"><ClinicList embedded title="Your upcoming group clinics" />
+    <SectionTabs><ClinicList embedded title="Your upcoming group clinics" />
     <Panel title="Your private consultations">
     <div className="patient-queues">{bookings.map(({ booking: b, session }) => {
       const position = b.position || 0;
@@ -46,7 +47,7 @@ export default function PatientQueues() {
       </Panel>;
     })}</div>
     {!bookings.length && <Empty title="No active bookings">Book a doctor or lawyer to see your consultation queue here.</Empty>}
-    </Panel></div>
+    </Panel></SectionTabs>
     {cancel && <ReasonDialog title="Cancel consultation?" text="Your queue place will be released. Any paid booking will require refund review. Your reason will be shared with the professional." busy={state.pending > 0} onClose={() => setCancel(null)} onConfirm={async (reason) => { await dispatch(transition({ id: cancel, status: "CANCELLED", reason })); setCancel(null); }} />}
   </>;
 }

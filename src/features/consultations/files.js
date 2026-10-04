@@ -1,9 +1,10 @@
 import { apiClient, callApi } from "../../api/apiClient";
 
-export async function saveFile(bookingId, file, privateNote = false) {
+export async function saveFile(bookingId, file, privateNote = false, uploadId) {
   const data = new FormData();
   data.append("file", file);
   data.append("private", String(privateNote));
+  if (uploadId) data.append("upload_id", uploadId);
   return (await callApi("POST", "/bookings/" + bookingId + "/documents", data)).data;
 }
 

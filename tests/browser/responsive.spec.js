@@ -77,7 +77,7 @@ test("tablet drawer traps focus, closes with Escape and restores navigation focu
   await expect(page.getByRole("dialog", { name: "Workspace navigation" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Close navigation" })).toBeFocused();
   await page.keyboard.press("Shift+Tab");
-  await expect(page.getByRole("button", { name: "Hide sidebar" })).toBeFocused();
+  await expect(page.getByRole("navigation", { name: "Workspace", exact: true }).getByRole("link").last()).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(toggle).toBeFocused();
   await expect(toggle).toHaveAttribute("aria-expanded", "false");

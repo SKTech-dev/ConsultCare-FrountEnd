@@ -1,3 +1,4 @@
+import SectionTabs from "../../components/ui/SectionTabs";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { ArrowRightLeft, Search, Loader2 } from "lucide-react";
@@ -68,6 +69,7 @@ export default function SessionTransfers({ embedded = false, view = "all", allow
   return <section className="session-transfers" aria-label="Session handovers">
     {!embedded && <PageHeading title="Session handovers.">Arrange cover for a booked session and follow every request and earnings reassignment.</PageHeading>}
     <ErrorNotice error={error} onRetry={load} />
+    <SectionTabs disabled={embedded}>
     {showSessions && (!allowRequest || chooseSession) && <SessionPicker modal={allowRequest} onClose={() => setChooseSession(false)}><Panel title="Hand over a booked session">
       {workspace.role === "admin" && <ListFilters label="Filter booked sessions" onApply={(value) => { setSessions(null); setSessionFilters(value); setSessionPage(1); }} statuses={["available", "pending"]} />}
       <p>Choose a dated session with patients in its queue. The receiver must accept before ownership changes. Booked prices, queue order and weekly schedules stay the same.</p>
@@ -82,7 +84,6 @@ export default function SessionTransfers({ embedded = false, view = "all", allow
       </div>)}
       {sessions && <Pagination page={sessionPage} count={sessions.count} size={sessions.pageSize} onChange={setSessionPage} />}
     </Panel></SessionPicker>}
-    {selected && <TransferForm key={selected.id} session={selected} onClose={() => setSelected(null)} onSaved={async (text) => { setSelected(null); setNotice({ type: "success", text }); await Promise.all([load(), dispatch(fetchWorkspace())]); }} />}
     {showHistory && <Panel title={historyTitle}>
       {allowRequest && <div className="ws-actions"><button className="ws-link secondary" onClick={() => setChooseSession(true)}><ArrowRightLeft size={16} />Hand over a booked session</button></div>}
       {workspace.role === "admin" && <ListFilters label="Filter handover history" onApply={(value) => { setHistory(null); setHistoryFilters(value); setPage(1); }} statuses={["pending", "accepted", "rejected", "cancelled", "expired"]} />}
@@ -108,6 +109,8 @@ export default function SessionTransfers({ embedded = false, view = "all", allow
       </article>)}
       {history && <Pagination page={page} count={history.count} size={history.pageSize} onChange={setPage} />}
     </Panel>}
+    </SectionTabs>
+    {selected && <TransferForm key={selected.id} session={selected} onClose={() => setSelected(null)} onSaved={async (text) => { setSelected(null); setNotice({ type: "success", text }); await Promise.all([load(), dispatch(fetchWorkspace())]); }} />}
     {decision && <Modal title="Review handover decision" busy={busy} onClose={() => setDecision(null)}><Panel title={`${decision.action === "accept" ? "Accept this session?" : decision.action === "reject" ? "Reject this request?" : "Cancel this request?"}`}>
       <p>{label(decision.item)} · {decision.item.fromName} → {decision.item.toName}</p>
       {decision.action === "accept" && <p>By accepting, you agree to conduct the session at the existing booked fees. Availability and queued patients will be checked again.</p>}

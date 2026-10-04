@@ -1,0 +1,35 @@
+/* Navigation, consistent section navigation and constrained image geometry. */
+.ws-sidebar { scrollbar-width: none; }
+.ws-sidebar::-webkit-scrollbar { display: none; }
+.ws-brand-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ws-brand-row .ws-brand { font-size: 23px; min-width: 0; }
+.ws-brand-row .ws-sidebar-toggle { flex-shrink: 0; }
+.ws-topbar { gap: 16px; position: relative; }
+.ws-welcome { min-width: 0; flex: 1; }
+.ws-welcome p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-menu { position: relative; flex: 0 0 auto; }
+.account-trigger { width: 44px; height: 44px; overflow: hidden; border: 1px solid var(--ws-border); cursor: pointer; }
+.account-trigger img { width: 100%; height: 100%; object-fit: cover; }
+.account-popover { position: absolute; right: 0; top: 54px; z-index: 45; display: grid; gap: 12px; width: min(300px, calc(100vw - 32px)); padding: 20px; border: 1px solid var(--ws-border); border-radius: 16px; background: var(--ws-cardBg); box-shadow: 0 12px 36px #0002; overflow-wrap: anywhere; }
+.account-popover p { font-size: 13px; color: var(--ws-textSecondary); }
+.account-popover a, .account-popover button { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-top: 1px solid var(--ws-border); text-align: left; }
+.section-tabs { min-width: 0; }
+.section-tab-list { display: flex; gap: 6px; overflow-x: auto; padding: 6px; margin-bottom: 22px; border: 1px solid var(--ws-border); border-radius: 14px; background: var(--ws-cardBg); scrollbar-width: thin; }
+.section-tab-list button { flex: 0 0 auto; min-height: 44px; padding: 10px 18px; border-radius: 9px; color: var(--ws-textSecondary); font-size: 13px; font-weight: 600; }
+.section-tab-list button[aria-selected=true] { background: var(--ws-primary); color: var(--ws-textInverse); }
+.section-tab-list button:focus-visible, .account-trigger:focus-visible { outline: 2px solid var(--ws-accent); outline-offset: 2px; }
+.section-tabs > [hidden] { display: none !important; }
+.section-tabs > [role=tabpanel] > .ws-space { margin-top: 0; }
+.ws-person-avatar { width: 72px !important; height: 72px !important; min-width: 72px; flex: 0 0 72px; overflow: hidden; }
+.ws-person-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.required-mark, label:has(> input:required):not(:has(.required-mark))::before, label:has(> select:required)::before, label:has(> textarea:required)::before { color: #b42318; }
+label:has(> input:required):not(:has(.required-mark))::before, label:has(> select:required)::before, label:has(> textarea:required)::before { content: '* ' / ''; font-weight: 700; }
+@media (max-width: 600px) {
+  .ws-topbar { padding: 12px 16px; gap: 10px; }
+  .ws-topbar .notification-bell { margin-left: 0; }
+  .ws-topbar .notification-preview { position: fixed; left: 16px; right: 16px; top: 78px; width: auto; }
+  .account-popover { position: fixed; top: 78px; right: 16px; }
+  .ws-welcome .ws-eyebrow { font-size: 9px; }
+  .ws-welcome p { font-size: 13px; }
+  .section-tab-list button { padding: 9px 12px; }
+}

@@ -27,6 +27,6 @@ export async function callApi(method, endpoint, data = null, params = null, conf
   } catch (error) {
     const payload = error.response?.data;
     const fields = Array.isArray(payload?.errors) ? payload.errors.slice(0, 3).map((e) => e.field + ": " + e.message).join(" ") : "";
-    throw new Error(fields || payload?.message || (error.response ? "Request failed. Please try again." : "Cannot reach the server. Check that the backend is running."));
+    throw new Error(fields || payload?.message || (error.response ? "Request failed. Please try again." : navigator.onLine === false ? "You are offline. Connect to the internet and try again." : "Cannot reach the server. Please check your connection and try again."));
   }
 }

@@ -1,3 +1,4 @@
+import SectionTabs from "../../components/ui/SectionTabs";
 import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { useDispatch } from "react-redux";
@@ -185,7 +186,7 @@ function ClinicDetailContent({ id }) {
     <Link className="ws-name-link" to={["doctor", "lawyer"].includes(role) ? (["completed", "cancelled"].includes(clinic.status) || Date.parse(clinic.endsAt) <= Date.now() ? "/app/history" : "/app/queue") : role === "user" ? (["completed", "cancelled"].includes(clinic.status) || Date.parse(clinic.endsAt) <= Date.now() ? "/app/history" : "/app/bookings") : "/app/clinics"}>← Back to {["doctor", "lawyer"].includes(role) ? "consultations" : role === "user" ? "my consultations" : "clinics"}</Link>
     <PageHeading eyebrow="GROUP CLINIC · LECTURE" title={clinic.title} action={<Status>{clinic.status}</Status>}>{clinic.professionalName} · {clinic.profession}</PageHeading>
     <LoadState {...result} />
-    <div className="ws-grid-two"><Panel title="Clinic information">
+    <SectionTabs><Panel title="Clinic information">
       <p className="clinic-description">{clinic.description || "No additional description."}</p>
       <div className="ws-row"><span>Date and time</span><strong>{clinic.date} · {clinic.start}–{clinic.end}</strong></div>
       <p className="ws-muted">Sri Lanka time</p>
@@ -218,14 +219,15 @@ function ClinicDetailContent({ id }) {
         {clinic.canUpdate && !clinic.canCancel && <p className="ws-notice">This clinic has received payment. You can update its time and places, but cannot cancel it.</p>}
       </>}
       {busy && <p role="status">Saving clinic changes…</p>}
-    </Panel></div>
-    {canJoin && <div className="ws-space"><VideoCall clinicId={id} /></div>}
+    </Panel>
     {staff && <div className="ws-space"><Panel title="Clinic registrations & payments">
       <div className="clinic-payment-summary"><span>Collected: <strong>{money(clinic.paymentTotals?.paid || 0)}</strong></span><span>Refund requested: <strong>{money(clinic.paymentTotals?.["refund requested"] || 0)}</strong></span></div>
       <p className="ws-muted">Clinic ticket revenue enters monthly earnings only after the clinic completes. Access authorization is not proof of attendance. No private records are linked to this roster.</p>
       {clinic.registrations?.length ? <div className="ws-table-wrap"><table className="ws-table"><caption className="sr-only">Clinic registrations and PayHere payment status</caption><thead><tr><th>Patient / client</th><th>Registration</th><th>Payment</th><th>Amount</th><th>Paid at (Sri Lanka)</th></tr></thead><tbody>{clinic.registrations.map((row) => <tr key={row.id}><td>{row.patientName}</td><td>{row.status}</td><td>{row.payment}</td><td>{money(row.fee)}</td><td>{row.paidAt ? new Date(row.paidAt).toLocaleString("en-GB", { timeZone: "Asia/Colombo" }) : "Not paid"}</td></tr>)}</tbody></table></div> : <Empty title="No registrations yet">Paid and unpaid registrations will appear here.</Empty>}
       {clinic.registrationCount > clinic.pageSize && <div className="clinic-pagination"><button className="ws-link secondary" disabled={page === 1} onClick={() => setPage((n) => n - 1)}>Previous</button><span>Page {page}</span><button className="ws-link secondary" disabled={page * clinic.pageSize >= clinic.registrationCount} onClick={() => setPage((n) => n + 1)}>Next</button></div>}
     </Panel></div>}
+    </SectionTabs>
+    {canJoin && <div className="ws-space"><VideoCall clinicId={id} /></div>}
     {editing && <EditSessionTime clinic item={clinic} endpoint={`/clinics/${id}`} onClose={() => setEditing(false)} onSaved={async (text) => { setEditing(false); setNotice({ type: "success", text }); result.refresh(); await dispatch(fetchWorkspace()); }} />}
     {confirm && (confirm.path === "cancel-registration" ? <ReasonDialog title={confirm.title} text={confirm.text} busy={busy} onClose={() => setConfirm(null)} onConfirm={(reason) => action(confirm.path, { reason })} /> : <MessageOverlay type="confirm" title={confirm.title} text={confirm.text} onClose={() => setConfirm(null)} onConfirm={() => action(confirm.path, confirm.body)} />)}
     {notice && <MessageOverlay type={notice.type} text={notice.text} onClose={() => setNotice(null)} />}

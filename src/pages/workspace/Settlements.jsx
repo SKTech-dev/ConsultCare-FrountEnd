@@ -1,3 +1,4 @@
+import SectionTabs from "../../components/ui/SectionTabs";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ChevronDown, ArrowLeft, Wallet } from "lucide-react";
@@ -153,8 +154,8 @@ export function MonthlyEarningsDetails() {
       </div>
       <TestNotice visible={data.testPayments} />
       {Number(data.adjustment) !== 0 && data.adjustment != null && <p className="ws-notice" role="status">Earnings changed after payment. Adjustment to reconcile: {cash(data.adjustment)}. The original payout record has not been changed.</p>}
-      {admin && <div className="earnings-pay"><div><h3>Record external payment</h3><p>Record a verified bank transfer already made to this professional. ConsultCare does not send money.</p></div><button className="ws-link" disabled={Boolean(error) || !data.canPay} onClick={() => setPopup(true)}>Record external payment</button>{!data.closed && <p className="w-full">Record monthly settlements after the month ends.</p>}</div>}
-      <Panel title="Private consultation payments">
+      {admin && <div className="earnings-pay"><div><h3>{data.testPayments ? "Record sandbox settlement" : "Record external payment"}</h3><p>{data.testPayments ? "Test the complete settlement workflow with sandbox amounts. This does not record a real bank transfer." : "Record a verified bank transfer already made to this professional. ConsultCare does not send money."}</p></div><button className="ws-link" disabled={Boolean(error) || !data.canPay} onClick={() => setPopup(true)}>{data.testPayments ? "Record sandbox settlement" : "Record external payment"}</button>{!data.closed && <p className="w-full">Record monthly settlements after the month ends.</p>}</div>}
+      <SectionTabs><Panel title="Private consultation payments">
         <p className="mb-4">Included by consultation completion date. Payment dates may fall in an earlier month. All dates and times are in Sri Lanka time.</p>
         <div className="ws-table-wrap"><table className="ws-table earnings-table"><caption className="sr-only">Payments for {data.professional.name}, {monthLabel(data.month)}</caption>
           <thead><tr><th scope="col">Patient / client</th><th scope="col">Date paid</th><th scope="col">Time paid</th><th scope="col">Consultation completed</th><th scope="col">Amount</th></tr></thead>
@@ -167,9 +168,9 @@ export function MonthlyEarningsDetails() {
         {data.payments.some((payment) => payment.serviceType === "clinic") ? <div className="ws-table-wrap"><table className="ws-table earnings-table"><caption className="sr-only">Group clinic payments</caption><thead><tr><th>Patient / client</th><th>Clinic</th><th>Paid at</th><th>Clinic completed</th><th>Amount</th></tr></thead><tbody>{data.payments.filter((payment) => payment.serviceType === "clinic").map((payment) => <tr key={payment.id}><td>{payment.patientName}</td><td><Link className="ws-name-link" to={`/app/clinics/${payment.clinicId}`}>{payment.clinicTitle}</Link></td><td>{dateLabel(payment.paidAt)} · {timeLabel(payment.paidAt)}</td><td>{dateLabel(payment.completedAt)} · {timeLabel(payment.completedAt)}</td><td>{cash(payment.amount)}</td></tr>)}</tbody></table></div> : <p className="ws-muted">No clinic payments on this page.</p>}
         <div className="ws-row"><span>Monthly group clinic total</span><strong>{cash(data.clinicTotal || 0)}</strong></div>
       </Panel></div>
-      <div className="earnings-pagination"><button className="ws-link secondary" disabled={page <= 1} onClick={() => setPagination({ key, page: page - 1 })}>Previous</button><span>Payments page {page} of {Math.max(1, Math.ceil(data.count / data.pageSize))} (both sections)</span><button className="ws-link secondary" disabled={page * data.pageSize >= data.count} onClick={() => setPagination({ key, page: page + 1 })}>Next</button></div>
+      </SectionTabs><div className="earnings-pagination"><button className="ws-link secondary" disabled={page <= 1} onClick={() => setPagination({ key, page: page - 1 })}>Previous</button><span>Payments page {page} of {Math.max(1, Math.ceil(data.count / data.pageSize))} (both sections)</span><button className="ws-link secondary" disabled={page * data.pageSize >= data.count} onClick={() => setPagination({ key, page: page + 1 })}>Next</button></div>
     </>}
-    {popup && data && <ExternalPaymentDialog title="Record verified professional payment" amount={data.total} endpoint={`/admin/settlements/${encodeURIComponent(month)}/${encodeURIComponent(target)}/record-payment`} onClose={() => setPopup(false)} onSaved={() => { setPopup(false); setSaved(true); result.retry(); }} />}
-    {saved && <MessageOverlay type="success" text="External payment recorded. The professional has been notified. No money was transferred by this application." onClose={() => setSaved(false)} />}
+    {popup && data && <ExternalPaymentDialog sandbox={data.testPayments} title={data.testPayments ? "Record sandbox settlement" : "Record verified professional payment"} amount={data.total} endpoint={`/admin/settlements/${encodeURIComponent(month)}/${encodeURIComponent(target)}/record-payment`} onClose={() => setPopup(false)} onSaved={() => { setPopup(false); setSaved(true); result.retry(); }} />}
+    {saved && <MessageOverlay type="success" text={data?.testPayments ? "Sandbox settlement recorded. The professional has been notified. No real payment was recorded." : "External payment recorded. The professional has been notified. No money was transferred by this application."} onClose={() => setSaved(false)} />}
   </>;
 }

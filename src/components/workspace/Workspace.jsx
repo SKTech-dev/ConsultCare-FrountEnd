@@ -7,9 +7,11 @@ import { logoutUser } from "../../features/auth/authSlice";
 import { fetchWorkspace, clearWorkspaceError, clearFeedback } from "../../features/consultations/consultationSlice";
 import { MessageOverlay } from "../ui/MessageBox";
 import "./workspace.css";
+import "./refinements.css";
 import ErrorNotice from "../ui/ErrorNotice";
 import { NotificationBell, NotificationAlerts } from "./Notifications";
 import { useConfirmLeave } from "../ui/UnsavedChanges";
+import AccountMenu from "./AccountMenu";
 
 export function useWorkspace() { return useSelector((s) => s.consultations); }
 export function PageHeading({ eyebrow = "YOUR CONSULTATION SPACE", title, children, action }) {
@@ -22,6 +24,7 @@ export function Panel({ title, children }) { return <section className="ws-panel
 export default function Workspace() {
   const state = useWorkspace();
   const colors = useSelector((s) => s.theme.colors);
+  const user = useSelector((s) => s.auth.user);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -101,15 +104,13 @@ export default function Workspace() {
     {mobile && open && <div className="ws-nav-backdrop" aria-hidden="true" onClick={() => setOpen(false)} />}
     <aside ref={sidebar} id="workspace-navigation" role={mobile && open ? "dialog" : undefined} aria-modal={mobile && open ? true : undefined} aria-label="Workspace navigation" inert={(mobile ? !open : sidebarCollapsed) ? "" : undefined} onKeyDown={navigationKeys} className={"ws-sidebar " + (open ? "ws-sidebar-open " : "") + (sidebarCollapsed ? "ws-sidebar-collapsed" : "")}>
       <button type="button" className="ws-nav-close" aria-label="Close navigation" onClick={() => setOpen(false)}><X size={22} /></button>
-      <Link className="ws-brand" to="/"><ShieldCheck />consultcare<span>.</span></Link>
+      <div className="ws-brand-row"><Link className="ws-brand" to="/"><ShieldCheck />consultcare<span>.</span></Link><button className="ws-sidebar-toggle" type="button" aria-label="Hide sidebar" title="Hide sidebar" onClick={() => mobile ? setOpen(false) : setSidebarCollapsed(true)}><PanelLeftClose size={19} /></button></div>
       <p className="ws-eyebrow ws-nav-label">{state.role === "user" ? "PATIENT & CLIENT" : state.role.toUpperCase()} WORKSPACE</p>
       <nav aria-label="Workspace">{links.map(([to, label, Icon]) => <NavLink key={to} to={to} end onClick={() => setOpen(false)}><Icon size={18} />{label}</NavLink>)}</nav>
-      <div className="ws-sidebar-bottom"><ShieldCheck size={23} /><h3>A little clarity.<br />A better next step.</h3><p>Your conversations, all in one place.</p><div className="ws-sidebar-footer"><Link to="/">Back to home →</Link><button className="ws-sidebar-toggle" type="button" aria-label="Hide sidebar" title="Hide sidebar" onClick={() => mobile ? setOpen(false) : setSidebarCollapsed(true)}><PanelLeftClose size={16} /></button></div></div>
+      <div className="ws-sidebar-bottom"><ShieldCheck size={23} /><h3>A little clarity.<br />A better next step.</h3><p>Your conversations, all in one place.</p></div>
     </aside>
     <div inert={mobile && open ? "" : undefined} className={"ws-body " + (sidebarCollapsed ? "ws-body-expanded" : "")}>
-      {sidebarCollapsed && <button className="ws-sidebar-restore" type="button" aria-label="Show sidebar" title="Show sidebar" onClick={() => setSidebarCollapsed(false)}><PanelLeftOpen size={18} /></button>}
-      <header className="ws-topbar"><button ref={menuButton} type="button" className="ws-menu" aria-label="Toggle navigation" aria-expanded={open} aria-controls="workspace-navigation" onClick={() => setOpen(!open)}>{open ? <X /> : <Menu />}</button><div><span className="ws-eyebrow">WELCOME BACK</span><p>{name}</p></div><NotificationBell /><div className="ws-identity"><span className="ws-avatar">{name.split(" ").map((w) => w[0]).slice(0, 2).join("")}</span></div></header>
-      <div className="ws-preview"><div><strong>{state.role === "user" ? "Patient / client" : state.role} workspace</strong><span> · Connected to your account</span></div><button className="underline font-semibold" onClick={signOut}>Sign out</button></div>
+      <header className="ws-topbar">{sidebarCollapsed && !mobile && <button className="ws-sidebar-toggle" type="button" aria-label="Show sidebar" title="Show sidebar" onClick={() => setSidebarCollapsed(false)}><PanelLeftOpen size={20} /></button>}<button ref={menuButton} type="button" className="ws-menu" aria-label="Toggle navigation" aria-expanded={open} aria-controls="workspace-navigation" onClick={() => setOpen(!open)}>{open ? <X /> : <Menu />}</button><div className="ws-welcome"><span className="ws-eyebrow">WELCOME BACK</span><p>{name}</p></div><NotificationBell /><AccountMenu name={name} email={user?.email || state.patient?.email || professional?.email || ""} role={state.role} image={state.role === "user" ? state.patient.image : professional?.image} signOut={signOut} /></header>
       {state.error && <div className="mx-6"><ErrorNotice error={state.feedback ? "" : state.error} onRetry={() => { dispatch(clearWorkspaceError()); dispatch(fetchWorkspace()); }} /></div>}
       {state.pending > 0 && <GlobalLoader fullPage message="Saving changes..." />}
       {state.feedback && <MessageOverlay type={state.feedback.type} text={state.feedback.text} onClose={() => dispatch(clearFeedback())} />}

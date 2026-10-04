@@ -26,6 +26,7 @@ async function account(page, role, currentClinic = { ...clinic }) {
 }
 
 async function fillClinic(page) {
+  await page.getByRole("tab", { name: "Group clinic", exact: true }).click();
   await page.getByLabel("Clinic title", { exact: true }).fill("Healthy living lecture");
   await page.getByLabel("Clinic date", { exact: true }).fill("2026-09-23");
   await page.getByLabel("Clinic start time", { exact: true }).fill("12:00");
@@ -42,6 +43,7 @@ test("available clinics search by professional name on the server", async ({ pag
     return route.fulfill({ json: { data: { items: [], count: 0, pageSize: 30 } } });
   });
   await page.goto("/consult/doctors");
+  await page.getByRole("tab", { name: "Available doctor clinics", exact: true }).click();
   await page.getByLabel("Search clinics by professional name").fill("Test Doctor");
   await page.getByRole("button", { name: "Search", exact: true }).click();
   await expect.poll(() => query?.get("q")).toBe("Test Doctor");
@@ -59,6 +61,7 @@ test("paid clinic allows time and places changes without cancellation or fee edi
   });
   await page.goto("/app/clinics/clinic");
   await expect(page.getByRole("button", { name: "Cancel clinic", exact: true })).toHaveCount(0);
+  await page.getByRole("tab", { name: "Manage clinic", exact: true }).click();
   await page.getByRole("button", { name: "Update time & places" }).click();
   const dialog = page.getByRole("dialog", { name: "Update clinic time & places" });
   await dialog.getByLabel("Start time").fill("14:00");
@@ -86,6 +89,7 @@ for (const role of ["doctor", "lawyer"]) {
     expect(submitted).toEqual({ title: "Healthy living lecture", description: "", date: "2026-09-23", start: "12:00", end: "13:00", capacity: 20, fee: 900.5 });
     await page.getByRole("dialog").getByRole("button", { name: "OK" }).click();
     await expect(page).toHaveURL(/\/app\/clinics\/clinic$/);
+    await page.getByRole("tab", { name: "Manage clinic", exact: true }).click();
     await expect(page.getByRole("button", { name: "Start clinic", exact: true })).toBeDisabled();
   });
 }
@@ -104,6 +108,7 @@ test("patient reserves and is redirected to PayHere sandbox without local confir
   });
   await page.route("https://sandbox.payhere.lk/pay/checkout", (route) => route.fulfill({ contentType: "text/html", body: "<h1>Sandbox checkout</h1>" }));
   await page.goto("/app/clinics/clinic");
+  await page.getByRole("tab", { name: "Your clinic registration", exact: true }).click();
   await expect(page.getByRole("button", { name: "Reserve clinic place" })).toBeDisabled();
   await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Reserve clinic place" }).click();
@@ -119,6 +124,7 @@ test("patient reserves and is redirected to PayHere sandbox without local confir
 test("patient directories and My consultations show separate clinic cards", async ({ page }) => {
   await account(page, "user");
   await page.goto("/consult/doctors");
+  await page.getByRole("tab", { name: "Available doctor clinics", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Available doctor clinics" })).toBeVisible();
   await page.getByRole("link", { name: "Healthy living lecture", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Healthy living lecture", exact: true })).toBeVisible();
@@ -132,6 +138,7 @@ test("admin reviews clinic payments without simulated refund controls", async ({
   await account(page, "admin", current);
 
   await page.goto("/app/clinics/clinic");
+  await page.getByRole("tab", { name: "Clinic registrations & payments", exact: true }).click();
   await expect(page.getByRole("cell", { name: "Test Patient" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Simulate refund" })).toHaveCount(0);
   await expect(page.getByRole("cell", { name: "refund requested" })).toBeVisible();
