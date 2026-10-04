@@ -27,6 +27,7 @@ test("patient email lookup works before appointment details and clears stale mat
       : route.fulfill({ status: 404, json: { message: "No active patient/client account matches that email." } });
   });
   await page.goto("/app/sessions");
+  await page.getByRole("tab", { name: "Patient consultation", exact: true }).click();
   const email = page.getByLabel("Patient / client email", { exact: true });
   await page.getByRole("button", { name: "Find patient", exact: true }).click();
   expect(searches).toBe(0);
@@ -71,13 +72,14 @@ for (const role of ["user", "doctor", "lawyer", "admin"]) {
   });
 }
 
-test("queue and history use consistent empty states and section gaps", async ({ page }) => {
+test("queue and history use consistent empty states in tabs", async ({ page }) => {
   await mockAccount(page, snapshot());
   await page.goto("/app/queue");
-  await expect(page.locator(".professional-sections .ws-empty")).toHaveCount(4);
-  expect(await page.locator(".professional-sections").evaluate((el) => getComputedStyle(el).gap)).toBe("32px");
+  await expect(page.getByRole("tab")).toHaveCount(4);
+  for (const tab of await page.getByRole("tab").all()) { await tab.click(); await expect(page.locator(".ws-empty:visible")).toHaveCount(1); }
   await page.goto("/app/history");
-  await expect(page.locator(".professional-sections .ws-empty")).toHaveCount(3);
+  await expect(page.getByRole("tab")).toHaveCount(3);
+  for (const tab of await page.getByRole("tab").all()) { await tab.click(); await expect(page.locator(".ws-empty:visible")).toHaveCount(1); }
 });
 
 test("history expand labels follow each independent disclosure state", async ({ page }) => {
@@ -86,6 +88,7 @@ test("history expand labels follow each independent disclosure state", async ({ 
   state.bookings = [booking("record", "past", "COMPLETED")];
   await mockAccount(page, state);
   await page.goto("/app/history");
+  await page.getByRole("tab", { name: "Consultation sessions", exact: true }).click();
   const month = page.locator(".history-month > summary");
   await expect(month.getByText("Expand", { exact: true })).toBeVisible();
   await month.click();
@@ -106,22 +109,21 @@ test("patient pages embed clinics with matching empty sections and remove the cl
   await mockAccount(page, state);
   for (const path of ["/app/bookings", "/app/history", "/consult/doctors", "/consult/lawyers"]) {
     await page.goto(path);
-    await expect(page.locator(".workspace-sections .ws-empty")).toHaveCount(2);
+    await expect(page.getByRole("tab")).toHaveCount(2);
+    for (const tab of await page.getByRole("tab").all()) { await tab.click(); await expect(page.locator(".ws-empty:visible")).toHaveCount(1); }
     await expect(page.locator(".ws-sidebar").getByRole("link", { name: "Group clinics", exact: true })).toHaveCount(0);
-    expect(await page.locator(".workspace-sections").evaluate((el) => getComputedStyle(el).gap)).toBe("32px");
+
   }
   await page.goto("/app/clinics");
   await expect(page).toHaveURL(/\/app\/bookings$/);
 });
 
-test("professional verification sits below personal details on desktop", async ({ page }) => {
+test("professional verification has its own profile tab", async ({ page }) => {
   await mockAccount(page, snapshot());
   await page.goto("/app/profile");
-  const panels = page.locator(".professional-profile-layout > .ws-panel");
-  const details = await panels.nth(0).boundingBox();
-  const verification = await panels.nth(1).boundingBox();
-  expect(verification.y).toBeGreaterThanOrEqual(details.y + details.height + 30);
-  expect(verification.x).toBe(details.x);
+  await expect(page.getByRole("tab", { name: "Your details" })).toHaveAttribute("aria-selected", "true");
+  await page.getByRole("tab", { name: "Professional verification" }).click();
+  await expect(page.getByRole("heading", { name: "Professional verification", exact: true })).toBeVisible();
 });
 
 test("patient profile photo is submitted and remains after reload", async ({ page }) => {
@@ -152,6 +154,7 @@ test("admin list filters send search criteria and reset pagination", async ({ pa
     ["/app/transfers", "Filter handover history", "/api/session-transfers"],
   ]) {
     await page.goto(path);
+    if (label === "Filter handover history") await page.getByRole("tab", { name: "Requests & handover history", exact: true }).click();
     const form = page.getByRole("form", { name: label });
     await form.getByLabel("Professional name or email").fill("  Receiver  ");
     await form.getByRole("combobox", { name: "Profession", exact: true }).selectOption("doctor");
@@ -204,7 +207,7 @@ async function mockAccount(page, state, options = {}) {
     if (path === "/api/clinics" || path === "/api/transferable-sessions" || path === "/api/session-transfers" || path === "/api/scheduled-consultations") return route.fulfill({ json: { data: { items: [], count: 0, pageSize: 30 } } });
     if (path === "/api/admin/users/professional") return route.fulfill({ status: 409, json: { message: "The professional must complete their credentials first." } });
     if (path === "/api/bookings/room/messages" && options.messageFailure) return route.fulfill({ status: 503, json: { message: "Message service is temporarily unavailable." } });
-    if (path === "/api/documents/image" && options.imageFailure) return route.fulfill({ status: 503, json: { message: "Preview unavailable." } });
+    if (path === "/api/documents/image" && options.imageFailure) { await new Promise((resolve) => setTimeout(resolve, 500)); return route.fulfill({ status: 503, json: { message: "Preview unavailable." } }); }
     return route.fulfill({ status: 404, json: { message: "Unexpected test request: " + path } });
   });
   // These tests exercise rendering/routing with deterministic data; backend tests
@@ -271,6 +274,7 @@ test("admin records an external refund and the evidence remains visible", async 
     return route.fulfill({ json: { message: "Recorded." } });
   });
   await page.goto("/app/payments");
+  await page.getByRole("tab", { name: "Refunds", exact: true }).click();
   await page.getByRole("button", { name: "Record external refund" }).click();
   await page.getByLabel("Bank / provider reference").fill("REFUND-TEST-1");
   await page.getByLabel("Actual payment date and time (your local time)").fill("2024-05-01T10:00");
@@ -333,6 +337,7 @@ test("call next opens the consultation room immediately", async ({ page }) => {
   });
   await page.goto("/app/queue");
   await expect(page.getByRole("link", { name: "Manage weekly schedule" })).toHaveCount(0);
+  await page.getByRole("tab", { name: "Weekly queues", exact: true }).click();
   await page.getByRole("button", { name: "Call next", exact: true }).click();
   await expect(page).toHaveURL(/\/app\/room\/called$/);
 });
@@ -368,6 +373,7 @@ test("report names open an in-page image preview", async ({ page }) => {
   await mockAccount(page, state);
   await page.route("**/api/documents/report", (route) => route.fulfill({ contentType: "image/png", body: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64") }));
   await page.goto("/app/room/preview");
+  await page.getByRole("tab", { name: "Documents", exact: true }).click();
   await page.getByRole("button", { name: "report.png", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "report.png" });
   await expect(dialog).toBeVisible();
@@ -386,6 +392,7 @@ test("protected routes redirect signed-out visitors to login", async ({ page }) 
 test("handover starts from a queue button rather than a My sessions card", async ({ page }) => {
   await mockAccount(page, snapshot());
   await page.goto("/app/sessions");
+  await page.getByRole("tab", { name: "Patient consultation", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Upcoming generated sessions" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Hand over a booked session" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Requests & handover history" })).toHaveCount(0);
@@ -431,6 +438,7 @@ test("paid private appointment allows date and time editing without changing fee
     return route.fulfill({ json: { message: "Time updated." } });
   });
   await page.goto("/app/queue");
+  await page.getByRole("tab", { name: "One-off consultations", exact: true }).click();
   await expect(page.getByRole("button", { name: "Cancel appointment" })).toHaveCount(0);
   await page.getByRole("button", { name: "Update date & time", exact: true }).click();
   await page.getByLabel("Date", { exact: true }).fill("2026-09-25");
@@ -475,10 +483,12 @@ test("patient upcoming excludes ended queues but preserves running calls and his
   // Incoming calls redirect once; return through the SPA to inspect the queue.
   await expect(page).toHaveURL(/\/app\/room\/ongoing/);
   await page.getByRole("navigation", { name: "Workspace" }).getByRole("link", { name: "My consultations" }).click();
+  await page.getByRole("tab", { name: "Your private consultations", exact: true }).click();
   await expect(page.locator('a[href="/app/booking/expired"]')).toHaveCount(0);
   await expect(page.locator('a[href="/app/room/ongoing"]').first()).toBeVisible();
   await expect(page.locator('a[href="/app/booking/upcoming"]')).toBeVisible();
   await page.getByRole("navigation", { name: "Workspace" }).getByRole("link", { name: "My history" }).click();
+  await page.getByRole("tab", { name: "Past private consultations", exact: true }).click();
   await expect(page.locator('a[href="/app/booking/expired"]')).toBeVisible();
   await expect(page.locator('a[href="/app/booking/upcoming"]')).toHaveCount(0);
 });
@@ -506,8 +516,9 @@ test("professional schedules a private consultation using an exact patient email
     return route.fulfill({ status: 201, json: { message: "Consultation scheduled. Patient payment is required." } });
   });
   await page.goto("/app/sessions");
+  await page.getByRole("tab", { name: "Patient consultation", exact: true }).click();
   await expect(page.getByRole("button", { name: "Schedule consultation", exact: true })).toBeEnabled();
-  await expect(page.getByRole("button", { name: "Find patient" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Find patient" })).toBeVisible();
   await page.getByLabel("Patient / client email").fill("patient@example.com");
   await page.getByLabel("Date", { exact: true }).fill("2026-09-23");
   await page.getByLabel("Start time", { exact: true }).fill("14:00");
@@ -543,6 +554,7 @@ for (const role of ["doctor", "lawyer"]) {
     }
     await page.reload();
     await expect(fee).toHaveValue("5000.5");
+    await page.getByRole("tab", { name: "Patient consultation", exact: true }).click();
     await expect(page.getByLabel("Individual consultation fee (LKR)", { exact: true })).toHaveValue("");
     await expect(page.getByLabel("Date", { exact: true })).toBeVisible();
   });
@@ -559,6 +571,7 @@ test("patient can accept and pay for an invitation from My consultations", async
   });
   await page.route("https://sandbox.payhere.lk/pay/checkout", (route) => route.fulfill({ contentType: "text/html", body: "<h1>Sandbox checkout</h1>" }));
   await page.goto("/app/bookings");
+  await page.getByRole("tab", { name: "Your private consultations", exact: true }).click();
   await expect(page.getByLabel("Billing address")).toHaveCount(0);
   await expect(page.getByRole("button", { name: /pay with PayHere/i })).toHaveCount(0);
   await page.getByRole("link", { name: "Continue to payment" }).click();
@@ -576,6 +589,7 @@ test("expired invitations cannot be paid and admins can inspect scheduled appoin
   state.bookings = [{ ...booking("expired", "private", "PAYMENT PENDING"), scheduledById: professional.id, paymentDueAt: "2026-09-22T10:00:00+05:30" }];
   await mockAccount(page, state);
   await page.goto("/app/bookings");
+  await page.getByRole("tab", { name: "Your private consultations", exact: true }).click();
   await page.getByRole("link", { name: "Continue to payment" }).click();
   await expect(page.getByRole("button", { name: /Accept & pay with PayHere/ })).toBeDisabled();
   await mockAccount(page, snapshot("admin"));
@@ -628,12 +642,15 @@ test("professional queue separates one-off appointments and includes future offl
   await page.goto("/app/clinics");
   await expect(page).toHaveURL(/\/app\/queue$/);
   await expect(page.locator(".ws-sidebar").getByRole("link", { name: "Group clinics" })).toHaveCount(0);
-  await expect(page.locator(".professional-sections > section > h2, .professional-sections > section > section > h2")).toHaveText(["Upcoming handovers", "One-off scheduled consultations", "Upcoming group clinics", "Weekly queues"]);
+  await expect(page.getByRole("tab")).toHaveText(["Handovers", "One-off consultations", "Group clinics", "Weekly queues"]);
+  await page.getByRole("tab", { name: "Weekly queues", exact: true }).click();
   const weekly = page.locator("section.ws-panel").filter({ has: page.getByRole("heading", { name: "Weekly queues", exact: true }) });
   await expect(weekly.getByText("Offline", { exact: true })).toBeVisible();
   await expect(weekly.getByText("Test Patient", { exact: true })).toHaveCount(0);
+  await page.getByRole("tab", { name: "One-off consultations", exact: true }).click();
   await expect(page.getByRole("button", { name: "Call next", exact: true })).toBeEnabled();
   await page.goto("/app/history");
+  await page.getByRole("tab", { name: "Consultation sessions", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Past consultation sessions", exact: true })).toBeVisible();
   await expect(page.getByText("September 2026", { exact: true })).toBeVisible();
 });
@@ -644,7 +661,7 @@ test("professional profile previews and removes a selected photo on mobile", asy
   await page.goto("/app/profile");
   await page.getByLabel("Choose or replace photo").setInputFiles({ name: "portrait.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64") });
   await expect(page.getByAltText("Profile preview")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Professional verification", exact: true })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Professional verification", exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.getByRole("button", { name: "Remove photo", exact: true }).click();
   await expect(page.getByAltText("Profile preview")).toHaveCount(0);
@@ -656,6 +673,7 @@ test("future sessions disable both call-next and no-show", async ({ page }) => {
   state.bookings = [booking("waiting", "future")];
   await mockAccount(page, state);
   await page.goto("/app/queue");
+  await page.getByRole("tab", { name: "Weekly queues", exact: true }).click();
   await expect(page.getByRole("button", { name: "Call next", exact: true })).toBeDisabled();
   await expect(page.getByRole("button", { name: "No-show", exact: true })).toBeDisabled();
 });
@@ -666,6 +684,7 @@ test("a live session enables call-next and no-show when the professional is free
   state.bookings = [booking("waiting", "current")];
   await mockAccount(page, state);
   await page.goto("/app/queue");
+  await page.getByRole("tab", { name: "Weekly queues", exact: true }).click();
   await expect(page.getByRole("button", { name: "Call next", exact: true })).toBeEnabled();
   await expect(page.getByRole("button", { name: "No-show", exact: true })).toBeEnabled();
 });
@@ -676,10 +695,14 @@ test("an overrun remains reachable and blocks starting another consultation", as
   state.bookings = [booking("ongoing", "old", "IN CONSULTATION"), booking("waiting", "current")];
   await mockAccount(page, state);
   await page.goto("/app/queue");
+  await page.getByRole("tab", { name: "Consultation still in progress", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Consultation still in progress" })).toBeVisible();
+  await page.getByRole("tab", { name: "Weekly queues", exact: true }).click();
   await expect(page.getByRole("button", { name: "Call next", exact: true })).toBeDisabled();
+  await page.getByRole("tab", { name: "Consultation still in progress", exact: true }).click();
   await page.getByRole("link", { name: "Return to consultation" }).click();
   await expect(page).toHaveURL(/\/app\/room\/ongoing$/);
+  await page.getByRole("tab", { name: "Documents", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Reports, images & documents" })).toBeVisible();
 });
 
@@ -688,6 +711,7 @@ test("failed professional approval shows one error popup", async ({ page }) => {
   state.professionals[0].status = "pending";
   await mockAccount(page, state);
   await page.goto("/app/admin/person/professional/professional");
+  await page.getByRole("tab", { name: "Professional introduction", exact: true }).click();
   await page.getByRole("button", { name: "Approve", exact: true }).click();
   await page.getByRole("button", { name: "OK", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Cannot approve professional" })).toHaveCount(1);
@@ -700,6 +724,7 @@ test("popups use dialog semantics, contain focus and close with Escape", async (
   state.professionals[0].status = "pending";
   await mockAccount(page, state);
   await page.goto("/app/admin/person/professional/professional");
+  await page.getByRole("tab", { name: "Professional introduction", exact: true }).click();
   const approve = page.getByRole("button", { name: "Approve", exact: true });
   await approve.click();
   const dialog = page.getByRole("dialog", { name: "Update account status?" });
@@ -718,10 +743,12 @@ test("chat failures remain local and image previews explain failure with retry",
   state.bookings = [{ ...booking("room", "current", "IN CONSULTATION"), files: [{ id: "image", name: "report.png", type: "image/png", size: 100, kind: "image", private: false }] }];
   await mockAccount(page, state, { messageFailure: true, imageFailure: true });
   await page.goto("/app/room/room");
+  await page.getByRole("tab", { name: "Documents", exact: true }).click();
   await expect(page.getByRole("status", { name: "Loading preview for report.png" })).toBeVisible();
   await expect(page.getByRole("group", { name: "Preview unavailable for report.png" })).toBeVisible();
   await page.getByRole("button", { name: "Retry" }).click();
   await expect(page.getByRole("group", { name: "Preview unavailable for report.png" })).toBeVisible();
+  await page.getByRole("tab", { name: "Chat", exact: true }).click();
   const input = page.getByRole("textbox", { name: "Message", exact: true });
   await input.fill("Can you hear me?");
   await page.getByRole("button", { name: "Send message" }).click();

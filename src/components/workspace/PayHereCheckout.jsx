@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useWorkspace } from "./Workspace";
 import { callApi } from "../../api/apiClient";
 import { MessageOverlay } from "../ui/MessageBox";
+import { Loader2 } from "lucide-react";
 
 // PayHere requires a browser form POST. The backend returns only public, signed
 // checkout fields; the merchant secret never reaches this component.
@@ -41,7 +42,8 @@ export default function PayHereCheckout({ endpoint, amount, disabled = false, la
   return <div className="ws-space">
     <p className="ws-muted">You will be redirected to PayHere’s secure checkout. ConsultCare confirms the payment only after PayHere verifies it.</p>
     {!billingReady && <p className="ws-notice">Add your billing address and city once in <Link className="underline" to="/app/profile">My profile</Link> before paying.</p>}
-    <button className="ws-link" disabled={disabled || busy || !billingReady} onClick={pay}>{busy ? "Opening secure checkout…" : `${label} · ${amount}`}</button>
+    <button className="ws-link" disabled={disabled || busy || !billingReady} aria-busy={busy} onClick={pay}>{busy && <Loader2 className="animate-spin" size={18} />}{busy ? "Opening secure checkout…" : `${label} · ${amount}`}</button>
+    {busy && <p role="status" className="ws-space">Preparing your secure payment. Please keep this page open.</p>}
     {error && <MessageOverlay type="error" text={error} onClose={() => setError("")} />}
   </div>;
 }

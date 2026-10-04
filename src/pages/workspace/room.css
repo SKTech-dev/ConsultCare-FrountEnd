@@ -1,4 +1,29 @@
 .consultation-room { display: grid; gap: 24px; }
+.room-workbench { display: grid; grid-template-columns: minmax(310px, 1fr) minmax(0, 3fr); gap: 18px; align-items: start; }
+.room-tools { min-width: 0; max-height: calc(100dvh - 180px); overflow-y: auto; }
+.room-tools .section-tab-list { position: sticky; top: 0; z-index: 2; margin-bottom: 12px; flex-wrap: wrap; }
+.room-tools .ws-panel { padding: 18px; }
+.room-tools .consultation-context-grid { grid-template-columns: 1fr; }
+.room-workbench > .room-video-panel { position: sticky; top: 12px; }
+.room-workbench .daily-video-frame { height: calc(100dvh - 280px); min-height: 380px; }
+.room-expanded { position: fixed; inset: 0; z-index: 60; padding: 18px; background: var(--ws-background, #f5f7f9); overflow: auto; }
+.room-expanded .room-tools { max-height: calc(100dvh - 135px); }
+.room-expanded .daily-video-frame { height: calc(100dvh - 240px); }
+.document-transfer { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 14px 0; border-bottom: 1px solid var(--ws-border); }
+.document-transfer > div { flex: 1; min-width: 100px; overflow-wrap: anywhere; }
+.document-transfer small { display: block; font-size: 12px; }
+.document-error { position: relative; color: #b42318; }
+.document-error [role=tooltip] { display: none; position: absolute; right: 0; bottom: 100%; padding: 10px; width: 210px; background: #7a271a; color: white; border-radius: 8px; z-index: 5; font-size: 12px; }
+.document-error:hover [role=tooltip], .document-error:focus [role=tooltip] { display: block; }
+.room-document-row { align-items: flex-start; }
+.prescription-superseded { display: grid; gap: 5px; margin-top: 16px; padding: 14px; border: 1px dashed var(--ws-border); border-radius: 10px; color: var(--ws-textSecondary); font-size: 12px; }
+.room-chat-panel small { display: flex; align-items: center; gap: 6px; }
+@media (max-width: 900px) {
+  .room-workbench { grid-template-columns: 1fr; }
+  .room-workbench > .room-video-panel { grid-row: 1; position: static; }
+  .room-tools, .room-expanded .room-tools { max-height: none; }
+  .room-workbench .daily-video-frame { height: 52dvh; min-height: 280px; }
+}
 .daily-video-frame { height: 520px; min-width: 0; }
 .daily-video-frame[hidden] { display: none; }
 .daily-video-frame iframe{max-width:100%;border:0}
