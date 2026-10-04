@@ -28,6 +28,7 @@ export default function SessionTransfers({ embedded = false, view = "all", allow
   const [page, setPage] = useState(1);
   const [sessionPage, setSessionPage] = useState(1);
   const [sessionFilters, setSessionFilters] = useState({ ...emptyFilters });
+  const [adminView, setAdminView] = useState("all");
   const [historyFilters, setHistoryFilters] = useState({ ...emptyFilters });
   const [error, setError] = useState("");
   const [notice, setNotice] = useState(null);
@@ -43,12 +44,12 @@ export default function SessionTransfers({ embedded = false, view = "all", allow
     try {
       const [a, b] = await Promise.all([
         showSessions ? callApi("GET", "/transferable-sessions", null, { page: sessionPage, ...filterParams(sessionFilters) }) : null,
-        showHistory ? callApi("GET", "/session-transfers", null, { page, scope: view === "all" ? "all" : view, ...filterParams(historyFilters) }) : null,
+        showHistory ? callApi("GET", "/session-transfers", null, { page, scope: !embedded && workspace.role === "admin" ? adminView : view === "all" ? "all" : view, ...filterParams(historyFilters) }) : null,
       ]);
       if (version !== request.current) return;
       setSessions(a?.data); setHistory(b?.data); setError("");
     } catch (e) { if (version === request.current) setError(e.message); }
-  }, [allowed, page, sessionPage, showSessions, showHistory, view, sessionFilters, historyFilters]);
+  }, [allowed, page, sessionPage, showSessions, showHistory, view, sessionFilters, historyFilters, embedded, workspace.role, adminView]);
   useEffect(() => {
     load();
     const interval = setInterval(load, 10000);
@@ -86,6 +87,7 @@ export default function SessionTransfers({ embedded = false, view = "all", allow
     </Panel></SessionPicker>}
     {showHistory && <Panel title={historyTitle}>
       {allowRequest && <div className="ws-actions"><button className="ws-link secondary" onClick={() => setChooseSession(true)}><ArrowRightLeft size={16} />Hand over a booked session</button></div>}
+      {!embedded && workspace.role === "admin" && <label className="ws-field appointment-filter">Handover view<select value={adminView} onChange={(event) => { setAdminView(event.target.value); setHistory(null); setPage(1); }}><option value="all">All requests</option><option value="upcoming">Upcoming</option><option value="ongoing">Ongoing</option><option value="history">History</option></select></label>}
       {workspace.role === "admin" && <ListFilters label="Filter handover history" onApply={(value) => { setHistory(null); setHistoryFilters(value); setPage(1); }} statuses={["pending", "accepted", "rejected", "cancelled", "expired"]} />}
       <p>{view === "history" ? "Past sessions and resolved requests remain here for review, including their earnings attribution." : "Incoming requests have Accept and Reject actions. Accepted upcoming sessions remain here until they finish. Your original session stays assigned until acceptance."}</p>
       {!history && !error && <p role="status">Loading requests…</p>}
