@@ -68,7 +68,7 @@ test("WebSocket notifications alert once, update the inbox and open the relevant
   live.resend();
   await expect(page.locator(".notification-toast")).toHaveCount(0);
   await page.getByRole("button", { name: "View details", exact: true }).click();
-  await expect(page).toHaveURL(/\/app\/bookings$/);
+  await expect(page).toHaveURL(/\/app\/bookings\?tab=consultations$/);
   expect(live.items[0].readAt).not.toBeNull();
 });
 
@@ -111,5 +111,5 @@ test("onboarding does not prevent reading account notifications", async ({ page 
   await page.goto("/app/notifications");
   await expect(page.getByRole("heading", { name: "Your notifications." })).toBeVisible();
   await page.getByRole("button", { name: "View details" }).click();
-  await expect(page).toHaveURL(/\/app\/profile$/);
+  await expect(page).toHaveURL(/\/app\/profile\?tab=verification$/);
 });

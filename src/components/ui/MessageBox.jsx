@@ -124,6 +124,6 @@ export const MessageOverlay = ({
           </button>
         )}
       </div>
-    </div>, document.fullscreenElement || document.querySelector(".room-expanded") || document.body
+    </div>, document.fullscreenElement || document.querySelector(".video-expanded") || document.querySelector(".room-expanded") || document.body
   );
 };

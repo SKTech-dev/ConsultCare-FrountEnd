@@ -7,9 +7,9 @@ import { fetchWorkspace } from "../../features/consultations/consultationSlice";
 import { Empty, PageHeading, Panel, useWorkspace } from "./Workspace";
 import ErrorNotice from "../ui/ErrorNotice";
 import "./notifications.css";
+import { notificationDestination } from "../../features/consultations/navigation";
 
 const timestamp = (value) => new Date(value).toLocaleString("en-GB", { timeZone: "Asia/Colombo", dateStyle: "medium", timeStyle: "short" });
-const destination = (item) => item.link?.startsWith("/app/") ? item.link : "/app/notifications";
 
 export function NotificationBell() {
   const { notificationSummary } = useWorkspace();
@@ -60,7 +60,7 @@ export function NotificationAlerts() {
 }
 
 export default function Notifications() {
-  const { notificationSummary, liveConnected } = useWorkspace();
+  const { notificationSummary, liveConnected, role } = useWorkspace();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [unread, setUnread] = useState(false);
@@ -91,7 +91,7 @@ export default function Notifications() {
       if (!item) { setPage(1); setResult(null); }
       setRetry((value) => value + 1);
       await dispatch(fetchWorkspace());
-      if (follow) navigate(destination(item));
+      if (follow) navigate(notificationDestination(item, role));
     } catch (failure) { setError(failure.message); }
     finally { setBusy(false); }
   }
