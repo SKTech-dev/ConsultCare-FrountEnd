@@ -13,6 +13,7 @@ export default function BookingPayment({ booking: b }) {
   return <div className="ws-space">
     <p className="ws-notice">{expired ? "The payment deadline has passed. This invitation can no longer be accepted." : b.scheduledById ? "Your professional invited you to this private consultation. Accept and pay before the scheduled start, or cancel if the time does not suit you." : "Complete payment to reserve your queue place. Unpaid reservations expire after 30 minutes or when the session ends."}</p>
     {b.paymentDueAt && <p>Payment deadline: {new Date(b.paymentDueAt).toLocaleString("en-GB", { timeZone: "Asia/Colombo" })} (Sri Lanka).</p>}
-    {state.payhereEnabled ? <PayHereCheckout endpoint={`/bookings/${b.id}/payhere-checkout`} amount={money(b.fee)} disabled={unavailable} label={b.scheduledById ? "Accept & pay with PayHere" : "Pay with PayHere"} /> : <p className="ws-notice">Secure payments are not configured yet. Please contact the institution.</p>}
+    <PayHereCheckout endpoint={`/bookings/${b.id}/payhere-checkout`} amount={money(b.fee)} disabled={unavailable} label={state.payhereEnabled ? (b.scheduledById ? "Accept & pay" : "Pay consultation fee") : "Pay using wallet credit"} />
+    {!state.payhereEnabled && <p className="ws-notice">PayHere is not configured. Only a fully wallet-funded payment can be completed.</p>}
   </div>;
 }

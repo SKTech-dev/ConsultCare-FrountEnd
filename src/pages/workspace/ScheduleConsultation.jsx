@@ -20,11 +20,12 @@ export default function ScheduleConsultation() {
   const [date, setDate] = useState(sriLankanDate());
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
+  const [options, setOptions] = useState([]);
   const [reason, setReason] = useState("");
   const [fee, setFee] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState(null);
-  const markSaved = useUnsavedChanges({ email, date, start, end, reason, fee });
+  const markSaved = useUnsavedChanges({ email, date, start, end, reason, fee, options });
   const enabled = professional?.status === "verified";
 
   async function findPatient() {
@@ -45,8 +46,9 @@ export default function ScheduleConsultation() {
     }
     setBusy(true);
     try {
-      const result = await callApi("POST", "/scheduled-consultations", { email: email.trim(), date, start, end, fee: Number(fee), reason: reason.trim() });
-      markSaved({ email: "", date, start: "", end: "", reason: "", fee: "" });
+      const result = await callApi("POST", "/appointment-offers", { email: email.trim(), options: [...options, { date, start, end }], fee: Number(fee), reason: reason.trim() });
+      markSaved({ email: "", date, start: "", end: "", reason: "", fee: "", options: [] });
+      setOptions([]);
       setEmail(""); setPatient(null); setReason(""); setStart(""); setEnd(""); setFee("");
       setNotice({ type: "success", text: result.message });
       await dispatch(fetchWorkspace());
@@ -70,10 +72,15 @@ export default function ScheduleConsultation() {
         <label className="ws-field">End time<input type="time" required value={end} disabled={busy} onChange={(e) => setEnd(e.target.value)} /></label>
       </div>
       <p className="ws-muted">All dates and times use Sri Lanka time. Overlapping consultations are not allowed.</p>
+      {options.map((option, index) => <div className="ws-row" key={index}><p>Alternative {index + 1}: {option.date} · {option.start}–{option.end}</p><button type="button" className="ws-link secondary" disabled={busy} onClick={() => setOptions(options.filter((_, position) => position !== index))}>Remove option</button></div>)}
+      <button type="button" className="ws-link secondary" disabled={busy || options.length >= 5} onClick={() => {
+        if (!start || !end || start >= end || Date.parse(`${date}T${start}:00+05:30`) <= Date.now()) { setNotice({ type: "error", text: "Enter a valid future date and time before adding an alternative." }); return; }
+        setOptions([...options, { date, start, end }]); setStart(""); setEnd("");
+      }}>Keep this option & add another</button>
       <label className="ws-field">Individual consultation fee (LKR)<input type="number" required min="0.01" max="1000000" step="0.01" value={fee} disabled={busy || !enabled} onChange={(e) => setFee(e.target.value)} aria-describedby="individual-fee-help" /></label>
       <p id="individual-fee-help" className="ws-muted">The fee for this appointment only. It does not change your weekly session fee.</p>
       <label className="ws-field">Message to patient (optional)<textarea value={reason} maxLength={1000} disabled={busy} onChange={(e) => setReason(e.target.value)} placeholder="For example, a follow-up appointment. Do not include sensitive medical details." /></label>
-      <p>The invitation will appear in My consultations. Payment confirms acceptance and is required before the start time. Your weekly schedule stays unchanged.</p>
+      <p>The patient chooses one of your offered times in My consultations before paying. Unselected alternatives are released when a time is chosen. Your weekly schedule stays unchanged.</p>
       <div className="ws-actions"><button className="ws-link" disabled={busy || searching || !enabled}>{busy ? "Scheduling…" : "Schedule consultation"}</button><Link className="ws-link secondary" to="/app/queue?tab=appointments">View scheduled consultations</Link></div>
     </form>
     {notice && <MessageOverlay type={notice.type} text={notice.text} onClose={() => setNotice(null)} />}

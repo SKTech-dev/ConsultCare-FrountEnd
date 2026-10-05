@@ -109,7 +109,7 @@ test("patient pages embed clinics with matching empty sections and remove the cl
   await mockAccount(page, state);
   for (const path of ["/app/bookings", "/app/history", "/consult/doctors", "/consult/lawyers"]) {
     await page.goto(path);
-    await expect(page.getByRole("tab")).toHaveCount(2);
+    await expect(page.getByRole("tab")).toHaveCount(path === "/app/bookings" ? 3 : 2);
     for (const tab of await page.getByRole("tab").all()) { await tab.click(); await expect(page.locator(".ws-empty:visible")).toHaveCount(1); }
     await expect(page.locator(".ws-sidebar").getByRole("link", { name: "Group clinics", exact: true })).toHaveCount(0);
 
@@ -205,6 +205,8 @@ async function mockAccount(page, state, options = {}) {
       ? { data: { id: state.role === "user" ? "patient" : professional.id, role: state.role, name: "Test Account" } }
       : { message: "Please sign in." } });
     if (path === "/api/workspace") return route.fulfill({ json: { data: state } });
+    if (path === "/api/appointment-offers") return route.fulfill({ json: { data: [] } });
+    if (path === "/api/wallet") return route.fulfill({ json: { data: { balance: "0", environment: "sandbox", frozen: false, entries: [], cashouts: [] } } });
     if (path === "/api/clinics" || path === "/api/transferable-sessions" || path === "/api/session-transfers" || path === "/api/scheduled-consultations") return route.fulfill({ json: { data: { items: [], count: 0, pageSize: 30 } } });
     if (path === "/api/admin/users/professional") return route.fulfill({ status: 409, json: { message: "The professional must complete their credentials first." } });
     if (path === "/api/bookings/room/messages" && options.messageFailure) return route.fulfill({ status: 503, json: { message: "Message service is temporarily unavailable." } });
@@ -445,7 +447,7 @@ test("paid private appointment allows date and time editing without changing fee
   await page.getByRole("tab", { name: "One-off consultations", exact: true }).click();
   await expect(page.getByRole("button", { name: "Cancel appointment" })).toHaveCount(0);
   await page.getByRole("button", { name: "Update date & time", exact: true }).click();
-  await page.getByLabel("Date", { exact: true }).fill("2026-09-25");
+  await page.getByLabel("Date *", { exact: true }).fill("2026-09-25");
   await page.getByLabel("Start time", { exact: true }).fill("14:00");
   await page.getByLabel("End time", { exact: true }).fill("15:00");
   await page.getByLabel("Reason for change").fill("Unavoidable schedule change");
@@ -518,7 +520,7 @@ test("handover queue and history request separate server-filtered views", async 
 test("professional schedules a private consultation using an exact patient email", async ({ page }) => {
   await mockAccount(page, snapshot());
   let submitted;
-  await page.route("**/api/scheduled-consultations", (route) => {
+  await page.route("**/api/appointment-offers", (route) => {
     submitted = route.request().postDataJSON();
     return route.fulfill({ status: 201, json: { message: "Consultation scheduled. Patient payment is required." } });
   });
@@ -533,7 +535,7 @@ test("professional schedules a private consultation using an exact patient email
   await page.getByLabel("Individual consultation fee (LKR)", { exact: true }).fill("7500.50");
   await page.getByRole("button", { name: "Schedule consultation", exact: true }).click();
   await expect(page.getByText("Consultation scheduled. Patient payment is required.", { exact: true })).toBeVisible();
-  expect(submitted).toEqual({ email: "patient@example.com", date: "2026-09-23", start: "14:00", end: "14:30", fee: 7500.50, reason: "" });
+  expect(submitted).toEqual({ email: "patient@example.com", options: [{ date: "2026-09-23", start: "14:00", end: "14:30" }], fee: 7500.50, reason: "" });
 });
 
 for (const role of ["doctor", "lawyer"]) {
@@ -583,7 +585,7 @@ test("patient can accept and pay for an invitation from My consultations", async
   await expect(page.getByRole("button", { name: /pay with PayHere/i })).toHaveCount(0);
   await page.getByRole("link", { name: "Continue to payment" }).click();
   const posted = page.waitForRequest("https://sandbox.payhere.lk/pay/checkout");
-  await page.getByRole("button", { name: /Accept & pay with PayHere/ }).click();
+  await page.getByRole("button", { name: /Accept & pay/ }).click();
   const request = await posted;
   expect(request.method()).toBe("POST");
   expect(new URLSearchParams(request.postData()).get("order_id")).toBe("invited");
@@ -598,7 +600,7 @@ test("expired invitations cannot be paid and admins can inspect scheduled appoin
   await page.goto("/app/bookings");
   await page.getByRole("tab", { name: "Your private consultations", exact: true }).click();
   await page.getByRole("link", { name: "Continue to payment" }).click();
-  await expect(page.getByRole("button", { name: /Accept & pay with PayHere/ })).toBeDisabled();
+  await expect(page.getByRole("button", { name: /Accept & pay/ })).toBeDisabled();
   await mockAccount(page, snapshot("admin"));
   await page.goto("/app/appointments");
   await expect(page.getByRole("heading", { name: "Scheduled consultations." })).toBeVisible();

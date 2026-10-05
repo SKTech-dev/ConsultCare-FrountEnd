@@ -8,6 +8,7 @@ import Button from "../../components/ui/Button";
 import "./profile.css";
 import { useUnsavedChanges } from "../../components/ui/UnsavedChanges";
 import { MessageOverlay } from "../../components/ui/MessageBox";
+import RefundWallet from "../../components/workspace/RefundWallet";
 
 export default function Profile() {
   const s = useWorkspace();
@@ -51,7 +52,7 @@ function ProfileForm({ source, patient }) {
     <PageHeading title={patient ? "A profile that's yours." : "Your professional profile."}>
       {patient ? "Keep your contact information accurate and up to date." : "Introduce yourself, keep your credentials up to date and help patients or clients get to know you. Consultation fees are managed in My sessions."}
     </PageHeading>
-    <SectionTabs ids={["details", "verification"]}>
+    <SectionTabs ids={["details", "verification", "wallet"]} labels={["Your details", patient ? "Profile visibility" : "Professional verification", "Refund wallet"]}>
       <Panel title="Your details">
         <form className="ws-form" onSubmit={save}>
           <fieldset className="profile-fields" disabled={saving || readingImage}>
@@ -95,6 +96,7 @@ function ProfileForm({ source, patient }) {
           <p className="ws-notice">Updating your registration or qualifications sends your credentials back for administrator review.</p>
         </>}
       </Panel>
+      {patient && <RefundWallet />}
     </SectionTabs>
   </>;
 }

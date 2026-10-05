@@ -64,12 +64,13 @@ test("paid clinic allows time and places changes without cancellation or fee edi
   await page.getByRole("tab", { name: "Manage clinic", exact: true }).click();
   await page.getByRole("button", { name: "Update time & places" }).click();
   const dialog = page.getByRole("dialog", { name: "Update clinic time & places" });
+  await dialog.getByLabel("Date", { exact: false }).fill("2026-09-24");
   await dialog.getByLabel("Start time").fill("14:00");
   await dialog.getByLabel("End time").fill("15:00");
   await dialog.getByLabel("Places").fill("25");
   await dialog.getByLabel("Reason for change").fill("Unavoidable schedule change");
   await dialog.getByRole("button", { name: "Save changes" }).click();
-  await expect.poll(() => saved).toEqual({ start: "14:00", end: "15:00", capacity: 25, reason: "Unavoidable schedule change" });
+  await expect.poll(() => saved).toEqual({ date: "2026-09-24", start: "14:00", end: "15:00", capacity: 25, reason: "Unavoidable schedule change" });
   await expect(page.getByText("Clinic updated.", { exact: true })).toBeVisible();
 });
 

@@ -11,6 +11,7 @@ import ErrorNotice from "../../components/ui/ErrorNotice";
 import ListFilters, { emptyFilters, filterParams } from "../../components/workspace/ListFilters";
 import EditSessionTime from "../../components/workspace/EditSessionTime";
 import ReasonDialog from "../../components/ui/ReasonDialog";
+import AppointmentOffers from "../../components/workspace/AppointmentOffers";
 
 export default function ScheduledConsultations({ embedded = false, renderQueue }) {
   const state = useWorkspace();
@@ -60,6 +61,7 @@ export default function ScheduledConsultations({ embedded = false, renderQueue }
   return <section className="scheduled-consultations">
     {!embedded && <PageHeading title="Scheduled consultations.">Monitor one-off invitations, patient acceptance, payments and consultation outcomes. Clinical records remain private.</PageHeading>}
     <Panel title="One-off scheduled consultations">
+      {scope !== "ongoing" && <AppointmentOffers embedded history={scope === "history"} />}
       <p>Patients must accept and pay before the start time. Only paid appointments can be called from the consultation queue.</p>
       {!embedded && <label className="ws-field appointment-filter">Show<select aria-label="Appointment view" value={scope} onChange={(e) => { setScope(e.target.value); setPage(1); }}><option value="upcoming">Upcoming</option><option value="ongoing">Ongoing</option><option value="history">History</option><option value="all">All appointments</option></select></label>}
       <ErrorNotice error={error} onRetry={refresh} />
