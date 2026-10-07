@@ -99,11 +99,11 @@ test("patient selects an available time card before continuing", async ({ page }
   await setup(page, { pending: true });
   await page.route("**/api/appointment-offers", (route) => route.fulfill({ json: { data: [{ id: "offer", professionalName: "Dr Test", fee: "5000", status: "open", options: [{ id: "first", date: "2026-10-07", start: "12:00", end: "12:30", available: true }, { id: "second", date: "2026-10-08", start: "14:00", end: "14:30", available: true }] }] } }));
   await page.goto("/app/bookings?tab=offers");
-  const next = page.getByRole("button", { name: "Choose time & continue to payment" });
+  const next = page.getByRole("button", { name: "Continue to payment" });
   await expect(next).toBeDisabled();
   await page.getByRole("radio").last().check();
   await expect(next).toBeEnabled();
-  await expect(page.locator(".appointment-choice.selected")).toContainText("8 October 2026");
+  await expect(page.locator(".appointment-date-group").filter({ has: page.locator("input:checked") })).toContainText("8 October 2026");
   await expect(page.locator(".appointment-choice.selected")).toContainText("Selected");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: "test-results/patient-time-choices.png", fullPage: true });
@@ -116,7 +116,7 @@ test("patient can find expired invitations instead of losing them from the list"
   await page.getByLabel("Invitation view").selectOption("history");
   await expect(page.getByText("These times passed before a selection was made.", { exact: false })).toBeVisible();
   await expect(page.getByText("2026-10-08 · 00:00–00:05")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Choose time & continue to payment" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Continue to payment" })).toHaveCount(0);
 });
 
 test("professional queue has no view filter and invitations remain accessible in history", async ({ page }) => {

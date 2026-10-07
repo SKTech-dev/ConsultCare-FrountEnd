@@ -26,8 +26,12 @@
 .appointment-time-option { padding: 16px; border: 1px solid var(--ws-border, #dce4e5); border-radius: 12px; }
 .appointment-card fieldset { min-width: 0; }
 .appointment-card legend { max-width: 100%; white-space: normal; }
-.appointment-choice-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; margin: 16px 0; }
-.appointment-choice { display: flex; align-items: flex-start; gap: 14px; padding: 18px; border: 2px solid var(--ws-border, #dce4e5); border-radius: 12px; cursor: pointer; transition: border-color .15s, background .15s; }
+.appointment-date-groups { display: grid; gap: 22px; margin: 20px 0; }
+.appointment-date-group h4 { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 12px; margin-bottom: 10px; }
+.appointment-date-group h4 strong { color: var(--ws-primary); font-size: 14px; }
+.appointment-date-group h4 span { color: var(--ws-textSecondary); font-size: 12px; }
+.appointment-choice-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 10px; }
+.appointment-choice { display: flex; align-items: center; gap: 12px; padding: 14px; border: 2px solid var(--ws-border, #dce4e5); border-radius: 10px; cursor: pointer; transition: border-color .15s, background .15s; }
 .appointment-choice:not(.unavailable):hover { border-color: var(--ws-primary); }
 .appointment-choice.selected { border-color: var(--ws-primary, #16736b); background: var(--ws-background, #f1f8f6); }
 .appointment-choice:focus-within { outline: 2px solid var(--ws-primary, #16736b); outline-offset: 3px; }
@@ -36,12 +40,12 @@
 .appointment-choice:has(> input:required)::before { display: none; }
 .appointment-choice-fieldset { border: 0; padding: 0; margin: 18px 0 0; }
 .appointment-choice-fieldset legend { font-weight: 600; }
-.appointment-choice-details { display: grid; gap: 6px; min-width: 0; }
+.appointment-choice-details { display: grid; gap: 4px; min-width: 0; flex: 1; }
 .appointment-choice-day { font-size: 12px; color: var(--ws-textSecondary); }
 .appointment-choice-details strong { font-size: 15px; color: var(--ws-textPrimary); }
-.appointment-choice-time { font-size: 20px; font-weight: 600; color: var(--ws-textPrimary); }
+.appointment-choice-details .appointment-choice-time { font-size: 17px; font-weight: 600; color: var(--ws-primary); }
 .appointment-choice-details small { font-size: 12px; color: var(--ws-textSecondary); }
-.appointment-choice-state { margin-top: 6px; font-size: 12px; color: var(--ws-textSecondary); }
+.appointment-choice-state { font-size: 11px; color: var(--ws-textSecondary); }
 .appointment-choice.selected .appointment-choice-state { color: var(--ws-primary); font-weight: 700; }
 @media (max-width: 600px) {
   .appointment-choice-grid { grid-template-columns: 1fr; }

@@ -144,7 +144,7 @@ export function MonthlyEarningsDetails() {
     <LoadState {...result} />
     {data && <>
       <PageHeading eyebrow={admin ? "MONTHLY SETTLEMENT" : "MY EARNINGS"} title={monthLabel(data.month)} action={<PayoutStatus payout={data.payout} />}>{data.professional.name} · {data.professional.role === "doctor" ? "Doctor" : "Lawyer"}</PageHeading>
-      <div className="earnings-totals">
+      <div className="earnings-month-detail"><div className="earnings-totals">
         <Panel title="Monthly earnings"><strong>{cash(data.total)}</strong><p>Full amount · no institution commission</p></Panel>
         <Panel title="Consultations & clinic tickets"><strong>{data.earningsCount ?? data.count}</strong><p>Completed in {monthLabel(data.month)}</p><EarningsBreakdown totals={data} /></Panel>
         <Panel title="Payout"><PayoutStatus payout={data.payout} />{data.payout.paidAt ? <p className="mt-3">Paid {dateLabel(data.payout.paidAt)} at {timeLabel(data.payout.paidAt)}<br />Reference: {data.payout.reference}</p> : <p className="mt-3">{data.closed ? "Awaiting monthly payout" : "This month is still in progress"}</p>}</Panel>
@@ -158,6 +158,7 @@ export function MonthlyEarningsDetails() {
         <PaymentAudit data={data} service="clinic" admin={admin} />
         <PaymentAudit data={data} service="handover" admin={admin} />
       </SectionTabs><div className="earnings-pagination"><button className="ws-link secondary" disabled={page <= 1} onClick={() => setPagination({ key, page: page - 1 })}>Previous</button><span>Payments page {page} of {Math.max(1, Math.ceil(data.count / data.pageSize))} · {service || "all services"}</span><button className="ws-link secondary" disabled={page * data.pageSize >= data.count} onClick={() => setPagination({ key, page: page + 1 })}>Next</button></div>
+      </div>
     </>}
     {popup && data && <ExternalPaymentDialog sandbox={data.testPayments} title={data.testPayments ? "Record sandbox settlement" : "Record verified professional payment"} amount={data.total} endpoint={`/admin/settlements/${encodeURIComponent(month)}/${encodeURIComponent(target)}/record-payment`} onClose={() => setPopup(false)} onSaved={() => { setPopup(false); setSaved(true); result.retry(); }} />}
     {saved && <MessageOverlay type="success" text={data?.testPayments ? "Sandbox settlement recorded. The professional has been notified. No real payment was recorded." : "External payment recorded. The professional has been notified. No money was transferred by this application."} onClose={() => setSaved(false)} />}

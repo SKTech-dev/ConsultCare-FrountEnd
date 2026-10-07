@@ -10,14 +10,21 @@ import { MessageOverlay } from "../ui/MessageBox";
 import "../../pages/workspace/appointments.css";
 
 function TimeChoice({ option, selected, onChange, offerId }) {
-  const day = new Date(`${option.date}T12:00:00+05:30`);
-  const date = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Colombo" }).format(day);
-  const weekday = new Intl.DateTimeFormat("en-GB", { weekday: "long", timeZone: "Asia/Colombo" }).format(day);
   const minutes = (time) => { const [hours, mins] = time.split(":").map(Number); return hours * 60 + mins; };
   return <label className={`appointment-choice ${selected ? "selected" : ""} ${!option.available ? "unavailable" : ""}`}>
     <input type="radio" name={`offer-${offerId}`} value={option.id} required aria-label={`${option.date}, ${option.start}–${option.end}`} checked={selected} disabled={!option.available} onChange={onChange} />
-    <span className="appointment-choice-details"><span className="appointment-choice-day">{weekday}</span><strong>{date}</strong><span className="appointment-choice-time">{option.start} – {option.end}</span><small>{minutes(option.end) - minutes(option.start)} minutes · Sri Lanka time</small><span className="appointment-choice-state">{!option.available ? "Time has passed" : selected ? "Selected" : "Select this time"}</span></span>
+    <span className="appointment-choice-details"><strong className="appointment-choice-time">{option.start} – {option.end}</strong><small>{minutes(option.end) - minutes(option.start)} minutes</small></span><span className="appointment-choice-state">{!option.available ? "Expired" : selected ? "Selected" : ""}</span>
   </label>;
+}
+
+function AppointmentTimes({ row, selected, onChange }) {
+  const days = [...new Set(row.options.map((option) => option.date))].sort();
+  return <div className="appointment-date-groups">{days.map((day) => {
+    const date = new Date(`${day}T12:00:00+05:30`);
+    const dateLabel = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Colombo" }).format(date);
+    const weekday = new Intl.DateTimeFormat("en-GB", { weekday: "long", timeZone: "Asia/Colombo" }).format(date);
+    return <section className="appointment-date-group" key={day} aria-label={dateLabel}><h4><strong>{dateLabel}</strong><span>{weekday}</span></h4><div className="appointment-choice-grid">{row.options.filter((option) => option.date === day).sort((a, b) => a.start.localeCompare(b.start)).map((option) => <TimeChoice key={option.id} option={option} offerId={row.id} selected={selected === option.id} onChange={() => onChange(option.id)} />)}</div></section>;
+  })}</div>;
 }
 
 export default function AppointmentOffers({ embedded = false, history = false, all = false }) {
@@ -59,7 +66,7 @@ export default function AppointmentOffers({ embedded = false, history = false, a
     {!embedded && visible?.length === 0 && <Empty title="No appointment time choices">Private consultation invitations with available time choices will appear here.</Empty>}
     {visible?.map((row) => <article className="appointment-card" key={row.id}><div className="ws-row"><div><h3>{row.professionalName}{role !== "user" ? ` → ${row.patientName}` : ""}</h3><p>{money(row.fee)} · {row.reason}</p></div><Status>{row.status}</Status></div>
       {row.status === "expired" && <p className="ws-notice">These times passed before a selection was made. No booking or payment was created. Ask your professional for new times.</p>}
-      {role === "user" && row.status === "open" ? <form onSubmit={(event) => choose(event, row)}><fieldset className="appointment-choice-fieldset" disabled={busy}><legend>Choose your appointment time</legend><p className="ws-muted">Select one time, then review your payment.</p><div className="appointment-choice-grid">{row.options.map((option) => <TimeChoice key={option.id} option={option} offerId={row.id} selected={choices[row.id] === option.id} onChange={() => setChoices((current) => ({ ...current, [row.id]: option.id }))} />)}</div><button className="ws-link appointment-choice-continue" disabled={busy || Boolean(error) || !row.options.some((option) => option.id === choices[row.id] && option.available)} aria-busy={busy}>{busy && <Loader2 className="animate-spin" size={18} />}Choose time & continue to payment</button></fieldset></form> : row.options.map((option) => <p key={option.id}>{option.date} · {option.start}–{option.end}</p>)}
+      {role === "user" && row.status === "open" ? <form onSubmit={(event) => choose(event, row)}><fieldset className="appointment-choice-fieldset" disabled={busy}><legend>Choose your appointment time</legend><p className="ws-muted">Select one time. All times are in Sri Lanka time.</p><AppointmentTimes row={row} selected={choices[row.id]} onChange={(id) => setChoices((current) => ({ ...current, [row.id]: id }))} /><button className="ws-link appointment-choice-continue" disabled={busy || Boolean(error) || !row.options.some((option) => option.id === choices[row.id] && option.available)} aria-busy={busy}>{busy && <Loader2 className="animate-spin" size={18} />}Continue to payment</button></fieldset></form> : row.options.map((option) => <p key={option.id}>{option.date} · {option.start}–{option.end}</p>)}
       {row.bookingId && <Link className="ws-link secondary" to={`/app/booking/${row.bookingId}`}>View selected booking</Link>}
       {row.status === "open" && <button className="ws-link secondary mt-3" disabled={busy} onClick={() => setNotice({ type: "confirm", row })}>Cancel</button>}
     </article>)}
