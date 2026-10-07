@@ -7,6 +7,7 @@ async function account(page, role = "user") {
   await page.route("**/api/**", (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path === "/api/auth/me") return route.fulfill({ json: { data: { id: role === "admin" ? "admin" : "patient", role, name: "Test Patient" } } });
+    if (path.endsWith("/room-presence")) return route.fulfill({ json: { data: { status: "IN CONSULTATION" } } });
     if (path === "/api/workspace") return route.fulfill({ json: { data: workspace } });
     if (path === "/api/wallet") return route.fulfill({ json: { data: { balance: "7000", environment: "sandbox", frozen: false, cashouts: [], entries: [] } } });
     if (path === "/api/admin/wallet/cashouts") return route.fulfill({ json: { data: [cashout] } });

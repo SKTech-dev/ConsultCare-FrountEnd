@@ -35,8 +35,9 @@ export default function IncomingConsultation() {
   }, [user?.id, dispatch]);
   useEffect(() => {
     if (user?.role !== "user") return;
-    const booking = bookings.find((item) => item.patientId === user.id && item.status === "IN CONSULTATION" && !handled.current.has(item.id));
-    if (booking) { handled.current.add(booking.id); navigate("/app/room/" + booking.id); }
+    const callKey = (item) => `${item.id}:${item.ringAt || "initial"}`;
+    const booking = bookings.find((item) => item.patientId === user.id && item.status === "IN CONSULTATION" && !handled.current.has(callKey(item)) && (item.ringAt || !item.patientJoinedAt));
+    if (booking) { handled.current.add(callKey(booking)); navigate("/app/room/" + booking.id); }
   }, [bookings, user?.id, user?.role, navigate]);
   return null;
 }

@@ -74,7 +74,7 @@ test("settlement categories filter before pagination and handovers retain the fu
   });
   await page.goto("/app/settlements/2026-09/doctor");
   await expect(page.getByRole("cell", { name: "Weekly Patient", exact: true })).toBeVisible();
-  await page.getByRole("tab", { name: "One-off consultations", exact: true }).click();
+  await page.getByRole("tab", { name: "Individual appointments", exact: true }).click();
   await expect(page.getByRole("cell", { name: "One-off Patient", exact: true })).toBeVisible();
   await expect(page.getByRole("cell", { name: "Weekly Patient", exact: true })).toHaveCount(0);
   await page.getByRole("tab", { name: "Handovers", exact: true }).click();

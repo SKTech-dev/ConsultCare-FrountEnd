@@ -133,6 +133,32 @@ function ConsultationRoom({ id, onFinishing }) {
     document.addEventListener("fullscreenchange", sync);
     return () => document.removeEventListener("fullscreenchange", sync);
   }, []);
+  useEffect(() => {
+    if (!professional || b?.status !== "IN CONSULTATION") return;
+    let active = true, pending = false;
+    async function heartbeat() {
+      if (pending) return;
+      pending = true;
+      try {
+        const result = await callApi("POST", `/bookings/${id}/room-presence`);
+        if (active && result.data.status !== "IN CONSULTATION") {
+          await dispatch(fetchWorkspace({ live: true }));
+          navigate("/app/queue?tab=weekly");
+        }
+      } catch (error) { if (active) setChatError(error.message); }
+      finally { pending = false; }
+    }
+    heartbeat(); const timer = setInterval(heartbeat, 15000);
+    return () => { active = false; clearInterval(timer); };
+  }, [id, professional, b?.status, dispatch, navigate]);
+  async function roomAction(action) {
+    try {
+      await callApi("POST", `/bookings/${id}/${action}`);
+      await dispatch(fetchWorkspace({ live: true }));
+      if (action === "queue-end") navigate("/app/queue?tab=weekly");
+      else setFeedback(action === "ring" ? "Ringing the patient." : "Your attendance is confirmed.");
+    } catch (error) { setChatError(error.message); }
+  }
   async function toggleFullscreen() {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
@@ -201,7 +227,9 @@ function ConsultationRoom({ id, onFinishing }) {
     {b.patientContext?.profession === "doctor" && <div className="ws-space"><Prescription key={b.id} booking={b} /></div>}
     {professional && <div className="ws-space"><Panel title="Professional notes"><p className="room-tool-intro">Save notes at any time. Completing the consultation also saves these notes.</p><fieldset disabled={savingNotes || completing || closed} className="room-notes-fields"><label className="ws-field">Notes shared with the patient / client<textarea value={notes} maxLength={5000} onChange={(e) => { setNotes(e.target.value); setFeedback(""); }} placeholder="Findings and advice for the patient…" /></label><label className="ws-field">Private notes (professional workspace only)<textarea value={privateNotes} maxLength={5000} onChange={(e) => { setPrivateNotes(e.target.value); setFeedback(""); }} placeholder="Only you can see these notes…" /></label><label className="ws-field">Follow-up recommendation<textarea value={followUp} maxLength={2000} onChange={(e) => { setFollowUp(e.target.value); setFeedback(""); }} placeholder="Next steps or a follow-up date…" /></label></fieldset></Panel></div>}
     <PatientContext booking={b} /></SectionTabs></aside></div>
-    {professional && <footer role="region" className="room-professional-actions" aria-label="Professional consultation actions"><div className="room-action-status" role="status">{savingNotes || completing ? <Loader2 size={18} className="animate-spin" /> : <ShieldCheck size={18} />}<div><strong>{completing ? "Completing consultation…" : savingNotes ? "Saving your notes…" : feedback || (closed ? "Consultation completed" : "Consultation in progress")}</strong><small>Notes are saved before completing this record.</small></div></div><div className="ws-actions"><button type="button" className="ws-link secondary" disabled={savingNotes || completing || closed} onClick={async () => { const action = await storeNotes(); if (action && !action.error) setFeedback("Notes saved."); }}><Save size={17} />Save notes</button><button type="button" className="ws-link secondary" disabled={savingNotes || completing || closed} onClick={() => setConfirm("complete")}><CheckCheck size={17} />Complete consultation</button><button type="button" className="ws-link" disabled={savingNotes || completing || closed} onClick={() => setConfirm("next")}>Complete & call next<ArrowRight size={17} /></button></div></footer>}
+    {!professional && !closed && <div className="ws-actions"><button className="ws-link" onClick={() => roomAction("room-presence")}>I'm here · answer call</button>{feedback && <p role="status">{feedback}</p>}</div>}
+    {professional && !closed && <div className="ws-actions"><button className="ws-link secondary" onClick={() => roomAction("ring")}>Ring patient again</button>{!b.scheduledById && !b.patientJoinedAt && <><p className="ws-muted">If the patient does not answer within two minutes of opening this room, their paid place moves to the end of this queue.</p><button className="ws-link secondary" onClick={() => roomAction("queue-end")}>Patient late · move to end</button></>}</div>}
+    {professional && <footer role="region" className="room-professional-actions" aria-label="Professional consultation actions"><div className="room-action-status" role="status">{savingNotes || completing ? <Loader2 size={18} className="animate-spin" /> : <ShieldCheck size={18} />}<div><strong>{completing ? "Completing consultation…" : savingNotes ? "Saving your notes…" : feedback || (closed ? "Consultation completed" : "Consultation in progress")}</strong><small>Notes are saved before completing this record.</small></div></div><div className="ws-actions"><button type="button" className="ws-link secondary" disabled={savingNotes || completing || closed} onClick={async () => { const action = await storeNotes(); if (action && !action.error) setFeedback("Notes saved."); }}><Save size={17} />Save notes</button><button type="button" className="ws-link secondary" disabled={savingNotes || completing || closed} onClick={() => setConfirm("complete")}><CheckCheck size={17} />Complete consultation</button>{!b.scheduledById && <button type="button" className="ws-link" disabled={savingNotes || completing || closed} onClick={() => setConfirm("next")}>Complete & call next<ArrowRight size={17} /></button>}</div></footer>}
     {chatError && <MessageOverlay type="error" text={chatError} onClose={() => setChatError("")} />}
     {confirm && <MessageOverlay type="confirm" title={confirm === "next" ? "Complete and call the next patient?" : "Complete this consultation?"} text={confirm === "next" ? "Your notes will be saved and this consultation will close. The next paid patient in this session will be called if the session is still open. Otherwise, you will return to your queue." : "Your notes will be saved and this consultation will move to history. You can review the completed record afterwards."} confirmText={confirm === "next" ? "Complete & call next" : "Complete"} isProcessing={completing} onClose={() => setConfirm(null)} onConfirm={completeConsultation} />}
   </div>;

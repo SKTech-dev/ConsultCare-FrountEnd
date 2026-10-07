@@ -16,6 +16,7 @@ async function account(page, role, currentClinic = { ...clinic }) {
   await page.route("**/api/**", (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path === "/api/auth/me") return route.fulfill({ json: { data: { id: role === "user" ? "patient" : "professional", role, name: "Test Account" } } });
+    if (path.endsWith("/room-presence")) return route.fulfill({ json: { data: { status: "IN CONSULTATION" } } });
     if (path === "/api/workspace") return route.fulfill({ json: { data: workspace } });
     if (path === "/api/clinics/clinic") return route.fulfill({ json: { data: currentClinic } });
     if (path === "/api/clinics") return route.fulfill({ json: { data: { items: [currentClinic], count: 1, pageSize: 30 } } });
@@ -104,7 +105,8 @@ test("patient reserves and is redirected to PayHere sandbox without local confir
     return route.fulfill({ status: 201, json: { message: "Clinic place reserved." } });
   });
   await page.route("**/api/clinics/clinic/payhere-checkout", (route) => {
-    expect(route.request().postDataJSON()).toEqual({ frontendOrigin: new URL(page.url()).origin });
+    if (route.request().method() === "GET") return route.fulfill({ json: { data: { total: "900.50", walletUsed: "0.00", payhereAmount: "900.50", balance: "0.00" } } });
+    expect(route.request().postDataJSON()).toEqual({ frontendOrigin: new URL(page.url()).origin, expectedPayhereAmount: "900.50" });
     return route.fulfill({ json: { data: { checkoutUrl: "https://sandbox.payhere.lk/pay/checkout", fields: { order_id: "clinic", amount: "900.50" } } } });
   });
   await page.route("https://sandbox.payhere.lk/pay/checkout", (route) => route.fulfill({ contentType: "text/html", body: "<h1>Sandbox checkout</h1>" }));

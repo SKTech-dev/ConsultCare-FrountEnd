@@ -21,3 +21,14 @@
 .weekly-fee p { margin: 0; }
 .appointment-times{grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr))}
 .appointment-summary>*{min-width:0;overflow-wrap:anywhere}
+.appointment-time-options { display: grid; gap: 16px; border: 0; min-width: 0; }
+.appointment-time-options legend { font-weight: 700; font-size: 1.1rem; margin-bottom: 10px; }
+.appointment-time-option { padding: 16px; border: 1px solid var(--ws-border, #dce4e5); border-radius: 12px; }
+.appointment-card fieldset { min-width: 0; }
+.appointment-card legend { max-width: 100%; white-space: normal; }
+.appointment-choice-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; margin: 16px 0; }
+.appointment-choice { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px; border: 2px solid var(--ws-border, #dce4e5); border-radius: 12px; cursor: pointer; }
+.appointment-choice.selected { border-color: var(--ws-primary, #16736b); background: var(--ws-background, #f1f8f6); }
+.appointment-choice:focus-within { outline: 2px solid var(--ws-primary, #16736b); outline-offset: 3px; }
+.appointment-choice.unavailable { opacity: .55; cursor: not-allowed; }
+.appointment-choice input { width: 20px; height: 20px; flex-shrink: 0; accent-color: var(--ws-primary, #16736b); }

@@ -53,7 +53,10 @@ export default function VideoCall({ bookingId, clinicId }) {
           iframeStyle: { width: "100%", height: "100%", border: "0" },
           showLeaveButton: true,
         });
-        frame.on("joined-meeting", () => { if (!cancelled) setState("joined"); });
+        frame.on("joined-meeting", () => { if (!cancelled) {
+          setState("joined");
+          if (bookingId) callApi("POST", `/bookings/${bookingId}/room-presence`).catch((failure) => setError(failure.message));
+        } });
         frame.on("left-meeting", () => { if (!cancelled) { setState("left"); frame.destroy().catch(() => {}); } });
         frame.on("error", fail);
         await frame.join({ url: data.url, token: data.token });

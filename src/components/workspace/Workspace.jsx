@@ -10,6 +10,7 @@ import "./workspace.css";
 import "./refinements.css";
 import ErrorNotice from "../ui/ErrorNotice";
 import { NotificationBell, NotificationAlerts } from "./Notifications";
+import PatientRingtone from "./PatientRingtone";
 import { useConfirmLeave } from "../ui/UnsavedChanges";
 import AccountMenu from "./AccountMenu";
 
@@ -96,7 +97,7 @@ export default function Workspace() {
   const links = state.role === "user" ? [
     ["/app", "Overview", LayoutDashboard], ["/consult/doctors", "Find a doctor", HeartPulse], ["/consult/lawyers", "Find a lawyer", Scale], ["/app/bookings", "My consultations", CalendarDays], ["/app/history", "My history", FileText], ["/app/profile", "My profile", UserRound],
   ] : state.role === "admin" ? [
-    ["/app", "Overview", LayoutDashboard], ["/app/admin", "People & verification", Users], ["/app/weekly-schedules", "Weekly schedules", CalendarDays], ["/app/appointments", "Scheduled consultations", CalendarDays], ["/app/clinics", "Group clinics", Users], ["/app/transfers", "Session handovers", CalendarDays], ["/app/payments", "Payments & refunds", ShieldCheck], ["/app/settlements", "Monthly settlements", CalendarDays],
+    ["/app", "Overview", LayoutDashboard], ["/app/admin", "People & verification", Users], ["/app/weekly-schedules", "Weekly schedules", CalendarDays], ["/app/appointments", "Individual appointments", CalendarDays], ["/app/clinics", "Group clinics", Users], ["/app/transfers", "Session handovers", CalendarDays], ["/app/payments", "Payments & refunds", ShieldCheck], ["/app/settlements", "Monthly settlements", CalendarDays],
   ] : [
     ["/app", "Overview", LayoutDashboard], ["/app/queue", "Consultation queue", Users], ["/app/sessions", "My sessions", CalendarDays], ["/app/earnings", "My earnings", ShieldCheck], ["/app/history", "Consultation history", FileText], ["/app/profile", "Professional profile", UserRound],
   ];
@@ -117,6 +118,7 @@ export default function Workspace() {
       {onboardingNotice && <MessageOverlay type="error" title={onboardingNotice.title} text={onboardingNotice.text} onClose={() => setOnboardingNotice(null)} />}
       <main className="ws-main">
         <NotificationAlerts />
+        <PatientRingtone />
         {state.onboarding && <div className="ws-notice">{state.onboarding === "profile" ? "Welcome. Complete your required profile details to continue." : "Next, save at least one weekly session and its consultation fee to finish your professional setup."}</div>}
         {(!state.onboarding || location.pathname === "/app/" + state.onboarding || location.pathname === "/app/notifications") ? <Outlet /> : <GlobalLoader message="Opening your required setup page..." />}
       </main>

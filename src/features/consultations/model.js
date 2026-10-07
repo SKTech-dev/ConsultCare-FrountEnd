@@ -17,11 +17,11 @@ export function sessionStartsAt(session) {
 }
 
 export function isSessionLive(session, at = Date.now()) {
-  return Boolean(session && sessionStartsAt(session) <= at && ((session.startedAt && !session.closedAt) || at < sessionEndsAt(session)));
+  return Boolean(session && !session.closedAt && sessionStartsAt(session) <= at && (session.startedAt || at < sessionEndsAt(session)));
 }
 
 export function isUpcomingSession(session, at = Date.now()) {
-  return Boolean(session?.date && ((session.startedAt && !session.closedAt) || (session.date >= sriLankanDate(at) && sessionEndsAt(session) > at)));
+  return Boolean(session?.date && !session.closedAt && (session.startedAt || (session.date >= sriLankanDate(at) && sessionEndsAt(session) > at)));
 }
 
 export function isUpcomingBooking(booking, session, at = Date.now()) {

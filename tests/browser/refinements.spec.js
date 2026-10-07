@@ -28,13 +28,13 @@ test("tab deep links survive reload and browser history and preserve other query
   await account(page);
   await page.goto("/app/queue?tab=clinics&source=notification");
   await expect(page.getByRole("tab", { name: "Group clinics", exact: true })).toHaveAttribute("aria-selected", "true");
-  await page.getByRole("tab", { name: "One-off consultations", exact: true }).click();
+  await page.getByRole("tab", { name: "Individual appointments", exact: true }).click();
   await expect(page).toHaveURL(/tab=appointments&source=notification/);
   await page.goBack();
   await expect(page.getByRole("tab", { name: "Group clinics", exact: true })).toHaveAttribute("aria-selected", "true");
   await page.goForward();
   await page.reload();
-  await expect(page.getByRole("tab", { name: "One-off consultations", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Individual appointments", exact: true })).toHaveAttribute("aria-selected", "true");
   await page.goto("/app/queue?tab=obsolete");
   await expect(page.getByRole("tab").first()).toHaveText("Weekly queues");
   await expect(page.getByRole("tab").first()).toHaveAttribute("aria-selected", "true");
@@ -49,6 +49,7 @@ async function account(page, role = "doctor") {
   await page.route("**/api/**", (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path === "/api/auth/me") return route.fulfill({ json: { data: { id: role === "doctor" ? "doc" : "patient", role, name: role === "doctor" ? "Dr Test" : "Test Patient", email: "tester@example.com" } } });
+    if (path.endsWith("/room-presence")) return route.fulfill({ json: { data: { status: "IN CONSULTATION" } } });
     if (path === "/api/workspace") return route.fulfill({ json: { data: state } });
     return route.fulfill({ json: { data: { items: [], count: 0, pageSize: 20 } } });
   });
@@ -75,12 +76,12 @@ test("schedule tabs retain drafts and support keyboard navigation", async ({ pag
   await account(page);
   await page.goto("/app/sessions");
   await page.locator(".weekly-fee input").fill("6200");
-  await page.getByRole("tab", { name: "Patient consultation", exact: true }).click();
+  await page.getByRole("tab", { name: "Individual appointment", exact: true }).click();
   await expect(page.getByLabel("Patient / client email", { exact: true })).toBeVisible();
   await page.getByRole("tab", { name: "Weekly availability", exact: true }).click();
   await expect(page.locator(".weekly-fee input")).toHaveValue("6200");
   await page.keyboard.press("ArrowRight");
-  await expect(page.getByRole("tab", { name: "Patient consultation", exact: true })).toBeFocused();
+  await expect(page.getByRole("tab", { name: "Individual appointment", exact: true })).toBeFocused();
 });
 
 test("directory language filter handles existing mixed-case values", async ({ page }) => {

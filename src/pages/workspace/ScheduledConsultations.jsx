@@ -57,17 +57,17 @@ export default function ScheduledConsultations({ embedded = false, renderQueue }
     } catch (failure) { setCancel(null); setNotice({ type: "error", text: failure.message }); refresh(); }
     finally { setBusy(false); }
   }
-  if (!allowed) return <Empty title="Page unavailable">Scheduled consultations are managed by professionals and administrators.</Empty>;
+  if (!allowed) return <Empty title="Page unavailable">Individual appointments are managed by professionals and administrators.</Empty>;
   return <section className="scheduled-consultations">
-    {!embedded && <PageHeading title="Scheduled consultations.">Monitor one-off invitations, patient acceptance, payments and consultation outcomes. Clinical records remain private.</PageHeading>}
-    <Panel title="One-off scheduled consultations">
+    {!embedded && <PageHeading title="Individual appointments.">Monitor individual appointment invitations, patient acceptance, payments and consultation outcomes. Clinical records remain private.</PageHeading>}
+    <Panel title="Individual appointments">
       {scope !== "ongoing" && <AppointmentOffers embedded history={scope === "history"} />}
       <p>Patients must accept and pay before the start time. Only paid appointments can be called from the consultation queue.</p>
       {!embedded && <label className="ws-field appointment-filter">Show<select aria-label="Appointment view" value={scope} onChange={(e) => { setScope(e.target.value); setPage(1); }}><option value="upcoming">Upcoming</option><option value="ongoing">Ongoing</option><option value="history">History</option><option value="all">All appointments</option></select></label>}
       <ErrorNotice error={error} onRetry={refresh} />
-      {!result && !error && <p role="status">Loading scheduled consultations…</p>}
-      {state.role === "admin" && <ListFilters label="Filter scheduled consultations" onApply={(value) => { setFilters(value); setPage(1); }} statuses={["PAYMENT PENDING", "WAITING", "NEXT", "IN CONSULTATION", "COMPLETED", "CANCELLED", "NO-SHOW"]} />}
-      {result?.items.length === 0 && <Empty title="No scheduled consultations in this view">One-off appointments matching this view and any selected filters will appear here.</Empty>}
+      {!result && !error && <p role="status">Loading individual appointments…</p>}
+      {state.role === "admin" && <ListFilters label="Filter individual appointments" onApply={(value) => { setFilters(value); setPage(1); }} statuses={["PAYMENT PENDING", "WAITING", "NEXT", "IN CONSULTATION", "COMPLETED", "CANCELLED", "NO-SHOW"]} />}
+      {result?.items.length === 0 && <Empty title="No individual appointments in this view">Individual appointments matching this view and any selected filters will appear here.</Empty>}
       {result?.items.map((item) => <article className="appointment-card" key={item.id}>
         <div className="ws-row"><div><h3>{item.patientName}</h3><p>{item.professionalName} · {item.date} · {item.start}–{item.end} (Sri Lanka)</p></div><Status>{item.status}</Status></div>
         <div className="appointment-summary"><span>Fee: <strong>{money(item.fee)}</strong></span><span>Payment: {item.payment}</span><span>Scheduled by: {item.scheduledBy}</span></div>
