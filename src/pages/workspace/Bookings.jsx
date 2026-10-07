@@ -12,6 +12,7 @@ import ReasonDialog from "../../components/ui/ReasonDialog";
 import { Documents } from "./Room";
 import PatientQueues from "./PatientQueues";
 import SessionTransfers from "./SessionTransfers";
+import AppointmentOffers from "../../components/workspace/AppointmentOffers";
 import { ClinicList } from "./Clinics";
 import { PatientContext, ChatMessages, Prescription } from "./ConsultationRecord";
 import ResolveUnfinished from "../../components/workspace/ResolveUnfinished";
@@ -77,6 +78,7 @@ function ProfessionalHistory() {
     <SessionTransfers embedded view="history" />
     <ClinicList embedded view="history" title="Past group clinics" />
     <Panel title="Past consultation sessions">
+    <AppointmentOffers embedded history />
     {months.length ? <div className="history-tree">{months.map((month) => {
       const monthBookings = month.weeks.flatMap((week) => week.days).flatMap((day) => day.sessions).reduce((total, item) => total + item.bookings.length, 0);
       return <details className="history-node history-month" key={month.key}><summary><span><strong>{month.label}</strong><small>{monthBookings} booked consultation{monthBookings === 1 ? "" : "s"}</small></span><span className="history-expand"><span className="history-expand-label">Expand</span><span className="history-collapse-label">Collapse</span></span></summary><div className="history-children">{month.weeks.map((week) => {

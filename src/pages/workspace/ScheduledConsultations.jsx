@@ -61,7 +61,7 @@ export default function ScheduledConsultations({ embedded = false, renderQueue }
   return <section className="scheduled-consultations">
     {!embedded && <PageHeading title="Individual appointments.">Monitor individual appointment invitations, patient acceptance, payments and consultation outcomes. Clinical records remain private.</PageHeading>}
     <Panel title="Individual appointments">
-      {scope !== "ongoing" && <AppointmentOffers embedded history={scope === "history"} />}
+      {scope !== "ongoing" && <AppointmentOffers embedded history={scope === "history"} all={scope === "all"} />}
       <p>Patients must accept and pay before the start time. Only paid appointments can be called from the consultation queue.</p>
       {!embedded && <label className="ws-field appointment-filter">Show<select aria-label="Appointment view" value={scope} onChange={(e) => { setScope(e.target.value); setPage(1); }}><option value="upcoming">Upcoming</option><option value="ongoing">Ongoing</option><option value="history">History</option><option value="all">All appointments</option></select></label>}
       <ErrorNotice error={error} onRetry={refresh} />

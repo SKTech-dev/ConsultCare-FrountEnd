@@ -18,7 +18,11 @@ async function setup(page, { role = "user", appointment = false, pending = false
       calls.push(route.request().postDataJSON());
       return route.fulfill({ json: { data: { paid: true } } });
     }
-    if (path.endsWith("/room-presence")) return route.fulfill({ json: { data: { status: "IN CONSULTATION" } } });
+    if (path.endsWith("/room-presence")) {
+      calls.push("presence");
+      if (role === "user") { booking.patientJoinedAt = "2026-10-06T05:00:00Z"; booking.ringAt = null; }
+      return route.fulfill({ json: { data: { status: "IN CONSULTATION" } } });
+    }
     if (path.endsWith("/ring")) { calls.push("ring"); return route.fulfill({ json: { message: "Ringing" } }); }
     return route.fulfill({ json: { data: { items: [], count: 0, pageSize: 30 } } });
   });
@@ -56,8 +60,26 @@ test("individual appointment room excludes queue controls and supports repeated 
 test("queue room offers late attendance handling", async ({ page }) => {
   await setup(page, { role: "doctor" });
   await page.goto("/app/room/booking");
-  await expect(page.getByRole("button", { name: "Patient late · move to end" })).toBeVisible();
+  const actions = page.getByRole("region", { name: "Professional consultation actions" });
+  await expect(actions.getByRole("button", { name: "Patient late · move to end" })).toBeVisible();
+  await expect(actions.getByRole("button", { name: "Ring patient again" })).toBeVisible();
+  await expect(page.getByText("If the patient does not answer within two minutes", { exact: false })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Complete & call next" })).toBeVisible();
+});
+
+test("joining the call confirms attendance even if video connection fails", async ({ page }) => {
+  const { calls } = await setup(page);
+  await page.route("**/api/bookings/booking/video", (route) => {
+    calls.push("video");
+    return route.fulfill({ status: 503, json: { message: "Video temporarily unavailable" } });
+  });
+  await page.goto("/app/room/booking");
+  await expect(page.getByRole("button", { name: /I'm here/ })).toHaveCount(0);
+  expect(calls).not.toContain("presence");
+  await page.getByRole("button", { name: "Join video call", exact: true }).click();
+  await expect.poll(() => calls).toEqual(["presence", "video"]);
+  await expect(page.getByRole("button", { name: "Silence ringtone" })).toHaveCount(0);
+  await expect(page.getByRole("dialog")).toContainText("Video temporarily unavailable");
 });
 
 test("professional can edit each offered time without clearing earlier options", async ({ page }) => {
@@ -81,17 +103,51 @@ test("patient selects an available time card before continuing", async ({ page }
   await expect(next).toBeDisabled();
   await page.getByRole("radio").last().check();
   await expect(next).toBeEnabled();
-  await expect(page.locator(".appointment-choice.selected")).toContainText("2026-10-08");
+  await expect(page.locator(".appointment-choice.selected")).toContainText("8 October 2026");
+  await expect(page.locator(".appointment-choice.selected")).toContainText("Selected");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: "test-results/patient-time-choices.png", fullPage: true });
+});
+
+test("patient can find expired invitations instead of losing them from the list", async ({ page }) => {
+  await setup(page, { pending: true });
+  await page.route("**/api/appointment-offers", (route) => route.fulfill({ json: { data: [{ id: "expired", professionalName: "Dr Test", fee: "5000", status: "expired", options: [{ id: "old", date: "2026-10-08", start: "00:00", end: "00:05", available: false }] }] } }));
+  await page.goto("/app/bookings?tab=offers");
+  await page.getByLabel("Invitation view").selectOption("history");
+  await expect(page.getByText("These times passed before a selection was made.", { exact: false })).toBeVisible();
+  await expect(page.getByText("2026-10-08 · 00:00–00:05")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Choose time & continue to payment" })).toHaveCount(0);
+});
+
+test("professional queue has no view filter and invitations remain accessible in history", async ({ page }) => {
+  await setup(page, { role: "doctor" });
+  await page.route("**/api/appointment-offers", (route) => route.fulfill({ json: { data: [{ id: "expired", professionalName: "Dr Test", patientName: "Patient", fee: "5000", status: "expired", options: [{ id: "old", date: "2026-10-08", start: "00:00", end: "00:05", available: false }] }] } }));
+  await page.goto("/app/queue?tab=appointments");
+  await expect(page.getByLabel("Appointment view")).toHaveCount(0);
+  await page.goto("/app/history?tab=sessions");
+  await expect(page.getByRole("heading", { name: "Past appointment invitations" })).toBeVisible();
+  await expect(page.getByText("2026-10-08 · 00:00–00:05")).toBeVisible();
+});
+
+test("video module failure offers a reload without exposing an import URL", async ({ page }) => {
+  await setup(page);
+  await page.route("**/api/bookings/booking/video", (route) => route.fulfill({ json: { data: { url: "https://example.daily.co/test", token: "test" } } }));
+  await page.route(/\/assets\/daily-esm[^/]*\.js/, (route) => route.abort());
+  await page.goto("/app/room/booking");
+  await page.getByRole("button", { name: "Join video call", exact: true }).click();
+  await expect(page.getByRole("dialog")).toContainText("The video module could not load.");
+  await page.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Reload room" })).toBeVisible();
 });
 
 test("ringtone expires after two minutes and stops immediately on rescheduling", async ({ page }) => {
   await page.addInitScript(() => {
     window.toneCount = 0;
+    window.ringtoneGesture = false;
+    document.addEventListener("pointerdown", () => { window.ringtoneGesture = true; }, true);
     window.AudioContext = class {
-      state = "running"; currentTime = 0; destination = {};
-      resume() { return Promise.resolve(); }
+      state = "suspended"; currentTime = 0; destination = {};
+      resume() { if (window.ringtoneGesture) this.state = "running"; return Promise.resolve(); }
       close() { return Promise.resolve(); }
       createGain() { return { gain: { setValueAtTime() {}, linearRampToValueAtTime() {} }, connect() {}, disconnect() {} }; }
       createOscillator() { return { frequency: {}, connect() {}, disconnect() {}, start() { window.toneCount++; }, stop() {} }; }
@@ -114,4 +170,44 @@ test("ringtone expires after two minutes and stops immediately on rescheduling",
   const stopped = await page.evaluate(() => window.toneCount);
   await page.waitForTimeout(2700);
   expect(await page.evaluate(() => window.toneCount)).toBe(stopped);
+});
+
+test("Chrome generates an audio signal when an enabled patient receives a call", async ({ page }) => {
+  await page.addInitScript(() => {
+    const Audio = window.AudioContext;
+    window.AudioContext = class extends Audio {
+      constructor(...args) {
+        super(...args);
+        window.ringtoneContext = this;
+        window.ringtoneAnalyser = this.createAnalyser();
+      }
+      createGain() {
+        const gain = super.createGain();
+        gain.connect(window.ringtoneAnalyser);
+        return gain;
+      }
+    };
+    window.ringtoneLevel = () => {
+      const samples = new Float32Array(window.ringtoneAnalyser.fftSize);
+      window.ringtoneAnalyser.getFloatTimeDomainData(samples);
+      return Math.sqrt(samples.reduce((sum, value) => sum + value * value, 0) / samples.length);
+    };
+  });
+  const { state, push } = await setup(page, { pending: true });
+  await page.goto("/app/bookings");
+  // A real gesture unlocks Chrome audio before the professional rings.
+  await page.getByRole("heading", { name: "Your consultations." }).click();
+  await expect.poll(() => page.evaluate(() => window.ringtoneContext.state)).toBe("running");
+  state.bookings[0].status = "IN CONSULTATION";
+  state.bookings[0].ringAt = "2026-10-06T05:00:00Z";
+  push();
+  await expect.poll(() => page.evaluate(() => window.ringtoneLevel()), { intervals: [50, 100, 100, 100], timeout: 5000 }).toBeGreaterThan(0.03);
+  await page.getByRole("button", { name: "Silence ringtone" }).click();
+  await expect.poll(() => page.evaluate(() => window.ringtoneLevel())).toBeLessThan(0.001);
+  state.bookings[0].ringAt = "2026-10-06T05:00:01Z";
+  push();
+  await expect.poll(() => page.evaluate(() => window.ringtoneLevel()), { intervals: [50, 100, 100], timeout: 5000 }).toBeGreaterThan(0.03);
+  state.bookings[0].status = "COMPLETED";
+  push();
+  await expect.poll(() => page.evaluate(() => window.ringtoneLevel())).toBeLessThan(0.001);
 });
