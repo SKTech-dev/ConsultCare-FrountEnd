@@ -37,6 +37,10 @@ function DocumentImage({ file, onPreview }) {
 }
 
 export function Documents({ booking }) {
+  return <BookingDocuments key={booking.id} booking={booking} />;
+}
+
+function BookingDocuments({ booking }) {
   const s = useWorkspace();
   const dispatch = useDispatch();
   const [error, setError] = useState("");

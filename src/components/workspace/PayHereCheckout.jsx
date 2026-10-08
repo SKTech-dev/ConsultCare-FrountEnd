@@ -26,6 +26,10 @@ function postToPayHere(checkout) {
 }
 
 export default function PayHereCheckout({ endpoint, disabled = false }) {
+  return <Checkout key={endpoint} endpoint={endpoint} disabled={disabled} />;
+}
+
+function Checkout({ endpoint, disabled }) {
   const { patient } = useWorkspace();
   const billingReady = (patient.address || "").trim().length >= 3 && (patient.city || "").trim().length >= 2;
   const [busy, setBusy] = useState(false);

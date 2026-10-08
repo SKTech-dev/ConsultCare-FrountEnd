@@ -35,6 +35,7 @@ export default function Workspace() {
   const menuButton = useRef(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [onboardingNotice, setOnboardingNotice] = useState(null);
+  const [logoutError, setLogoutError] = useState("");
   const onboardingStep = useRef(null);
   const redirectedLocation = useRef(null);
   useEffect(() => {
@@ -88,10 +89,12 @@ export default function Workspace() {
   }, [state.loaded, state.onboarding, location.pathname, location.key, navigate]);
   const confirmLeave = useConfirmLeave();
   const signOut = () => confirmLeave(async () => {
+    setLogoutError("");
     const action = await dispatch(logoutUser());
     if (!action.error) navigate("/login", { replace: true });
+    else setLogoutError(action.payload || "Sign out failed. Please retry; you are still signed in.");
   });
-  if (!state.loaded) return state.error ? <div className="p-12"><ErrorNotice error={state.error} /><button className="underline mr-5" onClick={() => dispatch(fetchWorkspace())}>Retry</button><button className="underline" onClick={signOut}>Sign out</button></div> : <GlobalLoader fullPage message="Loading your workspace..." />;
+  if (!state.loaded) return state.error ? <div className="p-12"><ErrorNotice error={logoutError || state.error} /><button className="underline mr-5" onClick={() => dispatch(fetchWorkspace())}>Retry</button><button className="underline" onClick={signOut}>Sign out</button></div> : <GlobalLoader fullPage message="Loading your workspace..." />;
   const professional = state.professionals.find((p) => p.id === state.professionalId);
   const name = state.role === "user" ? state.patient.name : state.role === "admin" ? "Platform administrator" : professional.name;
   const links = state.role === "user" ? [
@@ -113,6 +116,7 @@ export default function Workspace() {
     <div inert={mobile && open ? "" : undefined} className={"ws-body " + (sidebarCollapsed ? "ws-body-expanded" : "")}>
       <header className="ws-topbar">{sidebarCollapsed && !mobile && <button className="ws-sidebar-toggle" type="button" aria-label="Show sidebar" title="Show sidebar" onClick={() => setSidebarCollapsed(false)}><PanelLeftOpen size={20} /></button>}<button ref={menuButton} type="button" className="ws-menu" aria-label="Toggle navigation" aria-expanded={open} aria-controls="workspace-navigation" onClick={() => setOpen(!open)}>{open ? <X /> : <Menu />}</button><div className="ws-welcome"><span className="ws-eyebrow">WELCOME BACK</span><p>{name}</p></div><NotificationBell /><AccountMenu name={name} email={user?.email || state.patient?.email || professional?.email || ""} role={state.role} image={state.role === "user" ? state.patient.image : professional?.image} signOut={signOut} /></header>
       {state.error && <div className="mx-6"><ErrorNotice error={state.feedback ? "" : state.error} onRetry={() => { dispatch(clearWorkspaceError()); dispatch(fetchWorkspace()); }} /></div>}
+      {logoutError && <div className="mx-6"><ErrorNotice error={logoutError} onRetry={signOut} /></div>}
       {state.pending > 0 && <GlobalLoader fullPage message="Saving changes..." />}
       {state.feedback && <MessageOverlay type={state.feedback.type} text={state.feedback.text} onClose={() => dispatch(clearFeedback())} />}
       {onboardingNotice && <MessageOverlay type="error" title={onboardingNotice.title} text={onboardingNotice.text} onClose={() => setOnboardingNotice(null)} />}

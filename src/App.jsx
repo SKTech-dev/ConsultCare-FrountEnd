@@ -1,7 +1,8 @@
 import { createBrowserRouter, createRoutesFromElements, Navigate, Outlet, Route, RouterProvider } from "react-router-dom";
 import { UnsavedChangesProvider } from "./components/ui/UnsavedChanges";
 import ValidationFeedback from "./components/ui/ValidationFeedback";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
+import GlobalLoader from "./components/ui/GlobalLoader";
 import { useDispatch } from "react-redux";
 import { clearAuthUser, fetchCurrentUser } from "./features/auth/authSlice";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -11,20 +12,29 @@ import Setup from "./pages/authPages/Setup";
 import AccessDenied from "./pages/AccessDenied";
 import Home from "./pages/Home";
 import Workspace, { Empty } from "./components/workspace/Workspace";
-import Overview from "./pages/workspace/Overview";
 import Notifications from "./components/workspace/Notifications";
-import { Directory, ProfessionalDetails } from "./pages/workspace/Directory";
-import { Bookings, BookingDetails, ProfessionalSessionHistory } from "./pages/workspace/Bookings";
-import { Queue, Sessions } from "./pages/workspace/Professional";
-import Profile from "./pages/workspace/Profile";
-import SessionTransfers from "./pages/workspace/SessionTransfers";
-import ScheduledConsultations from "./pages/workspace/ScheduledConsultations";
-import Clinics, { ClinicDetails } from "./pages/workspace/Clinics";
-import Room from "./pages/workspace/Room";
 import IncomingConsultation from "./components/workspace/IncomingConsultation";
-import { AdminPeople, AdminPersonDetails, AdminPayments } from "./pages/workspace/Admin";
-import { MonthlyEarnings, MonthlyEarningsDetails } from "./pages/workspace/Settlements";
-import AdminSchedules from "./pages/workspace/AdminSchedules";
+
+const Overview = lazy(() => import("./pages/workspace/Overview"));
+const Directory = lazy(() => import("./pages/workspace/Directory").then((module) => ({ default: module.Directory })));
+const ProfessionalDetails = lazy(() => import("./pages/workspace/Directory").then((module) => ({ default: module.ProfessionalDetails })));
+const Bookings = lazy(() => import("./pages/workspace/Bookings").then((module) => ({ default: module.Bookings })));
+const BookingDetails = lazy(() => import("./pages/workspace/Bookings").then((module) => ({ default: module.BookingDetails })));
+const ProfessionalSessionHistory = lazy(() => import("./pages/workspace/Bookings").then((module) => ({ default: module.ProfessionalSessionHistory })));
+const Queue = lazy(() => import("./pages/workspace/Professional").then((module) => ({ default: module.Queue })));
+const Sessions = lazy(() => import("./pages/workspace/Professional").then((module) => ({ default: module.Sessions })));
+const Profile = lazy(() => import("./pages/workspace/Profile"));
+const SessionTransfers = lazy(() => import("./pages/workspace/SessionTransfers"));
+const ScheduledConsultations = lazy(() => import("./pages/workspace/ScheduledConsultations"));
+const Clinics = lazy(() => import("./pages/workspace/Clinics"));
+const ClinicDetails = lazy(() => import("./pages/workspace/Clinics").then((module) => ({ default: module.ClinicDetails })));
+const Room = lazy(() => import("./pages/workspace/Room"));
+const AdminPeople = lazy(() => import("./pages/workspace/Admin").then((module) => ({ default: module.AdminPeople })));
+const AdminPersonDetails = lazy(() => import("./pages/workspace/Admin").then((module) => ({ default: module.AdminPersonDetails })));
+const AdminPayments = lazy(() => import("./pages/workspace/Admin").then((module) => ({ default: module.AdminPayments })));
+const MonthlyEarnings = lazy(() => import("./pages/workspace/Settlements").then((module) => ({ default: module.MonthlyEarnings })));
+const MonthlyEarningsDetails = lazy(() => import("./pages/workspace/Settlements").then((module) => ({ default: module.MonthlyEarningsDetails })));
+const AdminSchedules = lazy(() => import("./pages/workspace/AdminSchedules"));
 
 export default function App() {
   const dispatch = useDispatch();
@@ -34,7 +44,7 @@ export default function App() {
     dispatch(fetchCurrentUser());
     return () => window.removeEventListener("auth:expired", expired);
   }, [dispatch]);
-  return <RouterProvider router={router} />;
+  return <Suspense fallback={<GlobalLoader fullPage message="Loading page..." />}><RouterProvider router={router} /></Suspense>;
 }
 
 const router = createBrowserRouter(createRoutesFromElements(

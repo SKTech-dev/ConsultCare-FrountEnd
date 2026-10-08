@@ -97,7 +97,7 @@ test("professional can edit each offered time without clearing earlier options",
 test("patient selects an available time card before continuing", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await setup(page, { pending: true });
-  await page.route("**/api/appointment-offers", (route) => route.fulfill({ json: { data: [{ id: "offer", professionalName: "Dr Test", fee: "5000", status: "open", options: [{ id: "first", date: "2026-10-07", start: "12:00", end: "12:30", available: true }, { id: "second", date: "2026-10-08", start: "14:00", end: "14:30", available: true }] }] } }));
+  await page.route(/\/api\/appointment-offers(?:\?.*)?$/, (route) => route.fulfill({ json: { data: [{ id: "offer", professionalName: "Dr Test", fee: "5000", status: "open", options: [{ id: "first", date: "2026-10-07", start: "12:00", end: "12:30", available: true }, { id: "second", date: "2026-10-08", start: "14:00", end: "14:30", available: true }] }] } }));
   await page.goto("/app/bookings?tab=offers");
   const next = page.getByRole("button", { name: "Continue to payment" });
   await expect(next).toBeDisabled();
@@ -111,7 +111,7 @@ test("patient selects an available time card before continuing", async ({ page }
 
 test("patient can find expired invitations instead of losing them from the list", async ({ page }) => {
   await setup(page, { pending: true });
-  await page.route("**/api/appointment-offers", (route) => route.fulfill({ json: { data: [{ id: "expired", professionalName: "Dr Test", fee: "5000", status: "expired", options: [{ id: "old", date: "2026-10-08", start: "00:00", end: "00:05", available: false }] }] } }));
+  await page.route(/\/api\/appointment-offers(?:\?.*)?$/, (route) => route.fulfill({ json: { data: [{ id: "expired", professionalName: "Dr Test", fee: "5000", status: "expired", options: [{ id: "old", date: "2026-10-08", start: "00:00", end: "00:05", available: false }] }] } }));
   await page.goto("/app/bookings?tab=offers");
   await page.getByLabel("Invitation view").selectOption("history");
   await expect(page.getByText("These times passed before a selection was made.", { exact: false })).toBeVisible();
@@ -121,7 +121,7 @@ test("patient can find expired invitations instead of losing them from the list"
 
 test("professional queue has no view filter and invitations remain accessible in history", async ({ page }) => {
   await setup(page, { role: "doctor" });
-  await page.route("**/api/appointment-offers", (route) => route.fulfill({ json: { data: [{ id: "expired", professionalName: "Dr Test", patientName: "Patient", fee: "5000", status: "expired", options: [{ id: "old", date: "2026-10-08", start: "00:00", end: "00:05", available: false }] }] } }));
+  await page.route(/\/api\/appointment-offers(?:\?.*)?$/, (route) => route.fulfill({ json: { data: [{ id: "expired", professionalName: "Dr Test", patientName: "Patient", fee: "5000", status: "expired", options: [{ id: "old", date: "2026-10-08", start: "00:00", end: "00:05", available: false }] }] } }));
   await page.goto("/app/queue?tab=appointments");
   await expect(page.getByLabel("Appointment view")).toHaveCount(0);
   await page.goto("/app/history?tab=sessions");

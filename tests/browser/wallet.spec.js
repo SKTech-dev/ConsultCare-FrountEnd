@@ -2,6 +2,21 @@ import { test, expect } from "@playwright/test";
 
 const cashout = { id: "cashout", patientId: "patient", environment: "sandbox", amount: "7000", status: "pending", bank: "Test Bank", branch: "Test Branch", accountName: "Test Patient", accountNumber: "123456789", reason: "", hasProof: false };
 
+test("administrators can page older cashouts and filter pending work", async ({ page }) => {
+  await account(page, "admin");
+  const queries = [];
+  await page.route(/\/api\/admin\/wallet\/cashouts(?:\?.*)?$/, (route) => {
+    const params = new URL(route.request().url()).searchParams;
+    queries.push(Object.fromEntries(params));
+    return route.fulfill({ json: { data: [{ ...cashout, id: params.get("page") === "2" ? "older" : "cashout", bank: params.get("page") === "2" ? "Older Bank" : "Test Bank" }], pagination: { hasMore: params.get("page") !== "2" } } });
+  });
+  await page.goto("/app/payments?tab=cashouts");
+  await page.getByRole("button", { name: "Cash-outs next page", exact: true }).click();
+  await expect(page.getByText("Older Bank", { exact: false })).toBeVisible();
+  await page.getByLabel("Cash-out status").selectOption("pending");
+  await expect.poll(() => queries.at(-1)).toEqual({ page: "1", status: "pending" });
+});
+
 async function account(page, role = "user") {
   const workspace = { role, professionalId: null, patient: { id: "patient", name: "Test Patient", email: "patient@example.test", dob: "2000-01-01", phone: "0771234567", status: "active" }, professionals: [], patients: [], sessions: [], bookings: [], weeklyAvailability: [], onboarding: null };
   await page.route("**/api/**", (route) => {

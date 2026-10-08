@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ListPages from "./ListPages";
 import { useDispatch } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
@@ -36,19 +37,24 @@ export default function AppointmentOffers({ embedded = false, history = false, a
   const [notice, setNotice] = useState(null);
   const [version, setVersion] = useState(0);
   const [view, setView] = useState("upcoming");
+  const currentView = embedded ? all ? "all" : history ? "history" : "upcoming" : view;
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  useEffect(() => { setPage(1); }, [currentView]);
   const navigate = useNavigate(); const dispatch = useDispatch();
   useEffect(() => {
     let active = true; let fetching = false;
+    setItems(null); setHasMore(false); setError("");
     const controller = new AbortController();
     async function load() {
       if (fetching) return; fetching = true;
-      try { const result = await callApi("GET", "/appointment-offers", null, null, { signal: controller.signal }); if (!Array.isArray(result.data)) throw new Error("The appointment invitation list could not be loaded. Please retry."); if (active) { setItems(result.data); setError(""); } }
+      try { const result = await callApi("GET", `/appointment-offers?page=${page}&view=${currentView}`, null, null, { signal: controller.signal }); if (!Array.isArray(result.data)) throw new Error("The appointment invitation list could not be loaded. Please retry."); if (active) { setItems(result.data); setHasMore(Boolean(result.pagination?.hasMore)); setError(""); } }
       catch (error) { if (active) setError(error.message); }
       finally { fetching = false; }
     }
     load(); const timer = setInterval(() => { if (!document.hidden) load(); }, 15000);
     return () => { active = false; controller.abort(); clearInterval(timer); };
-  }, [version]);
+  }, [version, page, currentView]);
   async function choose(event, row) {
     event.preventDefault(); if (busy) return;
     setBusy(true);
@@ -56,11 +62,9 @@ export default function AppointmentOffers({ embedded = false, history = false, a
     catch (error) { setNotice({ type: "error", text: error.message }); }
     finally { setBusy(false); }
   }
-  const currentView = embedded ? all ? "all" : history ? "history" : "upcoming" : view;
   const visible = items?.filter((row) => currentView === "history" ? ["expired", "cancelled"].includes(row.status) : currentView === "all" ? ["open", "expired", "cancelled"].includes(row.status) : row.status === "open");
-  const pastCount = items?.filter((row) => ["expired", "cancelled"].includes(row.status)).length || 0;
   const body = <>
-    {!embedded && <label className="ws-field appointment-filter">Invitations<select aria-label="Invitation view" value={view} onChange={(event) => setView(event.target.value)}><option value="upcoming">Available times</option><option value="history">Past invitations ({pastCount})</option><option value="all">All invitations</option></select></label>}
+    {!embedded && <label className="ws-field appointment-filter">Invitations<select aria-label="Invitation view" value={view} onChange={(event) => setView(event.target.value)}><option value="upcoming">Available times</option><option value="history">Past invitations</option><option value="all">All invitations</option></select></label>}
     {!items && !error && <p role="status" className="ws-actions"><Loader2 className="animate-spin" size={18} />Loading time choices…</p>}
     {error && <p role="alert">{error}<button className="ws-name-link" onClick={() => setVersion(version + 1)}>Retry</button></p>}
     {!embedded && visible?.length === 0 && <Empty title="No appointment time choices">Private consultation invitations with available time choices will appear here.</Empty>}
@@ -74,6 +78,7 @@ export default function AppointmentOffers({ embedded = false, history = false, a
       setBusy(true); try { await callApi("POST", `/appointment-offers/${notice.row.id}/cancel`); setNotice({ type: "success", text: "Invitation cancelled." }); setVersion(version + 1); } catch (error) { setNotice({ type: "error", text: error.message }); } finally { setBusy(false); }
     }} /> : <MessageOverlay type={notice.type} text={notice.text} onClose={() => setNotice(null)} />)}
   </>;
-  if (embedded && items && !visible.length && !error) return null;
-  return embedded ? <div className="ws-space"><h3>{history ? "Past appointment invitations" : "Unselected appointment invitations"}</h3>{body}</div> : <Panel title="Choose appointment time">{body}</Panel>;
+  const pages = <ListPages page={page} setPage={setPage} hasMore={hasMore} busy={busy || !items} label="Invitations" />;
+  if (embedded && items && !visible.length && !error && page === 1 && !hasMore) return null;
+  return embedded ? <div className="ws-space"><h3>{history ? "Past appointment invitations" : "Unselected appointment invitations"}</h3>{body}{pages}</div> : <Panel title="Choose appointment time">{body}{pages}</Panel>;
 }

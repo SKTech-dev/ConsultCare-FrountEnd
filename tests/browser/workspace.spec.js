@@ -521,7 +521,7 @@ test("handover queue and history request separate server-filtered views", async 
 test("professional schedules a private consultation using an exact patient email", async ({ page }) => {
   await mockAccount(page, snapshot());
   let submitted;
-  await page.route("**/api/appointment-offers", (route) => {
+  await page.route(/\/api\/appointment-offers(?:\?.*)?$/, (route) => {
     submitted = route.request().postDataJSON();
     return route.fulfill({ status: 201, json: { message: "Consultation scheduled. Patient payment is required." } });
   });
