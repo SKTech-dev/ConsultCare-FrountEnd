@@ -1,6 +1,6 @@
 import SectionTabs from "../../components/ui/SectionTabs";
 import { Maximize, Minimize, AlertTriangle, Save, CheckCheck, ArrowRight, Send, ClipboardList, UserRound, NotebookPen } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { FileText, UploadCloud, ShieldCheck, MessageSquare, ImageOff, Loader2, RefreshCw } from "lucide-react";
@@ -37,6 +37,10 @@ function DocumentImage({ file, onPreview }) {
 }
 
 export function Documents({ booking }) {
+  return <BookingDocuments key={booking.id} booking={booking} />;
+}
+
+function BookingDocuments({ booking }) {
   const s = useWorkspace();
   const dispatch = useDispatch();
   const [error, setError] = useState("");
@@ -67,7 +71,7 @@ export function Documents({ booking }) {
   function upload(event) {
     const file = event.target.files[0]; event.target.value = "";
     if (!file) return;
-    if (!["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024) { setError("Choose a PDF, JPEG, PNG, or WebP file under 5 MB."); return; }
+    if (!["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(file.type)) { setError("Choose a PDF, JPEG, PNG, or WebP file."); return; }
     const item = { id: crypto.randomUUID(), file, name: file.name, private: privateNote, status: "sending" };
     setUploads((old) => [...old, item]);
     sendUpload(item);
@@ -78,7 +82,7 @@ export function Documents({ booking }) {
     {uploads.filter((item) => item.status !== "saved").map((item) => <div className="document-transfer" key={item.id} aria-live="polite"><FileText size={19} /><div><strong>{item.name}</strong><small>{item.status === "sending" ? "Uploading…" : "Upload not confirmed. Check the document list before retrying."}</small></div>{item.status === "sending" ? <Loader2 className="animate-spin" size={20} aria-label="Uploading" /> : <><span tabIndex={0} className="document-error" title={item.error} aria-label={item.error}><AlertTriangle size={20} /><span role="tooltip">{item.error}</span></span><button type="button" className="ws-link secondary" onClick={() => sendUpload(item)}>Retry</button><button type="button" className="ws-name-link" onClick={() => setUploads((old) => old.filter((entry) => entry.id !== item.id))}>Dismiss</button></>}</div>)}
     {files.map((file) => <div className="ws-row room-document-row" key={file.id}>{file.type.startsWith("image/") ? <DocumentImage file={file} onPreview={() => setPreview(file)} /> : <FileText size={18} />}<div className="flex-1 min-w-0"><h3 className="break-words"><button type="button" className="ws-name-link" onClick={() => setPreview(file)}>{file.name}</button></h3><p>{file.private ? "Private professional attachment" : "Shared attachment"} · {Math.round(file.size / 1024)} KB</p><small>Sent by {file.uploaderName || (file.uploaderId === booking.patientId ? booking.patientName : s.professionals.find((person) => person.id === file.uploaderId)?.name) || "Participant"}</small><div className="ws-actions"><button type="button" className="ws-link secondary" disabled={downloading !== null} onClick={async () => { setDownloading(file.id); try { await downloadFile(file.id, file.name); } catch (failure) { setError(failure.message); } finally { setDownloading(null); } }}>{downloading === file.id && <Loader2 className="animate-spin" size={15} />}Download</button>{s.role !== "user" && file.uploaderId === s.professionalId && booking.status === "IN CONSULTATION" && <button type="button" className="ws-name-link" onClick={() => setPrivacyTarget(file)}>{file.private ? "Share with patient" : "Make private"}</button>}</div></div></div>)}
     {s.role !== "user" && ACTIVE.includes(booking.status) && <label className="room-privacy"><input type="checkbox" checked={privateNote} disabled={busy} onChange={(event) => setPrivateNote(event.target.checked)} /><ShieldCheck size={20} /><span><strong>Keep this attachment private</strong><small>Visible only in your professional notes.</small></span></label>}
-    {ACTIVE.includes(booking.status) && <label className="room-upload"><UploadCloud size={26} /><span>Add a report, image or document</span><small>PDF, JPEG, PNG or WebP · Up to 5 MB</small><input aria-label="Upload consultation document" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={upload} /></label>}
+    {ACTIVE.includes(booking.status) && <label className="room-upload"><UploadCloud size={26} /><span>Add a report, image or document</span><small>PDF, JPEG, PNG or WebP</small><input aria-label="Upload consultation document" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={upload} /></label>}
     {preview && <DocumentPreview key={preview.id} file={preview} onClose={() => setPreview(null)} />}
     {privacyTarget && <MessageOverlay type="confirm" title={privacyTarget.private ? "Share this document?" : "Make this document private?"} text={privacyTarget.private ? "The patient will be able to view and download it." : "This removes future patient access. Copies already downloaded cannot be recalled."} isProcessing={changingPrivacy} onClose={() => setPrivacyTarget(null)} onConfirm={async () => {
       if (changingPrivacy) return;
@@ -133,6 +137,36 @@ function ConsultationRoom({ id, onFinishing }) {
     document.addEventListener("fullscreenchange", sync);
     return () => document.removeEventListener("fullscreenchange", sync);
   }, []);
+  useEffect(() => {
+    if (!professional || b?.status !== "IN CONSULTATION") return;
+    let active = true, pending = false;
+    async function heartbeat() {
+      if (pending) return;
+      pending = true;
+      try {
+        const result = await callApi("POST", `/bookings/${id}/room-presence`);
+        if (active && result.data.status !== "IN CONSULTATION") {
+          await dispatch(fetchWorkspace({ live: true }));
+          navigate("/app/queue?tab=weekly");
+        }
+      } catch (error) { if (active) setChatError(error.message); }
+      finally { pending = false; }
+    }
+    heartbeat(); const timer = setInterval(heartbeat, 15000);
+    return () => { active = false; clearInterval(timer); };
+  }, [id, professional, b?.status, dispatch, navigate]);
+  const answerCall = useCallback(async () => {
+    await callApi("POST", `/bookings/${id}/room-presence`);
+    await dispatch(fetchWorkspace({ live: true }));
+  }, [id, dispatch]);
+  async function roomAction(action) {
+    try {
+      await callApi("POST", `/bookings/${id}/${action}`);
+      await dispatch(fetchWorkspace({ live: true }));
+      if (action === "queue-end") navigate("/app/queue?tab=weekly");
+      else setFeedback(action === "ring" ? "Ringing the patient." : "Your attendance is confirmed.");
+    } catch (error) { setChatError(error.message); }
+  }
   async function toggleFullscreen() {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
@@ -195,13 +229,13 @@ function ConsultationRoom({ id, onFinishing }) {
   const closed = b.status === "COMPLETED";
   return <div ref={room} className={"consultation-room " + (expanded ? "room-expanded" : "")}>
     <PageHeading eyebrow="CONSULTATION ROOM" title={s.role === "user" ? p?.name || "Your consultation" : b.patientName} action={<div className="room-heading-actions"><Status>{completing ? "COMPLETING" : b.status}</Status><button type="button" className="ws-link secondary" onClick={toggleFullscreen}>{expanded ? <Minimize size={17} /> : <Maximize size={17} />}{expanded ? "Exit full screen" : "Full screen"}</button></div>}>{professional ? "Your patient’s video and consultation record, side by side." : "Speak with your professional and share messages or documents."}</PageHeading>
-    <div className="room-workbench">{closed ? <section className="room-video-panel room-call-completed"><CheckCheck size={42} /><h2>Consultation completed</h2><p>Your record has been saved. You can leave after reviewing any unsent drafts.</p></section> : <VideoCall key={id} bookingId={id} />}<aside className="room-tools" aria-label="Consultation tools"><SectionTabs ids={["chat", "documents", ...(b.patientContext?.profession === "doctor" ? ["prescription"] : []), ...(professional ? ["notes"] : []), "patient"]} order={professional ? ["patient", "notes", "prescription", "documents", "chat"] : ["chat", "documents", "prescription", "patient"]} label="Consultation tools" labels={["Chat", "Documents", ...(b.patientContext?.profession === "doctor" ? ["Prescription"] : []), ...(professional ? ["Notes"] : []), "Patient information"]} icons={[<MessageSquare size={17} aria-hidden="true" />, <FileText size={17} aria-hidden="true" />, ...(b.patientContext?.profession === "doctor" ? [<ClipboardList size={17} aria-hidden="true" />] : []), ...(professional ? [<NotebookPen size={17} aria-hidden="true" />] : []), <UserRound size={17} aria-hidden="true" />]}>
+    <div className="room-workbench">{closed ? <section className="room-video-panel room-call-completed"><CheckCheck size={42} /><h2>Consultation completed</h2><p>Your record has been saved. You can leave after reviewing any unsent drafts.</p></section> : <VideoCall key={id} bookingId={id} onJoin={professional ? undefined : answerCall} />}<aside className="room-tools" aria-label="Consultation tools"><SectionTabs ids={["chat", "documents", ...(b.patientContext?.profession === "doctor" ? ["prescription"] : []), ...(professional ? ["notes"] : []), "patient"]} order={professional ? ["patient", "notes", "prescription", "documents", "chat"] : ["chat", "documents", "prescription", "patient"]} label="Consultation tools" labels={["Chat", "Documents", ...(b.patientContext?.profession === "doctor" ? ["Prescription"] : []), ...(professional ? ["Notes"] : []), "Patient information"]} icons={[<MessageSquare size={17} aria-hidden="true" />, <FileText size={17} aria-hidden="true" />, ...(b.patientContext?.profession === "doctor" ? [<ClipboardList size={17} aria-hidden="true" />] : []), ...(professional ? [<NotebookPen size={17} aria-hidden="true" />] : []), <UserRound size={17} aria-hidden="true" />]}>
       <section className="ws-panel room-chat-panel"><div className="room-chat-heading"><div><h2>Consultation chat</h2><p>Messages are saved in your consultation record.</p></div><MessageSquare size={20} aria-hidden="true" /></div><div className="ws-chat" ref={chat} role="log" aria-live="polite" aria-relevant="additions text" aria-label="Consultation messages">{b.messages.length ? <ChatMessages booking={b} /> : !sending && <div className="room-chat-empty"><MessageSquare size={30} aria-hidden="true" /><h3>Start a conversation</h3><p>Share a quick message while keeping your video call open.</p></div>}{sending && <div className="ws-message ws-message-own" role="status"><span>{text}</span><small><Loader2 size={14} className="animate-spin" />Sending…</small></div>}</div><form className="room-chat-form" onSubmit={sendMessage}><label className="sr-only" htmlFor="consultation-message">Message</label><textarea id="consultation-message" value={text} disabled={sending || completing || closed} onChange={(e) => { setText(e.target.value); setChatError(""); }} maxLength={2000} placeholder="Write a message…" /><button className="room-send-button" type="submit" aria-label={sending ? "Sending message" : "Send message"} title="Send message" disabled={!text.trim() || sending || completing || closed} aria-busy={sending}>{sending ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}</button></form></section>
     <div className="ws-space"><Documents booking={b} /></div>
     {b.patientContext?.profession === "doctor" && <div className="ws-space"><Prescription key={b.id} booking={b} /></div>}
     {professional && <div className="ws-space"><Panel title="Professional notes"><p className="room-tool-intro">Save notes at any time. Completing the consultation also saves these notes.</p><fieldset disabled={savingNotes || completing || closed} className="room-notes-fields"><label className="ws-field">Notes shared with the patient / client<textarea value={notes} maxLength={5000} onChange={(e) => { setNotes(e.target.value); setFeedback(""); }} placeholder="Findings and advice for the patient…" /></label><label className="ws-field">Private notes (professional workspace only)<textarea value={privateNotes} maxLength={5000} onChange={(e) => { setPrivateNotes(e.target.value); setFeedback(""); }} placeholder="Only you can see these notes…" /></label><label className="ws-field">Follow-up recommendation<textarea value={followUp} maxLength={2000} onChange={(e) => { setFollowUp(e.target.value); setFeedback(""); }} placeholder="Next steps or a follow-up date…" /></label></fieldset></Panel></div>}
     <PatientContext booking={b} /></SectionTabs></aside></div>
-    {professional && <footer role="region" className="room-professional-actions" aria-label="Professional consultation actions"><div className="room-action-status" role="status">{savingNotes || completing ? <Loader2 size={18} className="animate-spin" /> : <ShieldCheck size={18} />}<div><strong>{completing ? "Completing consultation…" : savingNotes ? "Saving your notes…" : feedback || (closed ? "Consultation completed" : "Consultation in progress")}</strong><small>Notes are saved before completing this record.</small></div></div><div className="ws-actions"><button type="button" className="ws-link secondary" disabled={savingNotes || completing || closed} onClick={async () => { const action = await storeNotes(); if (action && !action.error) setFeedback("Notes saved."); }}><Save size={17} />Save notes</button><button type="button" className="ws-link secondary" disabled={savingNotes || completing || closed} onClick={() => setConfirm("complete")}><CheckCheck size={17} />Complete consultation</button><button type="button" className="ws-link" disabled={savingNotes || completing || closed} onClick={() => setConfirm("next")}>Complete & call next<ArrowRight size={17} /></button></div></footer>}
+    {professional && <footer role="region" className="room-professional-actions" aria-label="Professional consultation actions"><div className="room-action-status" role="status">{savingNotes || completing ? <Loader2 size={18} className="animate-spin" /> : <ShieldCheck size={18} />}<div><strong>{completing ? "Completing consultation…" : savingNotes ? "Saving your notes…" : feedback || (closed ? "Consultation completed" : "Consultation in progress")}</strong><small>Notes are saved before completing this record.</small></div></div><div className="ws-actions">{!closed && <><button type="button" className="ws-link secondary" disabled={savingNotes || completing} onClick={() => roomAction("ring")}>Ring patient again</button>{!b.scheduledById && !b.patientJoinedAt && <button type="button" className="ws-link secondary" disabled={savingNotes || completing} onClick={() => roomAction("queue-end")}>Patient late · move to end</button>}</>}<button type="button" className="ws-link secondary" disabled={savingNotes || completing || closed} onClick={async () => { const action = await storeNotes(); if (action && !action.error) setFeedback("Notes saved."); }}><Save size={17} />Save notes</button><button type="button" className="ws-link secondary" disabled={savingNotes || completing || closed} onClick={() => setConfirm("complete")}><CheckCheck size={17} />Complete consultation</button>{!b.scheduledById && <button type="button" className="ws-link" disabled={savingNotes || completing || closed} onClick={() => setConfirm("next")}>Complete & call next<ArrowRight size={17} /></button>}</div></footer>}
     {chatError && <MessageOverlay type="error" text={chatError} onClose={() => setChatError("")} />}
     {confirm && <MessageOverlay type="confirm" title={confirm === "next" ? "Complete and call the next patient?" : "Complete this consultation?"} text={confirm === "next" ? "Your notes will be saved and this consultation will close. The next paid patient in this session will be called if the session is still open. Otherwise, you will return to your queue." : "Your notes will be saved and this consultation will move to history. You can review the completed record afterwards."} confirmText={confirm === "next" ? "Complete & call next" : "Complete"} isProcessing={completing} onClose={() => setConfirm(null)} onConfirm={completeConsultation} />}
   </div>;

@@ -7,6 +7,7 @@ import { ACTIVE, money, sessionStartsAt, sessionEndsAt, sessionLabel, isUpcoming
 import { transition } from "../../features/consultations/consultationSlice";
 import ReasonDialog from "../../components/ui/ReasonDialog";
 import { ClinicList } from "./Clinics";
+import AppointmentOffers from "../../components/workspace/AppointmentOffers";
 
 const timeLabel = (at) => new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Colombo" }).format(at);
 
@@ -25,11 +26,11 @@ export default function PatientQueues() {
     .sort((a, b) => (a.session ? sessionStartsAt(a.session) : Infinity) - (b.session ? sessionStartsAt(b.session) : Infinity));
   return <>
     <PageHeading title="Your consultations.">Each booking has its own queue. {state.liveConnected ? "Live updates connected." : "Reconnecting live updates; checking periodically."}</PageHeading>
-    <SectionTabs ids={["clinics", "consultations"]} order={["consultations", "clinics"]}><ClinicList embedded title="Your upcoming group clinics" />
+    <SectionTabs ids={["offers", "clinics", "consultations"]} order={["consultations", "offers", "clinics"]} labels={["Choose appointment time", "Your upcoming group clinics", "Your private consultations"]}><AppointmentOffers /><ClinicList embedded title="Your upcoming group clinics" />
     <Panel title="Your private consultations">
     <div className="patient-queues">{bookings.map(({ booking: b, session }) => {
       const position = b.position || 0;
-      const ended = session && sessionEndsAt(session) <= Date.now();
+      const ended = session && sessionEndsAt(session) <= Date.now() && !(session.startedAt && !session.closedAt);
       const slot = session ? (sessionEndsAt(session) - sessionStartsAt(session)) / session.capacity : 0;
       const estimate = session ? Math.max(sessionStartsAt(session), Date.now()) + Math.max(0, position - 1) * slot : 0;
       return <Panel key={b.id} title={state.professionals.find((p) => p.id === b.professionalId)?.name || "Consultation"}>
@@ -41,6 +42,7 @@ export default function PatientQueues() {
           {b.status !== "IN CONSULTATION" && session && <p>Estimated turn: <strong>{timeLabel(estimate)}–{timeLabel(estimate + slot)}</strong> (Sri Lanka time). This may change as consultations progress.</p>}
         </div>}
         {ended && b.status !== "IN CONSULTATION" && <p className="ws-notice">This session time has ended. An estimated turn is no longer available.</p>}
+        {session?.startedAt && !session.closedAt && sessionEndsAt(session) <= Date.now() && <p className="ws-notice">This session is running late but remains active. Your paid queue place is retained; estimated times may change.</p>}
         <div className="ws-actions"><Link className="ws-link" to={b.status === "IN CONSULTATION" ? "/app/room/" + b.id : "/app/booking/" + b.id}>{b.status === "IN CONSULTATION" ? "Join consultation" : b.status === "PAYMENT PENDING" ? "Continue to payment" : "View booking"}</Link>
           {["PAYMENT PENDING", "WAITING", "NEXT"].includes(b.status) && <button className="ws-link secondary" onClick={() => setCancel(b.id)}>Cancel consultation</button>}
         </div>

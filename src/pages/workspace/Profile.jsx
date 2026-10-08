@@ -8,6 +8,9 @@ import Button from "../../components/ui/Button";
 import "./profile.css";
 import { useUnsavedChanges } from "../../components/ui/UnsavedChanges";
 import { MessageOverlay } from "../../components/ui/MessageBox";
+import RefundWallet from "../../components/workspace/RefundWallet";
+import GoogleSignIn from "../../components/auth/GoogleSignIn";
+import { setAuthUser } from "../../features/auth/authSlice";
 
 export default function Profile() {
   const s = useWorkspace();
@@ -22,6 +25,7 @@ function ProfileForm({ source, patient }) {
   const [saving, setSaving] = useState(false);
   const [readingImage, setReadingImage] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
+  const [googleNotice, setGoogleNotice] = useState("");
   const dispatch = useDispatch();
   async function selectImage(event) {
     const file = event.target.files[0];
@@ -51,7 +55,7 @@ function ProfileForm({ source, patient }) {
     <PageHeading title={patient ? "A profile that's yours." : "Your professional profile."}>
       {patient ? "Keep your contact information accurate and up to date." : "Introduce yourself, keep your credentials up to date and help patients or clients get to know you. Consultation fees are managed in My sessions."}
     </PageHeading>
-    <SectionTabs ids={["details", "verification"]}>
+    <SectionTabs ids={["details", "verification", "wallet"]} labels={["Your details", patient ? "Profile visibility" : "Professional verification", "Refund wallet"]}>
       <Panel title="Your details">
         <form className="ws-form" onSubmit={save}>
           <fieldset className="profile-fields" disabled={saving || readingImage}>
@@ -83,6 +87,10 @@ function ProfileForm({ source, patient }) {
           </fieldset>
           {feedback && <MessageOverlay type="error" text={feedback} onClose={() => setFeedback("")} />}
         </form>
+        <h3 className="mt-6">Connect Google sign-in</h3>
+        <p>Use the Google account matching your ConsultCare email.</p>
+        <GoogleSignIn mode="link" disabled={saving} onBusyChange={setSaving} onError={setFeedback} onSuccess={(user) => { dispatch(setAuthUser(user)); setGoogleNotice("Google connected. You can now sign in with Google."); }} />
+        {googleNotice && <p role="status">{googleNotice}</p>}
       </Panel>
       <Panel title={patient ? "Your information, with context." : "Professional verification"}>
         {patient ? <p>Only your own profile appears in this workspace. Relevant reports can be attached directly to a consultation.</p> : <>
@@ -95,6 +103,7 @@ function ProfileForm({ source, patient }) {
           <p className="ws-notice">Updating your registration or qualifications sends your credentials back for administrator review.</p>
         </>}
       </Panel>
+      {patient && <RefundWallet />}
     </SectionTabs>
   </>;
 }

@@ -74,7 +74,7 @@ export default function SessionTransfers({ embedded = false, view = "all", allow
     {showSessions && (!allowRequest || chooseSession) && <SessionPicker modal={allowRequest} onClose={() => setChooseSession(false)}><Panel title="Hand over a booked session">
       {workspace.role === "admin" && <ListFilters label="Filter booked sessions" onApply={(value) => { setSessions(null); setSessionFilters(value); setSessionPage(1); }} statuses={["available", "pending"]} />}
       <p>Choose a dated session with patients in its queue. The receiver must accept before ownership changes. Booked prices, queue order and weekly schedules stay the same.</p>
-      <div className="ws-notice">Requests expire at the session start. Only sessions that have not started can be handed over. Amounts below are estimates; earnings count completed, paid consultations.</div>
+      <div className="ws-notice">Requests expire at the scheduled session end. Only sessions that have not started can be handed over. Amounts below are estimates; earnings count completed, paid consultations.</div>
       {!sessions && !error && <p role="status"><Loader2 size={18} className="animate-spin" /> Loading booked sessions…</p>}
       {sessions?.items.length === 0 && <Empty title="No sessions available for handover">Future sessions with queued patients will appear here.</Empty>}
       {sessions?.items.map((session) => <div className="transfer-session" key={session.id}>
@@ -132,7 +132,7 @@ function Pagination({ page, count, size, onChange }) {
   return <div className="ws-actions"><button className="ws-link secondary" disabled={page <= 1} onClick={() => onChange(page - 1)}>Previous</button><span>Page {page} of {Math.max(1, Math.ceil(count / size))}</span><button className="ws-link secondary" disabled={page * size >= count} onClick={() => onChange(page + 1)}>Next</button></div>;
 }
 
-function TransferForm({ session, onClose, onSaved }) {
+export function TransferForm({ session, onClose, onSaved }) {
   const [query, setQuery] = useState("");
   const [people, setPeople] = useState(null);
   const [person, setPerson] = useState(null);
@@ -155,7 +155,7 @@ function TransferForm({ session, onClose, onSaved }) {
     catch (failure) { setError(failure.message); setBusy(false); }
   }
   return <Modal title="Request session handover" busy={busy} onClose={close}><Panel title="Find a replacement professional">
-    <p>{label(session)} · {session.queueCount} patients · estimated {money(session.expectedAmount)}</p>
+    <p>{label(session)} · {session.queueCount} patients{session.expectedAmount != null ? ` · estimated ${money(session.expectedAmount)}` : ""}</p>
     <form className="transfer-search" onSubmit={search}><label className="ws-field">Search by name or email<input value={query} minLength={2} maxLength={120} required disabled={busy} onChange={(e) => { setQuery(e.target.value); setPerson(null); setPeople(null); }} /></label><button className="ws-link" disabled={busy || query.trim().length < 2}><Search size={16} />{busy ? "Please wait…" : "Search"}</button></form>
     {people?.length === 0 && <p>No matching verified professionals found.</p>}
     <div role="group" aria-label="Replacement professionals">{people?.map((p) => <label className="transfer-candidate" key={p.id}><input type="radio" name="receiver" value={p.id} checked={person?.id === p.id} disabled={busy || Boolean(p.unavailable)} onChange={() => setPerson(p)} /><span><strong>{p.name}</strong><small>{p.speciality} · {p.registration} · {p.languages.join(", ")}</small>{p.unavailable && <small className="ws-error">{p.unavailable}</small>}</span></label>)}</div>

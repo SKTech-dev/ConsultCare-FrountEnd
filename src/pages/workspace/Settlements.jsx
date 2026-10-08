@@ -70,7 +70,7 @@ function LoadState({ data, error, retry }) {
 }
 
 function EarningsBreakdown({ totals }) {
-  return <p className="earnings-breakdown">Weekly sessions: {cash(totals.weeklyTotal || 0)} · One-off consultations: {cash(totals.appointmentTotal || 0)} · Group clinics: {cash(totals.clinicTotal || 0)}<br />Handed-over earnings (included above): {cash(totals.handoverTotal || 0)}</p>;
+  return <p className="earnings-breakdown">Weekly sessions: {cash(totals.weeklyTotal || 0)} · Individual appointments: {cash(totals.appointmentTotal || 0)} · Group clinics: {cash(totals.clinicTotal || 0)}<br />Handed-over earnings (included above): {cash(totals.handoverTotal || 0)}</p>;
 }
 
 export function MonthlyEarnings() {
@@ -144,20 +144,21 @@ export function MonthlyEarningsDetails() {
     <LoadState {...result} />
     {data && <>
       <PageHeading eyebrow={admin ? "MONTHLY SETTLEMENT" : "MY EARNINGS"} title={monthLabel(data.month)} action={<PayoutStatus payout={data.payout} />}>{data.professional.name} · {data.professional.role === "doctor" ? "Doctor" : "Lawyer"}</PageHeading>
-      <div className="earnings-totals">
+      <div className="earnings-month-detail"><div className="earnings-totals">
         <Panel title="Monthly earnings"><strong>{cash(data.total)}</strong><p>Full amount · no institution commission</p></Panel>
         <Panel title="Consultations & clinic tickets"><strong>{data.earningsCount ?? data.count}</strong><p>Completed in {monthLabel(data.month)}</p><EarningsBreakdown totals={data} /></Panel>
         <Panel title="Payout"><PayoutStatus payout={data.payout} />{data.payout.paidAt ? <p className="mt-3">Paid {dateLabel(data.payout.paidAt)} at {timeLabel(data.payout.paidAt)}<br />Reference: {data.payout.reference}</p> : <p className="mt-3">{data.closed ? "Awaiting monthly payout" : "This month is still in progress"}</p>}</Panel>
       </div>
       {Number(data.adjustment) !== 0 && data.adjustment != null && <p className="ws-notice" role="status">Earnings changed after payment. Adjustment to reconcile: {cash(data.adjustment)}. The original payout record has not been changed.</p>}
       {admin && <div className="earnings-pay"><div><h3>{data.testPayments ? "Record sandbox settlement" : "Record external payment"}</h3><p>{data.testPayments ? "Test the complete settlement workflow with sandbox amounts. This does not record a real bank transfer." : "Record a verified bank transfer already made to this professional. ConsultCare does not send money."}</p></div><button className="ws-link" disabled={Boolean(error) || !data.canPay} onClick={() => setPopup(true)}>{data.testPayments ? "Record sandbox settlement" : "Record external payment"}</button>{!data.closed && <p className="w-full">Record monthly settlements after the month ends.</p>}</div>}
-      <SectionTabs ids={["all", "weekly", "appointment", "clinic", "handover"]} labels={["All payments", "Weekly sessions", "One-off consultations", "Group clinics", "Handovers"]}>
+      <SectionTabs ids={["all", "weekly", "appointment", "clinic", "handover"]} labels={["All payments", "Weekly sessions", "Individual appointments", "Group clinics", "Handovers"]}>
         <PaymentAudit data={data} service="" admin={admin} />
         <PaymentAudit data={data} service="weekly" admin={admin} />
         <PaymentAudit data={data} service="appointment" admin={admin} />
         <PaymentAudit data={data} service="clinic" admin={admin} />
         <PaymentAudit data={data} service="handover" admin={admin} />
       </SectionTabs><div className="earnings-pagination"><button className="ws-link secondary" disabled={page <= 1} onClick={() => setPagination({ key, page: page - 1 })}>Previous</button><span>Payments page {page} of {Math.max(1, Math.ceil(data.count / data.pageSize))} · {service || "all services"}</span><button className="ws-link secondary" disabled={page * data.pageSize >= data.count} onClick={() => setPagination({ key, page: page + 1 })}>Next</button></div>
+      </div>
     </>}
     {popup && data && <ExternalPaymentDialog sandbox={data.testPayments} title={data.testPayments ? "Record sandbox settlement" : "Record verified professional payment"} amount={data.total} endpoint={`/admin/settlements/${encodeURIComponent(month)}/${encodeURIComponent(target)}/record-payment`} onClose={() => setPopup(false)} onSaved={() => { setPopup(false); setSaved(true); result.retry(); }} />}
     {saved && <MessageOverlay type="success" text={data?.testPayments ? "Sandbox settlement recorded. The professional has been notified. No real payment was recorded." : "External payment recorded. The professional has been notified. No money was transferred by this application."} onClose={() => setSaved(false)} />}
@@ -165,15 +166,15 @@ export function MonthlyEarningsDetails() {
 }
 
 function PaymentAudit({ data, service, admin }) {
-  const labels = { weekly: "Weekly session payments", appointment: "One-off consultation payments", clinic: "Group clinic payments", handover: "Handed-over consultation payments" };
+  const labels = { weekly: "Weekly session payments", appointment: "Individual appointment payments", clinic: "Group clinic payments", handover: "Handed-over consultation payments" };
   const totals = { weekly: data.weeklyTotal, appointment: data.appointmentTotal, clinic: data.clinicTotal, handover: data.handoverTotal };
   // The API filters before pagination. Keep this guard for retained, hidden panels.
   const payments = data.payments.filter((payment) => !service || (service === "handover" ? payment.transfer : payment.serviceType === service));
   return <Panel title={labels[service] || "All consultation & clinic payments"}>
-    <p className="mb-4">Included by completion month, not payment month. All times use Sri Lanka time. Handovers are already included in weekly or one-off totals; they are not an additional payment.</p>
+    <p className="mb-4">Included by completion month, not payment month. All times use Sri Lanka time. Handovers are already included in weekly or individual appointment totals; they are not an additional payment.</p>
     {service === "clinic" && <p className="mb-4">Confirmed paid tickets for completed clinics, including attendees who did not join. Cancelled and refunded tickets are excluded.</p>}
     {payments.length ? <div className="ws-table-wrap"><table className="ws-table earnings-table"><caption className="sr-only">{labels[service] || "All payments"} for {data.professional.name}</caption><thead><tr><th scope="col">Patient / client</th><th scope="col">Service / session</th><th scope="col">Paid at</th><th scope="col">Completed at</th><th scope="col">Amount</th></tr></thead><tbody>
-      {payments.map((payment) => <tr key={payment.id}><td>{payment.patientName}</td><td><strong>{payment.serviceType === "clinic" ? "Group clinic" : payment.serviceType === "appointment" ? "One-off consultation" : "Weekly session"}</strong><p>{payment.sessionDate} {payment.sessionStart}–{payment.sessionEnd}</p>{payment.clinicId && <Link className="ws-name-link" to={`/app/clinics/${payment.clinicId}?tab=${admin ? "payments" : "manage"}`}>{payment.clinicTitle}</Link>}{payment.transfer && <><p>Handed over by {payment.transfer.fromName} → {data.professional.name}</p><p>Reason: {payment.transfer.reason || "See handover history"}</p><small>Accepted {dateLabel(payment.transfer.acceptedAt)} · {timeLabel(payment.transfer.acceptedAt)}</small><br /><Link className="ws-name-link" to={admin ? "/app/transfers?tab=history" : "/app/history?tab=handovers"}>View handover history</Link></>}</td><td>{dateLabel(payment.paidAt)} · {timeLabel(payment.paidAt)}</td><td>{dateLabel(payment.completedAt)} · {timeLabel(payment.completedAt)}</td><td>{cash(payment.amount)}</td></tr>)}
+      {payments.map((payment) => <tr key={payment.id}><td>{payment.patientName}</td><td><strong>{payment.serviceType === "clinic" ? "Group clinic" : payment.serviceType === "appointment" ? "Individual appointment" : "Weekly session"}</strong><p>{payment.sessionDate} {payment.sessionStart}–{payment.sessionEnd}</p>{payment.clinicId && <Link className="ws-name-link" to={`/app/clinics/${payment.clinicId}?tab=${admin ? "payments" : "manage"}`}>{payment.clinicTitle}</Link>}{payment.transfer && <><p>Handed over by {payment.transfer.fromName} → {data.professional.name}</p><p>Reason: {payment.transfer.reason || "See handover history"}</p><small>Accepted {dateLabel(payment.transfer.acceptedAt)} · {timeLabel(payment.transfer.acceptedAt)}</small><br /><Link className="ws-name-link" to={admin ? "/app/transfers?tab=history" : "/app/history?tab=handovers"}>View handover history</Link></>}</td><td>{dateLabel(payment.paidAt)} · {timeLabel(payment.paidAt)}</td><td>{dateLabel(payment.completedAt)} · {timeLabel(payment.completedAt)}</td><td>{cash(payment.amount)}</td></tr>)}
     </tbody><tfoot><tr><th scope="row" colSpan={4}>Monthly {service === "handover" ? "handed-over subtotal (included in earnings)" : service ? labels[service].toLowerCase() : "earnings total"}</th><td>{cash(service ? totals[service] || 0 : data.total)}</td></tr></tfoot></table></div> : <Empty title="No payments in this view">Completed, paid services matching this category will appear here.</Empty>}
   </Panel>;
 }

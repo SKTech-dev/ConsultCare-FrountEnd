@@ -8,6 +8,8 @@ import { money } from "../../features/consultations/model";
 import { MessageOverlay } from "../../components/ui/MessageBox";
 import ReasonDialog from "../../components/ui/ReasonDialog";
 import Refunds from "./Refunds";
+import { AdminCashouts, AdminRefundClaims } from "../../components/workspace/RefundWallet";
+import PaymentRecovery from "../../components/workspace/PaymentRecovery";
 
 function ModerationPopups({ pending, error, submitting, onClose, onConfirm, onDismissError }) {
   return <>{pending && (["rejected", "suspended"].includes(pending.status) ? <ReasonDialog title="Explain account decision" text={`${pending.name} will be marked ${pending.status}. Your reason is saved in their notification inbox.`} busy={submitting} onClose={onClose} onConfirm={onConfirm} /> : <MessageOverlay type="confirm" title="Update account status?" text={`${pending.name} will be marked ${pending.status}.`} onClose={onClose} onConfirm={() => onConfirm("")} isProcessing={submitting} />)}{error && <MessageOverlay type="error" title={error.title} text={error.text} onClose={onDismissError} />}</>;
@@ -61,7 +63,7 @@ export function AdminPersonDetails() {
 }
 
 export function AdminPayments() {
-  return <><PageHeading title="Payments and refunds." /><SectionTabs ids={["payments", "refunds"]} labels={["Payments", "Refunds"]}><PaymentOverview /><AdminRefunds /></SectionTabs></>;
+  return <><PageHeading title="Payments and refunds." /><SectionTabs ids={["payments", "refunds", "cashouts", "claims", "recovery"]} labels={["Payments", "Refunds", "Wallet cash-outs", "Absence claims", "Payment recovery"]}><PaymentOverview /><AdminRefunds /><AdminCashouts /><AdminRefundClaims /><PaymentRecovery /></SectionTabs></>;
 }
 
 function AdminRefunds() {

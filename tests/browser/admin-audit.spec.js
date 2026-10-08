@@ -20,6 +20,7 @@ async function admin(page) {
     const url = new URL(route.request().url());
     if (url.pathname === "/api/auth/me") return route.fulfill({ json: { data: { id: "admin", role: "admin", name: "Administrator" } } });
     if (url.pathname === "/api/workspace") return route.fulfill({ json: { data: { role: "admin", patient: {}, professionals: [], patients: [], sessions: [], bookings: [], weeklyAvailability: [], familyProfessionalIds: [], onboarding: null } } });
+    if (url.pathname === "/api/appointment-offers") return route.fulfill({ json: { data: [] } });
     return route.fulfill({ json: { data: { items: [], count: 0, pageSize: 30 } } });
   });
 }
@@ -73,7 +74,7 @@ test("settlement categories filter before pagination and handovers retain the fu
   });
   await page.goto("/app/settlements/2026-09/doctor");
   await expect(page.getByRole("cell", { name: "Weekly Patient", exact: true })).toBeVisible();
-  await page.getByRole("tab", { name: "One-off consultations", exact: true }).click();
+  await page.getByRole("tab", { name: "Individual appointments", exact: true }).click();
   await expect(page.getByRole("cell", { name: "One-off Patient", exact: true })).toBeVisible();
   await expect(page.getByRole("cell", { name: "Weekly Patient", exact: true })).toHaveCount(0);
   await page.getByRole("tab", { name: "Handovers", exact: true }).click();

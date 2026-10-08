@@ -14,6 +14,7 @@ async function account(page, role) {
   await page.route("**/api/**", (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path === "/api/auth/me") return route.fulfill({ status: role ? 200 : 401, json: role ? { data: { id: role === "user" ? patient.id : professional.id, name: longName, role } } : { message: "Sign in" } });
+    if (path.endsWith("/room-presence")) return route.fulfill({ json: { data: { status: "IN CONSULTATION" } } });
     if (path === "/api/workspace") return route.fulfill({ json: { data: state } });
     if (path === "/api/settlements") return route.fulfill({ json: { data: { months: [month], testPayments: true } } });
     if (path === "/api/clinics/clinic") return route.fulfill({ json: { data: clinic } });

@@ -10,6 +10,7 @@ import { Empty, PageHeading, Panel, Status, useWorkspace } from "../../component
 import { MessageOverlay } from "../../components/ui/MessageBox";
 import VideoCall from "../../components/workspace/VideoCall";
 import PayHereCheckout from "../../components/workspace/PayHereCheckout";
+import RefundRequest from "../../components/workspace/RefundRequest";
 import "./clinics.css";
 import { useUnsavedChanges } from "../../components/ui/UnsavedChanges";
 import ErrorNotice from "../../components/ui/ErrorNotice";
@@ -207,8 +208,9 @@ function ClinicDetailContent({ id }) {
         <div className="ws-actions">
           {registration && ["pending", "confirmed"].includes(registration.status) && scheduled && before && <button className="ws-link secondary" disabled={disabled} onClick={() => setConfirm({ title: "Cancel clinic registration?", text: "Your place will be released. Verified payments are marked for refund review. A cancelled registration cannot be rebooked.", path: "cancel-registration" })}>Cancel registration</button>}
         </div>
-        {registration?.status === "pending" && payhereEnabled && <PayHereCheckout endpoint={`/clinics/${id}/payhere-checkout`} amount={money(registration.fee)} disabled={disabled || !canPay} />}
+        {registration?.status === "pending" && <PayHereCheckout endpoint={`/clinics/${id}/payhere-checkout`} amount={money(registration.fee)} disabled={disabled || !canPay} label={payhereEnabled ? "Pay with PayHere" : "Pay using wallet credit"} />}
         {paid && scheduled && <p className="ws-notice">Your place is confirmed. The group room opens when the professional starts the clinic during its scheduled time.</p>}
+        {registration && (scheduled || registration.walletCredited) && <RefundRequest clinic booking={registration} session={clinic} />}
       </>}
       {staff && <>
         <div className="ws-actions">

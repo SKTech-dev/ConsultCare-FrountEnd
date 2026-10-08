@@ -28,13 +28,13 @@ test("tab deep links survive reload and browser history and preserve other query
   await account(page);
   await page.goto("/app/queue?tab=clinics&source=notification");
   await expect(page.getByRole("tab", { name: "Group clinics", exact: true })).toHaveAttribute("aria-selected", "true");
-  await page.getByRole("tab", { name: "One-off consultations", exact: true }).click();
+  await page.getByRole("tab", { name: "Individual appointments", exact: true }).click();
   await expect(page).toHaveURL(/tab=appointments&source=notification/);
   await page.goBack();
   await expect(page.getByRole("tab", { name: "Group clinics", exact: true })).toHaveAttribute("aria-selected", "true");
   await page.goForward();
   await page.reload();
-  await expect(page.getByRole("tab", { name: "One-off consultations", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Individual appointments", exact: true })).toHaveAttribute("aria-selected", "true");
   await page.goto("/app/queue?tab=obsolete");
   await expect(page.getByRole("tab").first()).toHaveText("Weekly queues");
   await expect(page.getByRole("tab").first()).toHaveAttribute("aria-selected", "true");
@@ -49,6 +49,7 @@ async function account(page, role = "doctor") {
   await page.route("**/api/**", (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path === "/api/auth/me") return route.fulfill({ json: { data: { id: role === "doctor" ? "doc" : "patient", role, name: role === "doctor" ? "Dr Test" : "Test Patient", email: "tester@example.com" } } });
+    if (path.endsWith("/room-presence")) return route.fulfill({ json: { data: { status: "IN CONSULTATION" } } });
     if (path === "/api/workspace") return route.fulfill({ json: { data: state } });
     return route.fulfill({ json: { data: { items: [], count: 0, pageSize: 20 } } });
   });
@@ -75,12 +76,12 @@ test("schedule tabs retain drafts and support keyboard navigation", async ({ pag
   await account(page);
   await page.goto("/app/sessions");
   await page.locator(".weekly-fee input").fill("6200");
-  await page.getByRole("tab", { name: "Patient consultation", exact: true }).click();
+  await page.getByRole("tab", { name: "Individual appointment", exact: true }).click();
   await expect(page.getByLabel("Patient / client email", { exact: true })).toBeVisible();
   await page.getByRole("tab", { name: "Weekly availability", exact: true }).click();
   await expect(page.locator(".weekly-fee input")).toHaveValue("6200");
-  await page.keyboard.press("ArrowRight");
-  await expect(page.getByRole("tab", { name: "Patient consultation", exact: true })).toBeFocused();
+  await page.getByRole("tab", { name: "Weekly availability", exact: true }).press("ArrowRight");
+  await expect(page.getByRole("tab", { name: "Individual appointment", exact: true })).toBeFocused();
 });
 
 test("directory language filter handles existing mixed-case values", async ({ page }) => {
@@ -220,4 +221,49 @@ test("booking details show loading feedback while refreshing their server state"
   await expect(page.getByLabel("Checking payment confirmation")).toBeVisible();
   await expect(page.locator(".booking-loading")).toHaveCount(0);
   await expect(page.getByText(/Waiting for PayHere to confirm/)).toBeVisible();
+});
+
+test("documents uploaded to one booking never appear on a different booking route", async ({ page }) => {
+  const state = await account(page);
+  state.bookings[0].status = "WAITING";
+  state.bookings.push({ ...state.bookings[0], id: "second", patientId: "other", patientName: "Other Patient" });
+  await page.route("**/api/bookings/record/documents", (route) => route.fulfill({ json: { data: { id: "uploaded", name: "first-patient.pdf", type: "application/pdf", size: 10, private: false, uploaderId: "doc" } } }));
+  await page.goto("/app/booking/record?tab=documents");
+  await page.getByLabel("Upload consultation document").setInputFiles({ name: "first-patient.pdf", mimeType: "application/pdf", buffer: Buffer.from("mock PDF") });
+  await expect(page.getByRole("button", { name: "first-patient.pdf", exact: true })).toBeVisible();
+  await page.evaluate(() => {
+    history.pushState({ ...history.state, key: "second-booking" }, "", "/app/booking/second?tab=documents");
+    dispatchEvent(new PopStateEvent("popstate", { state: history.state }));
+  });
+  await expect(page.getByRole("button", { name: "first-patient.pdf", exact: true })).toHaveCount(0);
+  await expect(page.getByText("No attachments yet.")).toBeVisible();
+});
+
+test("checkout does not retain the previous booking quote when the next quote fails", async ({ page }) => {
+  const state = await account(page, "user");
+  Object.assign(state.bookings[0], { status: "PAYMENT PENDING", payment: "unpaid", fee: 5000 });
+  Object.assign(state.patient, { address: "12 Test Road", city: "Colombo" });
+  state.bookings.push({ ...state.bookings[0], id: "second" });
+  await page.route("**/api/bookings/record/payhere-checkout", (route) => route.fulfill({ json: { data: { balance: "0", walletUsed: "0", payhereAmount: "5000.00", total: "5000.00", frozen: false } } }));
+  await page.route("**/api/bookings/second/payhere-checkout", (route) => route.fulfill({ status: 503, json: { message: "Quote unavailable" } }));
+  await page.goto("/app/booking/record");
+  await expect(page.getByRole("button", { name: "Pay with PayHere · LKR 5000.00" })).toBeEnabled();
+  await page.evaluate(() => {
+    history.pushState({ ...history.state, key: "second-checkout" }, "", "/app/booking/second");
+    dispatchEvent(new PopStateEvent("popstate", { state: history.state }));
+  });
+  await expect(page.getByRole("dialog")).toContainText("Quote unavailable");
+  await expect(page.getByRole("button", { name: "Pay with PayHere · LKR 5000.00" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Loading payment amount…" })).toBeDisabled();
+});
+
+test("failed logout tells the user they remain signed in", async ({ page }) => {
+  const state = await account(page, "user");
+  state.bookings[0].status = "WAITING";
+  await page.route("**/api/auth/logout", (route) => route.fulfill({ status: 503, json: { message: "Sign out unavailable. Please retry." } }));
+  await page.goto("/app");
+  await page.getByRole("button", { name: "Your account" }).click();
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(page.getByRole("dialog")).toContainText("Sign out unavailable");
+  await expect(page).toHaveURL(/\/app$/);
 });

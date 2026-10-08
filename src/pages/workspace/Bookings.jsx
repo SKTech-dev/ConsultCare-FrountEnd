@@ -6,10 +6,13 @@ import { useWorkspace, PageHeading, Panel, Empty, Status } from "../../component
 import { ACTIVE, canRead, money, sessionEndsAt, sessionLabel, isUpcomingBooking } from "../../features/consultations/model";
 import { fetchWorkspace, transition } from "../../features/consultations/consultationSlice";
 import BookingPayment from "./BookingPayment";
+import RefundRequest from "../../components/workspace/RefundRequest";
+import MoveWeeklyBooking from "../../components/workspace/MoveWeeklyBooking";
 import ReasonDialog from "../../components/ui/ReasonDialog";
 import { Documents } from "./Room";
 import PatientQueues from "./PatientQueues";
 import SessionTransfers from "./SessionTransfers";
+import AppointmentOffers from "../../components/workspace/AppointmentOffers";
 import { ClinicList } from "./Clinics";
 import { PatientContext, ChatMessages, Prescription } from "./ConsultationRecord";
 import ResolveUnfinished from "../../components/workspace/ResolveUnfinished";
@@ -75,6 +78,7 @@ function ProfessionalHistory() {
     <SessionTransfers embedded view="history" />
     <ClinicList embedded view="history" title="Past group clinics" />
     <Panel title="Past consultation sessions">
+    <AppointmentOffers embedded history />
     {months.length ? <div className="history-tree">{months.map((month) => {
       const monthBookings = month.weeks.flatMap((week) => week.days).flatMap((day) => day.sessions).reduce((total, item) => total + item.bookings.length, 0);
       return <details className="history-node history-month" key={month.key}><summary><span><strong>{month.label}</strong><small>{monthBookings} booked consultation{monthBookings === 1 ? "" : "s"}</small></span><span className="history-expand"><span className="history-expand-label">Expand</span><span className="history-collapse-label">Collapse</span></span></summary><div className="history-children">{month.weeks.map((week) => {
@@ -136,6 +140,8 @@ export function BookingDetails() {
     {paymentReturn === "cancel" && <p className="ws-notice">Checkout was cancelled. Your booking is awaiting payment; you can retry before it expires.</p>}
     <SectionTabs ids={["summary", "documents", "patient", ...(p?.role === "doctor" ? ["prescription"] : []), "chat"]} labels={["Booking & payment", "Documents", "Patient information", ...(p?.role === "doctor" ? ["Prescription"] : []), "Chat"]}><div className="ws-grid-two"><Panel title="Booking summary"><div className="ws-row"><span>Consultation fee</span><strong>{money(b.fee)}</strong></div><div className="ws-row"><span>Payment</span><Status>{b.payment}</Status></div><p className="ws-space">{b.reason || "No discussion notes provided."}</p>
       <BookingPayment booking={b} showFailure />
+      {s.role === "user" && <RefundRequest booking={b} session={session} />}
+      <MoveWeeklyBooking booking={b} />
       {s.role === "user" && ["PAYMENT PENDING", "WAITING", "NEXT"].includes(b.status) && <button className="ws-link secondary mt-5" onClick={() => setCancel(true)}>Cancel booking</button>}
     </Panel><Panel title={b.status === "COMPLETED" ? "Consultation record" : "Your waiting room"}>
       {ACTIVE.includes(b.status) ? <><span className="ws-queue-number">{b.status === "IN CONSULTATION" ? "Ready" : position}</span><h3>{b.status === "IN CONSULTATION" ? "Your professional has called you." : b.status === "NEXT" ? "You're next. Please be ready." : Math.max(0, position - 1) + " people ahead of you."}</h3><p className="mt-3">Your position updates automatically. Wait for {p.name} to call you before joining the room.</p>{b.status === "IN CONSULTATION" && <Link to={"/app/room/" + b.id} className="ws-link mt-6">Join consultation →</Link>}</> : b.status === "COMPLETED" ? <><h3>Notes shared with you</h3><p className="whitespace-pre-wrap mt-3">{b.notes || "No shared notes were added."}</p><h3 className="mt-6">Follow-up recommendation</h3><p className="whitespace-pre-wrap mt-3">{b.followUp || "No follow-up recommendation recorded."}</p>{s.role !== "user" && <><h3 className="mt-6">Private professional notes</h3><p className="whitespace-pre-wrap mt-3">{b.privateNotes || "No private notes."}</p></>}</> : <p>{b.status === "PAYMENT PENDING" ? "Complete secure payment to join this professional's queue." : "This consultation is no longer in the active queue."}</p>}

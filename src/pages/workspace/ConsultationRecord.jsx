@@ -8,6 +8,7 @@ import { sendPrescription } from "../../features/consultations/consultationSlice
 import { MessageOverlay } from "../../components/ui/MessageBox";
 import { useUnsavedChanges } from "../../components/ui/UnsavedChanges";
 import { sriLankanDate } from "../../features/consultations/model";
+import { deliveryLinks } from "../../features/consultations/deliveryLinks";
 
 export function PatientContext({ booking }) {
   const context = booking.patientContext;
@@ -42,8 +43,9 @@ export function Prescription({ booking }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
   const [notice, setNotice] = useState("");
+  const [reason, setReason] = useState("");
   if (booking.patientContext?.profession !== "doctor") return null;
-  const canEdit = state.role === "doctor" && booking.status === "IN CONSULTATION";
+  const canEdit = state.role === "doctor" && (booking.status === "IN CONSULTATION" || (booking.status === "COMPLETED" && Boolean(booking.prescription)));
   async function download() {
     setBusy("download"); setError("");
     try {
@@ -59,14 +61,20 @@ export function Prescription({ booking }) {
     event.preventDefault();
     if (busy) return;
     setBusy("send"); setError(""); setNotice("");
-    const action = await dispatch(sendPrescription({ id: booking.id, text, revision, localPending: true }));
+    const action = await dispatch(sendPrescription({ id: booking.id, text, revision, reason, localPending: true }));
     if (action.error) setError(action.payload || "Could not send the prescription. Your draft is retained.");
     else { markSaved(""); setText(""); setEditing(false); setRevision(revision + 1); setNotice("Prescription sent. Only the latest version should be used."); }
     setBusy("");
   }
   return <Panel title="Prescription">
+    {state.role === "user" && booking.prescription && <div className="ws-space">
+      <h3>Arrange medicine pickup</h3>
+      <p>Download your current prescription, then open your preferred app to arrange pickup from your pharmacy.</p>
+      <div className="ws-actions"><a className="ws-link secondary" href={deliveryLinks.uber} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">Open Uber</a></div>
+    </div>}
+    {booking.prescriptionCorrectionReason && <p className="ws-notice">Correction reason: {booking.prescriptionCorrectionReason}</p>}
     {booking.prescription && <><span className="ws-status ws-good">Current prescription · version {booking.prescriptionRevision || 1}</span><p className="whitespace-pre-wrap ws-space">{booking.prescription}</p><p className="mt-3">Sent {new Date(booking.prescribedAt).toLocaleString()}</p><div className="ws-actions"><button type="button" className="ws-link" disabled={Boolean(busy)} onClick={download}>{busy === "download" && <Loader2 className="animate-spin" size={16} />}Download current PDF</button>{canEdit && !editing && <button type="button" className="ws-link secondary" onClick={() => { setText(booking.prescription); markSaved(booking.prescription); setRevision(booking.prescriptionRevision || 1); setEditing(true); }}><Pencil size={16} />Update prescription</button>}</div></>}
-    {canEdit && (!booking.prescription || editing) && <form onSubmit={send} className="ws-space"><label className="ws-field">Prescription<textarea required maxLength={10000} value={text} disabled={Boolean(busy)} onChange={(event) => { setEditing(true); setText(event.target.value); }} placeholder="Medicine, dose, frequency, duration and instructions" /></label><p>Review before sending. An update replaces the current prescription; earlier versions are marked superseded.</p><div className="ws-actions"><button className="ws-link" disabled={Boolean(busy) || !text.trim()} aria-busy={busy === "send"}>{busy === "send" && <Loader2 className="animate-spin" size={17} />}{busy === "send" ? "Sending prescription…" : booking.prescription ? "Send updated prescription" : "Send prescription"}</button>{editing && <button type="button" className="ws-link secondary" disabled={Boolean(busy)} onClick={() => { setEditing(false); setText(""); markSaved(""); }}>Cancel edit</button>}</div></form>}
+    {canEdit && (!booking.prescription || editing) && <form onSubmit={send} className="ws-space"><label className="ws-field">Prescription<textarea required maxLength={10000} value={text} disabled={Boolean(busy)} onChange={(event) => { setEditing(true); setText(event.target.value); }} placeholder="Medicine, dose, frequency, duration and instructions" /></label>{booking.status === "COMPLETED" && <label className="ws-field">Correction reason<textarea required minLength={5} maxLength={1000} value={reason} onChange={(event) => setReason(event.target.value)} /></label>}<p>Review before sending. An update replaces the current prescription; earlier versions are marked superseded.</p><div className="ws-actions"><button className="ws-link" disabled={Boolean(busy) || !text.trim()} aria-busy={busy === "send"}>{busy === "send" && <Loader2 className="animate-spin" size={17} />}{busy === "send" ? "Sending prescription…" : booking.prescription ? "Send updated prescription" : "Send prescription"}</button>{editing && <button type="button" className="ws-link secondary" disabled={Boolean(busy)} onClick={() => { setEditing(false); setText(""); markSaved(""); }}>Cancel edit</button>}</div></form>}
     {!booking.prescription && !canEdit && <p>No prescription has been sent.</p>}
     {(booking.prescriptionHistory || []).map((item) => <div key={item.revision} className="prescription-superseded"><strong>Version {item.revision} · Superseded</strong><small>{item.prescribedAt ? new Date(item.prescribedAt).toLocaleString() : "Earlier prescription"}</small><span>Replaced by the current prescription. Download unavailable.</span></div>)}
     {notice && <p role="status" className="ws-notice">{notice}</p>}

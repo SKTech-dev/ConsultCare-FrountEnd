@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isUpcomingBooking } from "../src/features/consultations/model.js";
+import { isUpcomingBooking, isSessionLive, isUpcomingSession, isBookableSession } from "../src/features/consultations/model.js";
 
 const session = { date: "2026-09-28", start: "10:00", end: "11:00" };
 const end = Date.parse("2026-09-28T11:00:00+05:30");
@@ -19,4 +19,13 @@ test("ongoing calls remain reachable and terminal bookings remain in history", (
     assert.equal(isUpcomingBooking({ status }, session, end - 1), false);
   }
   assert.equal(isUpcomingBooking({ status: "WAITING" }, undefined, end), false);
+});
+
+test("an overrunning queue retains waiting patients but cannot take new bookings", () => {
+  const running = { ...session, online: true, startedAt: "2026-09-28T10:00:00+05:30", closedAt: null };
+  assert.equal(isUpcomingBooking({ status: "WAITING" }, running, end + 1), true);
+  assert.equal(isUpcomingSession(running, end + 1), true);
+  assert.equal(isSessionLive(running, end + 1), true);
+  assert.equal(isBookableSession(running, end + 1), false);
+  assert.equal(isSessionLive({ ...running, closedAt: "2026-09-28T11:30:00+05:30" }, end + 3600000), false);
 });

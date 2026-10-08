@@ -3,7 +3,7 @@ import { Video, Loader2, Maximize, Minimize } from "lucide-react";
 import { MessageOverlay } from "../ui/MessageBox";
 import { callApi } from "../../api/apiClient";
 
-export default function VideoCall({ bookingId, clinicId }) {
+export default function VideoCall({ bookingId, clinicId, onJoin }) {
   const container = useRef(null);
   const panel = useRef(null);
   const [fullscreen, setFullscreen] = useState(false);
@@ -11,6 +11,7 @@ export default function VideoCall({ bookingId, clinicId }) {
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState("idle");
   const [error, setError] = useState("");
+  const [moduleError, setModuleError] = useState(false);
   useEffect(() => {
     const sync = () => setFullscreen(document.fullscreenElement === panel.current);
     const escape = (event) => { if (event.key === "Escape") setFallbackFullscreen(false); };
@@ -40,20 +41,29 @@ export default function VideoCall({ bookingId, clinicId }) {
       }
     };
     async function connect() {
-      setState("joining"); setError("");
+      setState("joining"); setError(""); setModuleError(false);
       try {
+        await onJoin?.();
+        if (cancelled) return;
         if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
           throw new Error("Video calls require HTTPS or localhost and a browser with camera support.");
         }
         const endpoint = clinicId ? `/clinics/${clinicId}/video` : `/bookings/${bookingId}/video`;
         const { data } = await callApi("POST", endpoint, null, null, { signal: controller.signal, timeout: 35000 });
-        const { default: Daily } = await import("@daily-co/daily-js");
+        let Daily;
+        try { ({ default: Daily } = await import("@daily-co/daily-js")); }
+        catch {
+          if (!cancelled) setModuleError(true);
+          throw new Error("The video module could not load. Reload this room to get the latest version, then join again.");
+        }
         if (cancelled) return;
         frame = Daily.createFrame(container.current, {
           iframeStyle: { width: "100%", height: "100%", border: "0" },
           showLeaveButton: true,
         });
-        frame.on("joined-meeting", () => { if (!cancelled) setState("joined"); });
+        frame.on("joined-meeting", () => { if (!cancelled) {
+          setState("joined");
+        } });
         frame.on("left-meeting", () => { if (!cancelled) { setState("left"); frame.destroy().catch(() => {}); } });
         frame.on("error", fail);
         await frame.join({ url: data.url, token: data.token });
@@ -68,7 +78,7 @@ export default function VideoCall({ bookingId, clinicId }) {
       controller.abort();
       if (frame && !frame.isDestroyed()) frame.destroy().catch(() => {});
     };
-  }, [bookingId, clinicId, attempt]);
+  }, [bookingId, clinicId, attempt, onJoin]);
 
   const busy = state === "joining";
   return <section ref={panel} className={"room-video-panel " + (fallbackFullscreen ? "video-expanded" : "")} aria-label="Consultation video call">
@@ -76,6 +86,7 @@ export default function VideoCall({ bookingId, clinicId }) {
     <div className="room-video-stage"><div ref={container} className="daily-video-frame" hidden={!["joining", "joined"].includes(state)} />
     {!["joining", "joined"].includes(state) && <div className="ws-video"><Video size={48} /><h2>{clinicId ? "Your group clinic lecture" : "Your private video consultation"}</h2><p>{state === "left" ? "You left the video call. You can rejoin while the session is open." : clinicId ? "Join the group clinic. Your microphone starts muted and you can turn it on to speak. Attendee cameras and chat are disabled." : "Join to speak with the other participant. Check your devices before entering."}</p></div>}</div>
     <div className="ws-actions room-video-controls">
+      {moduleError && <button type="button" className="ws-link secondary" onClick={() => window.location.reload()}>Reload room</button>}
       {state !== "joined" && <button className="ws-link" disabled={busy} onClick={() => setAttempt((value) => value + 1)}>{busy ? <Loader2 size={17} className="animate-spin" /> : <Video size={17} />}{busy ? "Connecting…" : state === "idle" ? "Join video call" : "Rejoin video call"}</button>}
       {busy && <button className="ws-link secondary" onClick={() => { setAttempt(0); setState("idle"); }}>Cancel</button>}
       <span role="status">{state === "joined" ? "Connected · use the call controls to manage your camera and microphone." : busy ? "Preparing your call and device preview…" : ""}</span>

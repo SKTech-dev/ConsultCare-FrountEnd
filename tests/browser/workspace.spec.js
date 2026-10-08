@@ -27,7 +27,7 @@ test("patient email lookup works before appointment details and clears stale mat
       : route.fulfill({ status: 404, json: { message: "No active patient/client account matches that email." } });
   });
   await page.goto("/app/sessions");
-  await page.getByRole("tab", { name: "Patient consultation", exact: true }).click();
+  await page.getByRole("tab", { name: "Individual appointment", exact: true }).click();
   const email = page.getByLabel("Patient / client email", { exact: true });
   await page.getByRole("button", { name: "Find patient", exact: true }).click();
   expect(searches).toBe(0);
@@ -109,7 +109,7 @@ test("patient pages embed clinics with matching empty sections and remove the cl
   await mockAccount(page, state);
   for (const path of ["/app/bookings", "/app/history", "/consult/doctors", "/consult/lawyers"]) {
     await page.goto(path);
-    await expect(page.getByRole("tab")).toHaveCount(2);
+    await expect(page.getByRole("tab")).toHaveCount(path === "/app/bookings" ? 3 : 2);
     for (const tab of await page.getByRole("tab").all()) { await tab.click(); await expect(page.locator(".ws-empty:visible")).toHaveCount(1); }
     await expect(page.locator(".ws-sidebar").getByRole("link", { name: "Group clinics", exact: true })).toHaveCount(0);
 
@@ -149,7 +149,7 @@ test("admin list filters send search criteria and reset pagination", async ({ pa
   await mockAccount(page, snapshot("admin"));
   for (const [path, label, endpoint] of [
     ["/app/clinics", "Filter group clinics", "/api/clinics"],
-    ["/app/appointments", "Filter scheduled consultations", "/api/scheduled-consultations"],
+    ["/app/appointments", "Filter individual appointments", "/api/scheduled-consultations"],
     ["/app/transfers", "Filter booked sessions", "/api/transferable-sessions"],
     ["/app/transfers", "Filter handover history", "/api/session-transfers"],
   ]) {
@@ -204,7 +204,11 @@ async function mockAccount(page, state, options = {}) {
     if (path === "/api/auth/me") return route.fulfill({ status: state ? 200 : 401, json: state
       ? { data: { id: state.role === "user" ? "patient" : professional.id, role: state.role, name: "Test Account" } }
       : { message: "Please sign in." } });
+    if (path.endsWith("/room-presence")) return route.fulfill({ json: { data: { status: "IN CONSULTATION" } } });
     if (path === "/api/workspace") return route.fulfill({ json: { data: state } });
+    if (path.endsWith("/payhere-checkout") && route.request().method() === "GET") return route.fulfill({ json: { data: { total: "2500.00", walletUsed: "0.00", payhereAmount: "2500.00", balance: "0.00" } } });
+    if (path === "/api/appointment-offers") return route.fulfill({ json: { data: [] } });
+    if (path === "/api/wallet") return route.fulfill({ json: { data: { balance: "0", environment: "sandbox", frozen: false, entries: [], cashouts: [] } } });
     if (path === "/api/clinics" || path === "/api/transferable-sessions" || path === "/api/session-transfers" || path === "/api/scheduled-consultations") return route.fulfill({ json: { data: { items: [], count: 0, pageSize: 30 } } });
     if (path === "/api/admin/users/professional") return route.fulfill({ status: 409, json: { message: "The professional must complete their credentials first." } });
     if (path === "/api/bookings/room/messages" && options.messageFailure) return route.fulfill({ status: 503, json: { message: "Message service is temporarily unavailable." } });
@@ -393,20 +397,21 @@ test("protected routes redirect signed-out visitors to login", async ({ page }) 
 test("handover starts from a queue button rather than a My sessions card", async ({ page }) => {
   await mockAccount(page, snapshot());
   await page.goto("/app/sessions");
-  await page.getByRole("tab", { name: "Patient consultation", exact: true }).click();
+  await page.getByRole("tab", { name: "Individual appointment", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Upcoming generated sessions" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Hand over a booked session" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Requests & handover history" })).toHaveCount(0);
-  await page.getByRole("tab", { name: "Patient consultation", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Schedule a patient consultation" })).toBeVisible();
+  await page.getByRole("tab", { name: "Individual appointment", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Schedule an individual appointment" })).toBeVisible();
   await page.goto("/app/queue");
-  await page.getByRole("tab", { name: "Handovers", exact: true }).click();
-  await page.getByRole("button", { name: "Hand over a booked session" }).click();
-  await expect(page.getByRole("heading", { name: "No sessions available for handover" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Handover", exact: true })).toHaveCount(0);
 });
 
 test("a professional searches for a receiver and requests a handover", async ({ page }) => {
-  await mockAccount(page, snapshot());
+  const state = snapshot();
+  state.sessions = [session("cover", "2026-09-23")];
+  state.bookings = [booking("waiting", "cover", "NEXT")];
+  await mockAccount(page, state);
   const future = { id: "cover", date: "2026-09-23", start: "10:00", end: "11:00", professionalName: "Test Professional", queueCount: 2, expectedAmount: 5000 };
   await page.route("**/api/transferable-sessions*", (route) => route.fulfill({ json: { data: { items: [future], count: 1, pageSize: 30 } } }));
   await page.route("**/api/sessions/cover/transfer-candidates*", (route) => route.fulfill({ json: { data: [{ id: "receiver", name: "Cover Doctor", speciality: "General practice", registration: "REG-2", languages: ["English"] }] } }));
@@ -416,9 +421,7 @@ test("a professional searches for a receiver and requests a handover", async ({ 
     return route.fulfill({ status: 201, json: { message: "Handover requested." } });
   });
   await page.goto("/app/queue");
-  await page.getByRole("tab", { name: "Handovers", exact: true }).click();
-  await page.getByRole("button", { name: "Hand over a booked session" }).click();
-  await page.getByRole("button", { name: "Request handover", exact: true }).click();
+  await page.getByRole("button", { name: "Handover", exact: true }).click();
   await page.getByLabel("Search by name or email").fill("Cover");
   await page.getByRole("button", { name: "Search", exact: true }).click();
   await page.getByRole("radio", { name: /Cover Doctor/ }).check();
@@ -442,10 +445,10 @@ test("paid private appointment allows date and time editing without changing fee
     return route.fulfill({ json: { message: "Time updated." } });
   });
   await page.goto("/app/queue");
-  await page.getByRole("tab", { name: "One-off consultations", exact: true }).click();
+  await page.getByRole("tab", { name: "Individual appointments", exact: true }).click();
   await expect(page.getByRole("button", { name: "Cancel appointment" })).toHaveCount(0);
   await page.getByRole("button", { name: "Update date & time", exact: true }).click();
-  await page.getByLabel("Date", { exact: true }).fill("2026-09-25");
+  await page.getByLabel("Date *", { exact: true }).fill("2026-09-25");
   await page.getByLabel("Start time", { exact: true }).fill("14:00");
   await page.getByLabel("End time", { exact: true }).fill("15:00");
   await page.getByLabel("Reason for change").fill("Unavoidable schedule change");
@@ -518,22 +521,22 @@ test("handover queue and history request separate server-filtered views", async 
 test("professional schedules a private consultation using an exact patient email", async ({ page }) => {
   await mockAccount(page, snapshot());
   let submitted;
-  await page.route("**/api/scheduled-consultations", (route) => {
+  await page.route(/\/api\/appointment-offers(?:\?.*)?$/, (route) => {
     submitted = route.request().postDataJSON();
     return route.fulfill({ status: 201, json: { message: "Consultation scheduled. Patient payment is required." } });
   });
   await page.goto("/app/sessions");
-  await page.getByRole("tab", { name: "Patient consultation", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Schedule consultation", exact: true })).toBeEnabled();
+  await page.getByRole("tab", { name: "Individual appointment", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Send appointment invitation", exact: true })).toBeEnabled();
   await expect(page.getByRole("button", { name: "Find patient" })).toBeVisible();
   await page.getByLabel("Patient / client email").fill("patient@example.com");
   await page.getByLabel("Date", { exact: true }).fill("2026-09-23");
   await page.getByLabel("Start time", { exact: true }).fill("14:00");
   await page.getByLabel("End time", { exact: true }).fill("14:30");
   await page.getByLabel("Individual consultation fee (LKR)", { exact: true }).fill("7500.50");
-  await page.getByRole("button", { name: "Schedule consultation", exact: true }).click();
+  await page.getByRole("button", { name: "Send appointment invitation", exact: true }).click();
   await expect(page.getByText("Consultation scheduled. Patient payment is required.", { exact: true })).toBeVisible();
-  expect(submitted).toEqual({ email: "patient@example.com", date: "2026-09-23", start: "14:00", end: "14:30", fee: 7500.50, reason: "" });
+  expect(submitted).toEqual({ email: "patient@example.com", options: [{ date: "2026-09-23", start: "14:00", end: "14:30" }], fee: 7500.50, reason: "" });
 });
 
 for (const role of ["doctor", "lawyer"]) {
@@ -561,7 +564,7 @@ for (const role of ["doctor", "lawyer"]) {
     }
     await page.reload();
     await expect(fee).toHaveValue("5000.5");
-    await page.getByRole("tab", { name: "Patient consultation", exact: true }).click();
+    await page.getByRole("tab", { name: "Individual appointment", exact: true }).click();
     await expect(page.getByLabel("Individual consultation fee (LKR)", { exact: true })).toHaveValue("");
     await expect(page.getByLabel("Date", { exact: true })).toBeVisible();
   });
@@ -573,7 +576,8 @@ test("patient can accept and pay for an invitation from My consultations", async
   state.bookings = [{ ...booking("invited", "private", "PAYMENT PENDING"), payment: "unpaid", scheduledById: professional.id, paymentDueAt: "2026-09-23T10:00:00+05:30" }];
   await mockAccount(page, state);
   await page.route("**/api/bookings/invited/payhere-checkout", (route) => {
-    expect(route.request().postDataJSON()).toEqual({ frontendOrigin: new URL(page.url()).origin });
+    if (route.request().method() === "GET") return route.fulfill({ json: { data: { total: "2500.00", walletUsed: "0.00", payhereAmount: "2500.00", balance: "0.00" } } });
+    expect(route.request().postDataJSON()).toEqual({ frontendOrigin: new URL(page.url()).origin, expectedPayhereAmount: "2500.00" });
     return route.fulfill({ json: { data: { checkoutUrl: "https://sandbox.payhere.lk/pay/checkout", fields: { order_id: "invited", amount: "2500.00" } } } });
   });
   await page.route("https://sandbox.payhere.lk/pay/checkout", (route) => route.fulfill({ contentType: "text/html", body: "<h1>Sandbox checkout</h1>" }));
@@ -583,7 +587,7 @@ test("patient can accept and pay for an invitation from My consultations", async
   await expect(page.getByRole("button", { name: /pay with PayHere/i })).toHaveCount(0);
   await page.getByRole("link", { name: "Continue to payment" }).click();
   const posted = page.waitForRequest("https://sandbox.payhere.lk/pay/checkout");
-  await page.getByRole("button", { name: /Accept & pay with PayHere/ }).click();
+  await page.getByRole("button", { name: /Pay with PayHere/ }).click();
   const request = await posted;
   expect(request.method()).toBe("POST");
   expect(new URLSearchParams(request.postData()).get("order_id")).toBe("invited");
@@ -598,10 +602,10 @@ test("expired invitations cannot be paid and admins can inspect scheduled appoin
   await page.goto("/app/bookings");
   await page.getByRole("tab", { name: "Your private consultations", exact: true }).click();
   await page.getByRole("link", { name: "Continue to payment" }).click();
-  await expect(page.getByRole("button", { name: /Accept & pay with PayHere/ })).toBeDisabled();
+  await expect(page.getByRole("button", { name: /Pay with PayHere/ })).toBeDisabled();
   await mockAccount(page, snapshot("admin"));
   await page.goto("/app/appointments");
-  await expect(page.getByRole("heading", { name: "Scheduled consultations." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Individual appointments." })).toBeVisible();
   await expect(page.getByRole("combobox", { name: "Appointment view" })).toBeVisible();
 });
 
@@ -649,12 +653,12 @@ test("professional queue separates one-off appointments and includes future offl
   await page.goto("/app/clinics");
   await expect(page).toHaveURL(/\/app\/queue\?tab=clinics$/);
   await expect(page.locator(".ws-sidebar").getByRole("link", { name: "Group clinics" })).toHaveCount(0);
-  await expect(page.getByRole("tab")).toHaveText(["Weekly queues", "One-off consultations", "Group clinics", "Handovers"]);
+  await expect(page.getByRole("tab")).toHaveText(["Weekly queues", "Individual appointments", "Group clinics", "Handovers"]);
   await page.getByRole("tab", { name: "Weekly queues", exact: true }).click();
   const weekly = page.locator("section.ws-panel").filter({ has: page.getByRole("heading", { name: "Weekly queues", exact: true }) });
   await expect(weekly.getByText("Offline", { exact: true })).toBeVisible();
   await expect(weekly.getByText("Test Patient", { exact: true })).toHaveCount(0);
-  await page.getByRole("tab", { name: "One-off consultations", exact: true }).click();
+  await page.getByRole("tab", { name: "Individual appointments", exact: true }).click();
   await expect(page.getByRole("button", { name: "Call next", exact: true })).toBeEnabled();
   await page.goto("/app/history");
   await page.getByRole("tab", { name: "Consultation sessions", exact: true }).click();

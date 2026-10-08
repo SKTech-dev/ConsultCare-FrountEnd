@@ -1,3 +1,4 @@
+import { TransferForm } from "./SessionTransfers";
 import { useEffect, useState } from "react";
 import { callApi } from "../../api/apiClient";
 import SectionTabs from "../../components/ui/SectionTabs";
@@ -37,16 +38,18 @@ function QueueAudit({ id }) {
   const [page, setPage] = useState(1);
   const result = useAuditList(`/admin/weekly-sessions/${id}?page=${page}`, true);
   return <div className="ws-space"><ErrorNotice error={result.error} onRetry={result.retry} />{!result.data && !result.error && <p role="status">Loading queue audit…</p>}{result.data && <>
-    {!result.data.items.length ? <Empty title="No bookings">This occurrence has no patient bookings.</Empty> : <div className="ws-table-wrap"><table className="ws-table"><caption className="sr-only">Weekly session queue audit</caption><thead><tr><th>Patient / client</th><th>Consultation status</th><th>Payment</th><th>Booked fee</th></tr></thead><tbody>{result.data.items.map((item) => <tr key={item.id}><td>{item.patientName}</td><td><Status>{item.status}</Status></td><td>{item.payment}</td><td>{money(item.fee)}</td></tr>)}</tbody></table></div>}
+    {!result.data.items.length ? <Empty title="No bookings">This occurrence has no patient bookings.</Empty> : <div className="ws-table-wrap"><table className="ws-table"><caption className="sr-only">Weekly session queue audit</caption><thead><tr><th>Patient / client</th><th>Consultation status</th><th>Payment</th><th>Booked fee</th></tr></thead><tbody>{result.data.items.map((item) => <tr key={item.id}><td>{item.patientName}</td><td><Status>{item.activity || item.status}</Status></td><td>{item.payment}</td><td>{money(item.fee)}</td></tr>)}</tbody></table></div>}
     <Pages page={page} result={result.data} setPage={setPage} />
   </>}</div>;
 }
 
 function WeeklyList({ templates = false }) {
-  const [view, setView] = useState("upcoming");
+  const { professionals } = useWorkspace();
+  const [view, setView] = useState("ongoing");
   const [filters, setFilters] = useState({ ...emptyFilters });
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState(null);
+  const [handover, setHandover] = useState(null);
   const query = new URLSearchParams({ ...filterParams(filters), page, ...(!templates ? { view } : {}) });
   const result = useAuditList(`/admin/${templates ? "weekly-availability" : "weekly-sessions"}?${query}`, true);
   const weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -57,10 +60,11 @@ function WeeklyList({ templates = false }) {
     <ErrorNotice error={result.error} onRetry={result.retry} />
     {!result.data && !result.error && <p role="status">Loading weekly schedules…</p>}
     {result.data && <>{!result.data.items.length && <Empty title="No weekly schedules in this view">Schedules matching the selected view and filters will appear here.</Empty>}
-      {result.data.items.map((item) => <article className="appointment-card" key={item.id}><div className="ws-row"><div><h3>{item.professionalName}</h3><p>{item.profession} · {templates ? weekdays[item.weekday] : item.date} · {item.start}–{item.end} (Sri Lanka)</p></div>{!templates && <Status>{item.status}</Status>}</div><div className="appointment-summary"><span>Places: {item.capacity}</span>{templates ? <span>Current fee: {money(item.fee)}</span> : <><span>{item.online ? "Online" : "Offline"}</span><span>Bookings: {item.booked}</span><span>Queued: {item.queued}</span><span>Completed: {item.completed}</span></>}</div>
-        {!templates && <><button className="ws-link secondary" aria-expanded={expanded === item.id} onClick={() => setExpanded(expanded === item.id ? null : item.id)}>{expanded === item.id ? "Hide queue audit" : "View queue audit"}</button>{expanded === item.id && <QueueAudit id={item.id} />}</>}
+      {result.data.items.map((item) => <article className="appointment-card" key={item.id}><div className="ws-row"><div><h3>{item.professionalName}</h3><p>{item.profession} · {templates ? weekdays[item.weekday] : item.date} · {item.start}–{item.end} (Sri Lanka)</p></div>{!templates && <Status>{item.activity || item.status}</Status>}</div><div className="appointment-summary"><span>Places: {item.capacity}</span>{templates ? <span>Current fee: {money(item.fee)}</span> : <><span>{item.online ? "Online" : "Offline"}</span><span>Bookings: {item.booked}</span><span>Queued: {item.queued}</span><span>Completed: {item.completed}</span></>}</div>
+        {!templates && <>{item.activity === "Needs attention" && <p className="ws-notice" role="status">No recent professional activity. Contact {item.professionalName}{professionals.find((person) => person.id === item.professionalId)?.phone ? ` at ${professionals.find((person) => person.id === item.professionalId).phone}` : " (phone not provided)"}. Last activity: {item.lastActivityAt ? new Date(item.lastActivityAt).toLocaleString("en-GB", { timeZone: "Asia/Colombo" }) : "Unknown"}.</p>}{item.canHandover && <button className="ws-link secondary" onClick={() => setHandover({ ...item, queueCount: item.queued })}>Handover</button>}{item.delayMinutes >= 15 && <p className="ws-notice" role="status">Not started: {item.delayMinutes} minutes late. Contact {item.professionalName}{professionals.find((person) => person.id === item.professionalId)?.phone ? ` at ${professionals.find((person) => person.id === item.professionalId).phone}` : " (phone not provided)"}. Arrange a handover if unavailable.</p>}<button className="ws-link secondary" aria-expanded={expanded === item.id} onClick={() => setExpanded(expanded === item.id ? null : item.id)}>{expanded === item.id ? "Hide queue audit" : "View queue audit"}</button>{expanded === item.id && <QueueAudit id={item.id} />}</>}
       </article>)}<Pages page={page} result={result.data} setPage={setPage} />
     </>}
+    {handover && <TransferForm session={handover} onClose={() => setHandover(null)} onSaved={() => { setHandover(null); result.retry(); }} />}
   </Panel>;
 }
 

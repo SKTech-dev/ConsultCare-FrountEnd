@@ -16,6 +16,7 @@ async function account(page, role = "user", initial = [notice("n1")]) {
     const url = new URL(route.request().url());
     const path = url.pathname;
     if (path === "/api/auth/me") return route.fulfill({ json: { data: { id: role === "user" ? "patient" : "professional", role, name: "Test Account" } } });
+    if (path.endsWith("/room-presence")) return route.fulfill({ json: { data: { status: "IN CONSULTATION" } } });
     if (path === "/api/workspace") return route.fulfill({ json: { data: snapshot() } });
     if (path === "/api/notifications" && route.request().method() === "GET") {
       const rows = url.searchParams.get("unread") === "true" ? items.filter((item) => !item.readAt) : items;

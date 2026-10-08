@@ -16,6 +16,7 @@ async function account(page, role, currentClinic = { ...clinic }) {
   await page.route("**/api/**", (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path === "/api/auth/me") return route.fulfill({ json: { data: { id: role === "user" ? "patient" : "professional", role, name: "Test Account" } } });
+    if (path.endsWith("/room-presence")) return route.fulfill({ json: { data: { status: "IN CONSULTATION" } } });
     if (path === "/api/workspace") return route.fulfill({ json: { data: workspace } });
     if (path === "/api/clinics/clinic") return route.fulfill({ json: { data: currentClinic } });
     if (path === "/api/clinics") return route.fulfill({ json: { data: { items: [currentClinic], count: 1, pageSize: 30 } } });
@@ -64,12 +65,13 @@ test("paid clinic allows time and places changes without cancellation or fee edi
   await page.getByRole("tab", { name: "Manage clinic", exact: true }).click();
   await page.getByRole("button", { name: "Update time & places" }).click();
   const dialog = page.getByRole("dialog", { name: "Update clinic time & places" });
+  await dialog.getByLabel("Date", { exact: false }).fill("2026-09-24");
   await dialog.getByLabel("Start time").fill("14:00");
   await dialog.getByLabel("End time").fill("15:00");
   await dialog.getByLabel("Places").fill("25");
   await dialog.getByLabel("Reason for change").fill("Unavoidable schedule change");
   await dialog.getByRole("button", { name: "Save changes" }).click();
-  await expect.poll(() => saved).toEqual({ start: "14:00", end: "15:00", capacity: 25, reason: "Unavoidable schedule change" });
+  await expect.poll(() => saved).toEqual({ date: "2026-09-24", start: "14:00", end: "15:00", capacity: 25, reason: "Unavoidable schedule change" });
   await expect(page.getByText("Clinic updated.", { exact: true })).toBeVisible();
 });
 
@@ -103,7 +105,8 @@ test("patient reserves and is redirected to PayHere sandbox without local confir
     return route.fulfill({ status: 201, json: { message: "Clinic place reserved." } });
   });
   await page.route("**/api/clinics/clinic/payhere-checkout", (route) => {
-    expect(route.request().postDataJSON()).toEqual({ frontendOrigin: new URL(page.url()).origin });
+    if (route.request().method() === "GET") return route.fulfill({ json: { data: { total: "900.50", walletUsed: "0.00", payhereAmount: "900.50", balance: "0.00" } } });
+    expect(route.request().postDataJSON()).toEqual({ frontendOrigin: new URL(page.url()).origin, expectedPayhereAmount: "900.50" });
     return route.fulfill({ json: { data: { checkoutUrl: "https://sandbox.payhere.lk/pay/checkout", fields: { order_id: "clinic", amount: "900.50" } } } });
   });
   await page.route("https://sandbox.payhere.lk/pay/checkout", (route) => route.fulfill({ contentType: "text/html", body: "<h1>Sandbox checkout</h1>" }));

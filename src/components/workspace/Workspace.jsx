@@ -10,6 +10,7 @@ import "./workspace.css";
 import "./refinements.css";
 import ErrorNotice from "../ui/ErrorNotice";
 import { NotificationBell, NotificationAlerts } from "./Notifications";
+import PatientRingtone from "./PatientRingtone";
 import { useConfirmLeave } from "../ui/UnsavedChanges";
 import AccountMenu from "./AccountMenu";
 
@@ -34,6 +35,7 @@ export default function Workspace() {
   const menuButton = useRef(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [onboardingNotice, setOnboardingNotice] = useState(null);
+  const [logoutError, setLogoutError] = useState("");
   const onboardingStep = useRef(null);
   const redirectedLocation = useRef(null);
   useEffect(() => {
@@ -87,16 +89,18 @@ export default function Workspace() {
   }, [state.loaded, state.onboarding, location.pathname, location.key, navigate]);
   const confirmLeave = useConfirmLeave();
   const signOut = () => confirmLeave(async () => {
+    setLogoutError("");
     const action = await dispatch(logoutUser());
     if (!action.error) navigate("/login", { replace: true });
+    else setLogoutError(action.payload || "Sign out failed. Please retry; you are still signed in.");
   });
-  if (!state.loaded) return state.error ? <div className="p-12"><ErrorNotice error={state.error} /><button className="underline mr-5" onClick={() => dispatch(fetchWorkspace())}>Retry</button><button className="underline" onClick={signOut}>Sign out</button></div> : <GlobalLoader fullPage message="Loading your workspace..." />;
+  if (!state.loaded) return state.error ? <div className="p-12"><ErrorNotice error={logoutError || state.error} /><button className="underline mr-5" onClick={() => dispatch(fetchWorkspace())}>Retry</button><button className="underline" onClick={signOut}>Sign out</button></div> : <GlobalLoader fullPage message="Loading your workspace..." />;
   const professional = state.professionals.find((p) => p.id === state.professionalId);
   const name = state.role === "user" ? state.patient.name : state.role === "admin" ? "Platform administrator" : professional.name;
   const links = state.role === "user" ? [
     ["/app", "Overview", LayoutDashboard], ["/consult/doctors", "Find a doctor", HeartPulse], ["/consult/lawyers", "Find a lawyer", Scale], ["/app/bookings", "My consultations", CalendarDays], ["/app/history", "My history", FileText], ["/app/profile", "My profile", UserRound],
   ] : state.role === "admin" ? [
-    ["/app", "Overview", LayoutDashboard], ["/app/admin", "People & verification", Users], ["/app/weekly-schedules", "Weekly schedules", CalendarDays], ["/app/appointments", "Scheduled consultations", CalendarDays], ["/app/clinics", "Group clinics", Users], ["/app/transfers", "Session handovers", CalendarDays], ["/app/payments", "Payments & refunds", ShieldCheck], ["/app/settlements", "Monthly settlements", CalendarDays],
+    ["/app", "Overview", LayoutDashboard], ["/app/admin", "People & verification", Users], ["/app/weekly-schedules", "Weekly schedules", CalendarDays], ["/app/appointments", "Individual appointments", CalendarDays], ["/app/clinics", "Group clinics", Users], ["/app/transfers", "Session handovers", CalendarDays], ["/app/payments", "Payments & refunds", ShieldCheck], ["/app/settlements", "Monthly settlements", CalendarDays],
   ] : [
     ["/app", "Overview", LayoutDashboard], ["/app/queue", "Consultation queue", Users], ["/app/sessions", "My sessions", CalendarDays], ["/app/earnings", "My earnings", ShieldCheck], ["/app/history", "Consultation history", FileText], ["/app/profile", "Professional profile", UserRound],
   ];
@@ -112,11 +116,13 @@ export default function Workspace() {
     <div inert={mobile && open ? "" : undefined} className={"ws-body " + (sidebarCollapsed ? "ws-body-expanded" : "")}>
       <header className="ws-topbar">{sidebarCollapsed && !mobile && <button className="ws-sidebar-toggle" type="button" aria-label="Show sidebar" title="Show sidebar" onClick={() => setSidebarCollapsed(false)}><PanelLeftOpen size={20} /></button>}<button ref={menuButton} type="button" className="ws-menu" aria-label="Toggle navigation" aria-expanded={open} aria-controls="workspace-navigation" onClick={() => setOpen(!open)}>{open ? <X /> : <Menu />}</button><div className="ws-welcome"><span className="ws-eyebrow">WELCOME BACK</span><p>{name}</p></div><NotificationBell /><AccountMenu name={name} email={user?.email || state.patient?.email || professional?.email || ""} role={state.role} image={state.role === "user" ? state.patient.image : professional?.image} signOut={signOut} /></header>
       {state.error && <div className="mx-6"><ErrorNotice error={state.feedback ? "" : state.error} onRetry={() => { dispatch(clearWorkspaceError()); dispatch(fetchWorkspace()); }} /></div>}
+      {logoutError && <div className="mx-6"><ErrorNotice error={logoutError} onRetry={signOut} /></div>}
       {state.pending > 0 && <GlobalLoader fullPage message="Saving changes..." />}
       {state.feedback && <MessageOverlay type={state.feedback.type} text={state.feedback.text} onClose={() => dispatch(clearFeedback())} />}
       {onboardingNotice && <MessageOverlay type="error" title={onboardingNotice.title} text={onboardingNotice.text} onClose={() => setOnboardingNotice(null)} />}
       <main className="ws-main">
         <NotificationAlerts />
+        <PatientRingtone />
         {state.onboarding && <div className="ws-notice">{state.onboarding === "profile" ? "Welcome. Complete your required profile details to continue." : "Next, save at least one weekly session and its consultation fee to finish your professional setup."}</div>}
         {(!state.onboarding || location.pathname === "/app/" + state.onboarding || location.pathname === "/app/notifications") ? <Outlet /> : <GlobalLoader message="Opening your required setup page..." />}
       </main>
