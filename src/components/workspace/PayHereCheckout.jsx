@@ -6,6 +6,7 @@ import { useWorkspace } from "./Workspace";
 import { callApi } from "../../api/apiClient";
 import { MessageOverlay } from "../ui/MessageBox";
 import { Loader2 } from "lucide-react";
+import { CheckPayment } from "./PaymentRecovery";
 
 // PayHere requires a browser form POST. The backend returns only public, signed
 // checkout fields; the merchant secret never reaches this component.
@@ -78,6 +79,7 @@ function Checkout({ endpoint, disabled }) {
   }
 
   return <div className="ws-space">
+    <CheckPayment key={endpoint} endpoint={endpoint.replace("/payhere-checkout", "/reconcile-payment")} />
     <p className="ws-muted">Wallet credit is used first. Any remaining amount is collected at PayHere’s secure checkout and confirmed by its verified callback.</p>
     {!billingReady && <p className="ws-notice">If PayHere payment is needed, add your billing address and city in <Link className="underline" to="/app/profile?tab=details">My profile</Link>. A fully wallet-funded payment does not need these fields.</p>}
     {wallet && <p className="ws-notice">Available wallet credit: LKR {Number(wallet.balance).toFixed(2)}. Credit is used first; PayHere collects only any remaining amount. {wallet.frozen && "Your wallet requires administrator review."}</p>}

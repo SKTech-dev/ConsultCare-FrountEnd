@@ -33,7 +33,7 @@ export const book = command("book", (p) => ["POST", "/bookings", { sessionId: p.
 export const transition = command("transition", (p) => ["PATCH", "/bookings/" + p.id + "/status", { status: p.status, ...(p.reason ? { reason: p.reason } : {}), ...(p.notesRevision != null ? { notesRevision: p.notesRevision } : {}) }]);
 export const message = command("message", (p) => ["POST", "/bookings/" + p.id + "/messages", { text: p.text }]);
 export const saveNotes = command("saveNotes", ({ id, localPending, ...p }) => ["PUT", "/bookings/" + id + "/notes", p]);
-export const sendPrescription = command("sendPrescription", ({ id, text, revision = 0 }) => ["PUT", "/bookings/" + id + "/prescription", { text, revision }]);
+export const sendPrescription = command("sendPrescription", ({ id, text, revision = 0, reason = "" }) => ["PUT", "/bookings/" + id + "/prescription", { text, revision, reason }]);
 // Admin moderation has its own contextual popup (for example, incomplete credentials).
 // Keep that one message instead of also showing the generic workspace error popup.
 export const moderate = command("moderate", (p) => ["PATCH", "/admin/users/" + p.id, { status: p.status, ...(p.reason ? { reason: p.reason } : {}) }]);
