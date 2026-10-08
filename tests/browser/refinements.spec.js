@@ -80,7 +80,7 @@ test("schedule tabs retain drafts and support keyboard navigation", async ({ pag
   await expect(page.getByLabel("Patient / client email", { exact: true })).toBeVisible();
   await page.getByRole("tab", { name: "Weekly availability", exact: true }).click();
   await expect(page.locator(".weekly-fee input")).toHaveValue("6200");
-  await page.keyboard.press("ArrowRight");
+  await page.getByRole("tab", { name: "Weekly availability", exact: true }).press("ArrowRight");
   await expect(page.getByRole("tab", { name: "Individual appointment", exact: true })).toBeFocused();
 });
 

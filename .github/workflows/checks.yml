@@ -12,6 +12,11 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run check
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-failure
+          path: test-results/
   full-stack:
     runs-on: ubuntu-latest
     services:
@@ -37,13 +42,21 @@ jobs:
       CONSULTCARE_BACKEND_PATH: ${{ github.workspace }}/backend
     steps:
       - uses: actions/checkout@v4
+      - name: Check companion repository credentials
+        env:
+          COMPANION_REPO_TOKEN: ${{ secrets.CONSULTCARE_REPO_TOKEN }}
+        run: |
+          if [ -z "$COMPANION_REPO_TOKEN" ]; then
+            echo '::error::Set the CONSULTCARE_REPO_TOKEN Actions secret with Contents read access to SKTech-dev/ConsultCare-BackEnd. The default GitHub token cannot read the private companion repository.'
+            exit 1
+          fi
       - uses: actions/checkout@v4
         with:
           repository: SKTech-dev/ConsultCare-BackEnd
           # Paired PRs use the same source branch; pushes use the current branch.
           ref: ${{ vars.CONSULTCARE_BACKEND_REF || github.head_ref || github.ref_name }}
           path: backend
-          token: ${{ secrets.CONSULTCARE_REPO_TOKEN || github.token }}
+          token: ${{ secrets.CONSULTCARE_REPO_TOKEN }}
       - name: Validate companion backend
         run: >-
           test -f backend/tests/run_e2e.py ||
