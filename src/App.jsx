@@ -15,6 +15,7 @@ import Workspace, { Empty } from "./components/workspace/Workspace";
 import Notifications from "./components/workspace/Notifications";
 import IncomingConsultation from "./components/workspace/IncomingConsultation";
 
+const Policies = lazy(() => import("./pages/Policies"));
 const Overview = lazy(() => import("./pages/workspace/Overview"));
 const Directory = lazy(() => import("./pages/workspace/Directory").then((module) => ({ default: module.Directory })));
 const ProfessionalDetails = lazy(() => import("./pages/workspace/Directory").then((module) => ({ default: module.ProfessionalDetails })));
@@ -50,6 +51,10 @@ export default function App() {
 const router = createBrowserRouter(createRoutesFromElements(
   <Route element={<UnsavedChangesProvider><IncomingConsultation /><ValidationFeedback /><Outlet /></UnsavedChangesProvider>}>
     <Route path="/" element={<Home />} />
+    <Route path="/privacy-policy" element={<Policies type="privacy" />} />
+    <Route path="/refund-policy" element={<Policies type="refunds" />} />
+    <Route path="/return-policy" element={<Navigate to="/refund-policy" replace />} />
+    <Route path="/terms" element={<Policies type="terms" />} />
     <Route path="/access-denied" element={<AccessDenied />} />
     <Route element={<PublicRoute />}>
       <Route path="/login" element={<Login />} />

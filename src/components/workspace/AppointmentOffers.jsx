@@ -1,3 +1,4 @@
+import GlobalLoader from "../ui/GlobalLoader";
 import { useEffect, useState } from "react";
 import ListPages from "./ListPages";
 import { useDispatch } from "react-redux";
@@ -65,7 +66,7 @@ export default function AppointmentOffers({ embedded = false, history = false, a
   const visible = items?.filter((row) => currentView === "history" ? ["expired", "cancelled"].includes(row.status) : currentView === "all" ? ["open", "expired", "cancelled"].includes(row.status) : row.status === "open");
   const body = <>
     {!embedded && <label className="ws-field appointment-filter">Invitations<select aria-label="Invitation view" value={view} onChange={(event) => setView(event.target.value)}><option value="upcoming">Available times</option><option value="history">Past invitations</option><option value="all">All invitations</option></select></label>}
-    {!items && !error && <p role="status" className="ws-actions"><Loader2 className="animate-spin" size={18} />Loading time choices…</p>}
+    {!items && !error && <GlobalLoader compact message="Loading time choices…" />}
     {error && <p role="alert">{error}<button className="ws-name-link" onClick={() => setVersion(version + 1)}>Retry</button></p>}
     {!embedded && visible?.length === 0 && <Empty title="No appointment time choices">Private consultation invitations with available time choices will appear here.</Empty>}
     {visible?.map((row) => <article className="appointment-card" key={row.id}><div className="ws-row"><div><h3>{row.professionalName}{role !== "user" ? ` → ${row.patientName}` : ""}</h3><p>{money(row.fee)} · {row.reason}</p></div><Status>{row.status}</Status></div>
@@ -80,5 +81,5 @@ export default function AppointmentOffers({ embedded = false, history = false, a
   </>;
   const pages = <ListPages page={page} setPage={setPage} hasMore={hasMore} busy={busy || !items} label="Invitations" />;
   if (embedded && items && !visible.length && !error && page === 1 && !hasMore) return null;
-  return embedded ? <div className="ws-space"><h3>{history ? "Past appointment invitations" : "Unselected appointment invitations"}</h3>{body}{pages}</div> : <Panel title="Choose appointment time">{body}{pages}</Panel>;
+  return embedded ? <div className="ws-space"><h3>{history ? "Past appointment invitations" : all ? "Appointment invitations" : "Unselected appointment invitations"}</h3>{body}{pages}</div> : <Panel title="Choose appointment time">{body}{pages}</Panel>;
 }

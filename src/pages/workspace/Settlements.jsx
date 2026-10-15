@@ -1,3 +1,4 @@
+import GlobalLoader from "../../components/ui/GlobalLoader";
 import SectionTabs from "../../components/ui/SectionTabs";
 import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
@@ -66,7 +67,7 @@ function PayoutStatus({ payout }) {
 
 function LoadState({ data, error, retry }) {
   if (error) return <ErrorNotice error={error} onRetry={retry} />;
-  return !data ? <p role="status" className="ws-notice">Loading monthly earnings…</p> : null;
+  return !data ? <GlobalLoader compact message="Loading monthly earnings…" /> : null;
 }
 
 function EarningsBreakdown({ totals }) {

@@ -1,5 +1,7 @@
+import GlobalLoader from "../../components/ui/GlobalLoader";
 import SectionTabs from "../../components/ui/SectionTabs";
 import { useState } from "react";
+import { Camera } from "lucide-react";
 import { useDispatch } from "react-redux";
 import { useWorkspace, PageHeading, Panel, Status, Empty } from "../../components/workspace/Workspace";
 import { saveProfile } from "../../features/consultations/consultationSlice";
@@ -9,8 +11,6 @@ import "./profile.css";
 import { useUnsavedChanges } from "../../components/ui/UnsavedChanges";
 import { MessageOverlay } from "../../components/ui/MessageBox";
 import RefundWallet from "../../components/workspace/RefundWallet";
-import GoogleSignIn from "../../components/auth/GoogleSignIn";
-import { setAuthUser } from "../../features/auth/authSlice";
 
 export default function Profile() {
   const s = useWorkspace();
@@ -25,7 +25,6 @@ function ProfileForm({ source, patient }) {
   const [saving, setSaving] = useState(false);
   const [readingImage, setReadingImage] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
-  const [googleNotice, setGoogleNotice] = useState("");
   const dispatch = useDispatch();
   async function selectImage(event) {
     const file = event.target.files[0];
@@ -60,15 +59,16 @@ function ProfileForm({ source, patient }) {
         <form className="ws-form" onSubmit={save}>
           <fieldset className="profile-fields" disabled={saving || readingImage}>
             <div className="profile-photo-editor">
-              <div className="profile-photo-preview">
+              <label className="profile-photo-preview" title="Change profile photo">
+                <input className="profile-photo-input" type="file" accept=".jpg,.jpeg,.png,.webp" onChange={selectImage} aria-label="Change profile photo" aria-describedby="profile-photo-help" />
                 {form.image && !imageFailed ? <img src={form.image} alt="Profile preview" onError={() => setImageFailed(true)} /> : <span aria-label="Profile initials">{initials}</span>}
-              </div>
+                <span className="profile-photo-change"><Camera size={16} /> Edit</span>
+              </label>
               <div className="profile-photo-controls">
                 <h3>Profile photo</h3>
                 <p>{patient ? "Choose a photo for your personal profile." : "A clear photo helps patients and clients recognise you."}</p>
-                <label className="ws-field">Choose or replace photo<input type="file" accept=".jpg,.jpeg,.png,.webp" onChange={selectImage} aria-describedby="profile-photo-help" /></label>
                 <p id="profile-photo-help">JPEG, PNG or WebP, up to 200 KB. Preview your changes before saving.</p>
-                {readingImage && <p role="status">Loading photo…</p>}
+                {readingImage && <GlobalLoader compact message="Loading photo…" />}
                 {imageFailed && <p role="alert">This photo could not be displayed. Choose another image.</p>}
                 {form.image && <button type="button" className="ws-name-link" onClick={() => { setForm((current) => ({ ...current, image: "" })); setImageFailed(false); }}>Remove photo</button>}
               </div>
@@ -87,10 +87,6 @@ function ProfileForm({ source, patient }) {
           </fieldset>
           {feedback && <MessageOverlay type="error" text={feedback} onClose={() => setFeedback("")} />}
         </form>
-        <h3 className="mt-6">Connect Google sign-in</h3>
-        <p>Use the Google account matching your ConsultCare email.</p>
-        <GoogleSignIn mode="link" disabled={saving} onBusyChange={setSaving} onError={setFeedback} onSuccess={(user) => { dispatch(setAuthUser(user)); setGoogleNotice("Google connected. You can now sign in with Google."); }} />
-        {googleNotice && <p role="status">{googleNotice}</p>}
       </Panel>
       <Panel title={patient ? "Your information, with context." : "Professional verification"}>
         {patient ? <p>Only your own profile appears in this workspace. Relevant reports can be attached directly to a consultation.</p> : <>

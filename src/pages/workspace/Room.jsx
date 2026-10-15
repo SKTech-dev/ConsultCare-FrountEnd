@@ -1,3 +1,4 @@
+import GlobalLoader from "../../components/ui/GlobalLoader";
 import SectionTabs from "../../components/ui/SectionTabs";
 import { Maximize, Minimize, AlertTriangle, Save, CheckCheck, ArrowRight, Send, ClipboardList, UserRound, NotebookPen } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -31,7 +32,7 @@ function DocumentImage({ file, onPreview }) {
     }).catch(() => { if (active) setState("error"); });
     return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [file.id, attempt]);
-  if (state === "loading") return <span className="consultation-image-state" role="status" aria-label={`Loading preview for ${file.name}`}><Loader2 className="animate-spin" size={20} /><span>Loading preview</span></span>;
+  if (state === "loading") return <GlobalLoader compact className="consultation-image-state" label={`Loading preview for ${file.name}`} message="Loading preview" />;
   if (state === "error") return <span className="consultation-image-state consultation-image-error" role="group" aria-label={`Preview unavailable for ${file.name}`}><ImageOff size={20} /><span>Preview unavailable</span><button type="button" className="ws-link secondary" onClick={() => setAttempt((value) => value + 1)}><RefreshCw size={14} />Retry</button></span>;
   return <button type="button" aria-label={`Preview ${file.name}`} onClick={onPreview}><img className="consultation-image" src={url} alt={file.name} /></button>;
 }

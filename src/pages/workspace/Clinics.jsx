@@ -1,3 +1,4 @@
+import GlobalLoader from "../../components/ui/GlobalLoader";
 import SectionTabs from "../../components/ui/SectionTabs";
 import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
@@ -44,7 +45,7 @@ function useClinics(endpoint) {
 
 function LoadState({ data, error, refresh }) {
   if (error) return <ErrorNotice error={error} onRetry={refresh} />;
-  if (!data) return <p role="status" className="ws-notice">Loading clinics…</p>;
+  if (!data) return <GlobalLoader compact message="Loading clinics…" />;
   return null;
 }
 

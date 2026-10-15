@@ -109,7 +109,7 @@ test("patient pages embed clinics with matching empty sections and remove the cl
   await mockAccount(page, state);
   for (const path of ["/app/bookings", "/app/history", "/consult/doctors", "/consult/lawyers"]) {
     await page.goto(path);
-    await expect(page.getByRole("tab")).toHaveCount(path === "/app/bookings" ? 3 : 2);
+    await expect(page.getByRole("tab")).toHaveCount(2);
     for (const tab of await page.getByRole("tab").all()) { await tab.click(); await expect(page.locator(".ws-empty:visible")).toHaveCount(1); }
     await expect(page.locator(".ws-sidebar").getByRole("link", { name: "Group clinics", exact: true })).toHaveCount(0);
 
@@ -137,7 +137,8 @@ test("patient profile photo is submitted and remains after reload", async ({ pag
     return route.fulfill({ json: { message: "Saved." } });
   });
   await page.goto("/app/profile");
-  await page.getByLabel("Choose or replace photo").setInputFiles({ name: "portrait.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64") });
+  await expect(page.getByText("Connect Google sign-in", { exact: true })).toHaveCount(0);
+  await page.getByLabel("Change profile photo").setInputFiles({ name: "portrait.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64") });
   await expect(page.getByAltText("Profile preview")).toBeVisible();
   await page.getByRole("button", { name: "Save profile", exact: true }).click();
   await expect.poll(() => saved?.image).toMatch(/^data:image\/png;base64,/);
@@ -670,7 +671,7 @@ test("professional profile previews and removes a selected photo on mobile", asy
   await mockAccount(page, snapshot());
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/app/profile");
-  await page.getByLabel("Choose or replace photo").setInputFiles({ name: "portrait.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64") });
+  await page.getByLabel("Change profile photo").setInputFiles({ name: "portrait.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64") });
   await expect(page.getByAltText("Profile preview")).toBeVisible();
   await expect(page.getByRole("tab", { name: "Professional verification", exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

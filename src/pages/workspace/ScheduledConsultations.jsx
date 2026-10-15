@@ -1,3 +1,4 @@
+import GlobalLoader from "../../components/ui/GlobalLoader";
 import { useCallback, useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { Link } from "react-router-dom";
@@ -65,7 +66,7 @@ export default function ScheduledConsultations({ embedded = false, renderQueue }
       <p>Patients must accept and pay before the start time. Only paid appointments can be called from the consultation queue.</p>
       {!embedded && <label className="ws-field appointment-filter">Show<select aria-label="Appointment view" value={scope} onChange={(e) => { setScope(e.target.value); setPage(1); }}><option value="upcoming">Upcoming</option><option value="ongoing">Ongoing</option><option value="history">History</option><option value="all">All appointments</option></select></label>}
       <ErrorNotice error={error} onRetry={refresh} />
-      {!result && !error && <p role="status">Loading individual appointments…</p>}
+      {!result && !error && <GlobalLoader compact message="Loading individual appointments…" />}
       {state.role === "admin" && <ListFilters label="Filter individual appointments" onApply={(value) => { setFilters(value); setPage(1); }} statuses={["PAYMENT PENDING", "WAITING", "NEXT", "IN CONSULTATION", "COMPLETED", "CANCELLED", "NO-SHOW"]} />}
       {result?.items.length === 0 && <Empty title="No individual appointments in this view">Individual appointments matching this view and any selected filters will appear here.</Empty>}
       {result?.items.map((item) => <article className="appointment-card" key={item.id}>

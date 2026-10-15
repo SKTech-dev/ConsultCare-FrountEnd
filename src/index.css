@@ -12,3 +12,9 @@
 .document-preview { width: 100%; height: 65dvh; border: 0; border-radius: 12px; background: #f1f3f5; }
 img.document-preview { object-fit: contain; }
 @media (max-width: 600px) { .cc-modal-backdrop { padding: 10px; } .cc-modal-content { padding: 16px; } }
+
+/* One loading treatment for pages, sections and inline previews. */
+.cc-loader { display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 13px; font-weight: 500; }
+.cc-loader-section { width: 100%; min-height: 150px; padding: 32px 12px; flex-direction: column; }
+.cc-loader-compact { padding: 14px 0; }
+.cc-loader-full { position: fixed; inset: 0; z-index: 50; flex-direction: column; backdrop-filter: blur(4px); }

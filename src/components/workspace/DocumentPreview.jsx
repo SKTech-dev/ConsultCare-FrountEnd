@@ -1,5 +1,5 @@
+import GlobalLoader from "../ui/GlobalLoader";
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
 import Modal from "../ui/Modal";
 import { apiClient } from "../../api/apiClient";
 import { MessageOverlay } from "../ui/MessageBox";
@@ -20,7 +20,7 @@ export default function DocumentPreview({ file, onClose }) {
     return () => { controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [file.id]);
   return <Modal title={file.name} onClose={onClose}>
-    {!preview && !error && <p role="status" className="flex items-center gap-3"><Loader2 className="animate-spin" size={20} />Loading document…</p>}
+    {!preview && !error && <GlobalLoader compact message="Loading document…" />}
     {preview && (preview.type.startsWith("image/") ? <img className="document-preview" src={preview.url} alt={file.name} onError={() => setError("This image could not be displayed.")} /> : <iframe className="document-preview" src={preview.url} title={file.name} />)}
     {preview && <p className="ws-muted mt-3">If your browser cannot display this report, close this preview and use Download.</p>}
     {error && <MessageOverlay type="error" text={error} onClose={onClose} />}

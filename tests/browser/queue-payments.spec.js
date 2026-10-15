@@ -113,7 +113,7 @@ test("patient can find expired invitations instead of losing them from the list"
   await setup(page, { pending: true });
   await page.route(/\/api\/appointment-offers(?:\?.*)?$/, (route) => route.fulfill({ json: { data: [{ id: "expired", professionalName: "Dr Test", fee: "5000", status: "expired", options: [{ id: "old", date: "2026-10-08", start: "00:00", end: "00:05", available: false }] }] } }));
   await page.goto("/app/bookings?tab=offers");
-  await page.getByLabel("Invitation view").selectOption("history");
+  await expect(page.getByRole("heading", { name: "Appointment invitations", exact: true })).toBeVisible();
   await expect(page.getByText("These times passed before a selection was made.", { exact: false })).toBeVisible();
   await expect(page.getByText("2026-10-08 · 00:00–00:05")).toBeVisible();
   await expect(page.getByRole("button", { name: "Continue to payment" })).toHaveCount(0);

@@ -36,7 +36,7 @@ test("tab deep links survive reload and browser history and preserve other query
   await page.reload();
   await expect(page.getByRole("tab", { name: "Individual appointments", exact: true })).toHaveAttribute("aria-selected", "true");
   await page.goto("/app/queue?tab=obsolete");
-  await expect(page.getByRole("tab").first()).toHaveText("Weekly queues");
+  await expect(page.getByRole("tab").first()).toHaveAccessibleName("Weekly queues");
   await expect(page.getByRole("tab").first()).toHaveAttribute("aria-selected", "true");
 });
 async function account(page, role = "doctor") {

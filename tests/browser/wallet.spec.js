@@ -32,12 +32,23 @@ async function account(page, role = "user") {
   await page.routeWebSocket("**/api/workspace/live", (socket) => socket.send(JSON.stringify(workspace)));
 }
 
-test("patient wallet tab shows available credit and an explicit sandbox notice", async ({ page }) => {
+test("patient wallet sections preserve the profile tab and balance form", async ({ page }) => {
   await account(page);
   await page.goto("/app/profile?tab=wallet");
-  await expect(page.getByRole("tab", { name: "Refund wallet" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Refund wallet", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("heading", { name: "Available credit: LKR 7,000" })).toBeVisible();
-  await expect(page.getByText("Sandbox wallet:", { exact: false })).toBeVisible();
+  await expect(page.getByText("Sandbox wallet:", { exact: false })).toHaveCount(0);
+  await page.getByLabel("Bank *", { exact: true }).fill("Saved draft bank");
+  await page.getByRole("tab", { name: "Cash-outs", exact: true }).click();
+  await expect(page).toHaveURL(/tab=wallet&walletTab=cashouts/);
+  await expect(page.getByRole("heading", { name: "No cash-out requests" })).toBeVisible();
+  await page.getByRole("tab", { name: "Activity", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "No wallet movements" })).toBeVisible();
+  await page.getByRole("tab", { name: "Balance", exact: true }).click();
+  await expect(page.getByLabel("Bank *", { exact: true })).toHaveValue("Saved draft bank");
+  await page.reload();
+  await expect(page.getByRole("tab", { name: "Refund wallet", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Balance", exact: true })).toHaveAttribute("aria-selected", "true");
 });
 
 test("cash-out request sends bank details, not a client-selected amount", async ({ page }) => {

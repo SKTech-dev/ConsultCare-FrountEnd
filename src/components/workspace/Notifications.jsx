@@ -1,3 +1,4 @@
+import GlobalLoader from "../ui/GlobalLoader";
 import { useEffect, useRef, useState } from "react";
 import { Bell, CheckCheck, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -99,7 +100,7 @@ export default function Notifications() {
     <Panel><div className="notification-toolbar"><div className="ws-actions" role="group" aria-label="Notification filter"><button className={`ws-link ${unread ? "secondary" : ""}`} aria-pressed={!unread} onClick={() => { if (unread || page !== 1) { setUnread(false); setPage(1); setResult(null); } }}>All</button><button className={`ws-link ${unread ? "" : "secondary"}`} aria-pressed={unread} onClick={() => { if (!unread || page !== 1) { setUnread(true); setPage(1); setResult(null); } }}>Unread ({notificationSummary?.unreadCount || 0})</button></div><button className="ws-link secondary" disabled={busy || !notificationSummary?.unreadCount} onClick={() => mark(null)}><CheckCheck size={17} />Mark all as read</button></div>
       <p className="ws-muted">{liveConnected ? "Live updates connected." : "Live updates reconnecting; checking for updates periodically."} Times shown in Sri Lanka time.</p>
       <ErrorNotice error={error} onRetry={() => setRetry((value) => value + 1)} />
-      {!result && !error && <p role="status" className="ws-space">Loading notifications…</p>}
+      {!result && !error && <GlobalLoader compact message="Loading notifications…" />}
       {result?.items.length === 0 && <Empty title={unread ? "You're all caught up" : "No notifications yet"}>Your important updates will appear here.</Empty>}
       <div className="notification-list">{result?.items.map((item) => <article id={`notification-${item.id}`} key={item.id} className={`notification-card ${item.readAt ? "" : "notification-unread"}`}>
         <div className="notification-card-heading"><h2>{item.title}</h2>{!item.readAt && <span className="notification-unread-label">Unread</span>}</div>

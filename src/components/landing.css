@@ -85,3 +85,35 @@
 @media(max-width:720px){.cc-container{width:calc(100% - 40px)}.cc-header{height:78px}.cc-brand{font-size:23px}.cc-desktop-nav{display:none}.cc-menu-toggle{display:grid;place-items:center;color:var(--cc-primary);padding:8px}.cc-mobile-nav{display:grid;gap:0;padding-block:12px}.cc-mobile-nav a{display:flex;justify-content:space-between;padding:14px 0;font-size:14px}.cc-hero{grid-template-columns:1fr;padding-block:38px;gap:35px}.cc-hero h1{font-size:clamp(49px,10vw,68px);letter-spacing:-2.5px}.cc-eyebrow{font-size:9px;letter-spacing:1.5px}.cc-intro{font-size:14px}.cc-hero-note{margin-top:24px}.cc-hero-art{min-height:430px;border-radius:110px 110px 6px 6px}.cc-art-heading{top:35px;left:45px;right:45px}.cc-symbol{top:90px;height:165px;width:145px}.cc-symbol-legal{top:115px}.cc-symbol svg{width:65px;height:65px}.cc-art-caption{bottom:80px}.cc-art-caption p{font-size:24px}.cc-principles{gap:20px 10px}.cc-principles>span{font-size:10px}.cc-services,.cc-guide{padding-block:55px}.cc-section-heading{display:block}.cc-section-heading>p{margin-top:16px}.cc-service-grid,.cc-guide{grid-template-columns:1fr}.cc-service{padding:25px 24px 0}.cc-service h3{font-size:29px}.cc-process{padding-block:50px}.cc-process-mark{display:none}.cc-steps{grid-template-columns:1fr;gap:27px;margin-top:30px}.cc-steps li{position:relative;padding-left:47px}.cc-step-number{position:absolute;left:0;top:0;border:0;font-size:20px}.cc-steps h3{margin-top:0}.cc-steps p{max-width:none;margin-top:8px}.cc-privacy{padding-bottom:45px}.cc-privacy-inner{padding:27px;gap:20px}.cc-privacy h2{font-size:29px}.cc-privacy-link{margin:4px 0 0}.cc-hero-actions{flex-wrap:wrap}.cc-button{font-size:12px}.cc-guide-content{padding:23px}}
 @media(max-width:720px){.cc-header{height:auto;min-height:78px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px}.cc-header .cc-brand{grid-column:1;grid-row:1}.cc-header .cc-menu-toggle{grid-column:2;grid-row:1;min-width:44px}.cc-header-account{grid-column:1/-1;grid-row:2;justify-content:flex-end}.cc-hero,.cc-guide,.cc-service-grid{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:380px){.cc-container{width:calc(100% - 32px)}.cc-hero h1{font-size:44px;letter-spacing:-2px}.cc-principles>span{width:100%}.cc-hero-actions{align-items:stretch;flex-direction:column}.cc-hero-actions>a{justify-content:center;min-height:44px}.cc-art-heading{left:28px;right:28px;letter-spacing:1px}.cc-symbol{width:125px;height:150px}}
+
+/* Small screens keep account actions in the navigation drawer. */
+.cc-back-home { display: inline-flex; align-items: center; min-height: 44px; font-size: 13px; color: var(--cc-primary); }
+.cc-mobile-account { display: flex; gap: 16px; align-items: center; border-top: 1px solid var(--cc-border); padding-top: 12px; margin-top: 8px; }
+@media (max-width: 900px) {
+  .cc-header .cc-header-account { display: none; }
+  .cc-hero { grid-template-columns: minmax(0, 1fr); }
+  .cc-hero-copy { text-align: center; }
+  .cc-hero-copy .cc-eyebrow, .cc-hero-actions, .cc-hero-note { justify-content: center; }
+  .cc-intro { margin-inline: auto; }
+  .cc-hero-art { width: 100%; max-width: 600px; margin-inline: auto; }
+  .cc-desktop-nav { display: none; }
+  .cc-menu-toggle { display: grid; place-items: center; min-width: 44px; padding: 8px; }
+  .cc-mobile-nav { display: grid; padding-block: 12px; }
+  .cc-mobile-nav > a { display: flex; justify-content: space-between; padding: 12px 0; }
+}
+@media (max-width: 720px) {
+  .cc-container { width: calc(100% - 24px); }
+  .cc-hero-copy { text-align: center; }
+  .cc-hero-copy .cc-eyebrow, .cc-hero-actions, .cc-hero-note { justify-content: center; }
+  .cc-intro { margin-inline: auto; }
+  .cc-hero h1 { font-size: clamp(40px, 9.8vw, 68px); }
+  .cc-mobile-account a { flex: 1; justify-content: center; }
+}
+.cc-policy { max-width: 800px; margin-inline: auto; }
+.cc-policy h1 { font: 400 clamp(32px, 6vw, 48px)/1.15 Georgia, serif; color: var(--cc-primary); margin: 16px 0; }
+.cc-policy-intro { color: var(--cc-textSecondary); line-height: 1.8; }
+.cc-policy-nav { display: flex; flex-wrap: wrap; gap: 12px 24px; margin: 28px 0; border-block: 1px solid var(--cc-border); padding-block: 12px; font-size: 13px; }
+.cc-policy-nav a[aria-current=page] { color: var(--cc-accent); font-weight: 700; }
+.cc-policy section { margin-top: 28px; }
+.cc-policy section h2 { font: 600 19px/1.4 Arial, sans-serif; letter-spacing: 0; margin-bottom: 10px; }
+.cc-policy section p { color: var(--cc-textSecondary); font-size: 14px; line-height: 1.9; }
