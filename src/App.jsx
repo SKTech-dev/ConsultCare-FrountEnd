@@ -21,7 +21,8 @@ const Directory = lazy(() => import("./pages/workspace/Directory").then((module)
 const ProfessionalDetails = lazy(() => import("./pages/workspace/Directory").then((module) => ({ default: module.ProfessionalDetails })));
 const Bookings = lazy(() => import("./pages/workspace/Bookings").then((module) => ({ default: module.Bookings })));
 const BookingDetails = lazy(() => import("./pages/workspace/Bookings").then((module) => ({ default: module.BookingDetails })));
-const ProfessionalSessionHistory = lazy(() => import("./pages/workspace/Bookings").then((module) => ({ default: module.ProfessionalSessionHistory })));
+const ProfessionalSessionHistory = lazy(() => import("./pages/workspace/ProfessionalHistory").then((module) => ({ default: module.HistorySessionRecords })));
+const HistoryDay = lazy(() => import("./pages/workspace/ProfessionalHistory").then((module) => ({ default: module.HistoryDay })));
 const Queue = lazy(() => import("./pages/workspace/Professional").then((module) => ({ default: module.Queue })));
 const Sessions = lazy(() => import("./pages/workspace/Professional").then((module) => ({ default: module.Sessions })));
 const Profile = lazy(() => import("./pages/workspace/Profile"));
@@ -71,6 +72,7 @@ const router = createBrowserRouter(createRoutesFromElements(
       <Route path="/app/bookings" element={<Bookings />} />
       <Route path="/app/history" element={<Bookings history />} />
       <Route path="/app/history/session/:sessionId" element={<ProfessionalSessionHistory />} />
+      <Route path="/app/history/:category/:date" element={<HistoryDay />} />
       <Route path="/app/booking/:id" element={<BookingDetails />} />
       <Route path="/app/room/:id" element={<Room />} />
       <Route path="/app/queue" element={<Queue />} />

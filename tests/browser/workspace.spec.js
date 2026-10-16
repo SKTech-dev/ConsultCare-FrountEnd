@@ -78,29 +78,19 @@ test("queue and history use consistent empty states in tabs", async ({ page }) =
   await expect(page.getByRole("tab")).toHaveCount(4);
   for (const tab of await page.getByRole("tab").all()) { await tab.click(); await expect(page.locator(".ws-empty:visible")).toHaveCount(1); }
   await page.goto("/app/history");
-  await expect(page.getByRole("tab")).toHaveCount(3);
-  for (const tab of await page.getByRole("tab").all()) { await tab.click(); await expect(page.locator(".ws-empty:visible")).toHaveCount(1); }
+  await expect(page.getByRole("tab")).toHaveCount(4);
+  for (const tab of await page.getByRole("tab").all()) { await tab.click(); await expect(page.locator(".history-calendar-day:visible")).toHaveCount(30); }
 });
 
-test("history expand labels follow each independent disclosure state", async ({ page }) => {
-  const state = snapshot();
-  state.sessions = [session("past", "2026-09-21")];
-  state.bookings = [booking("record", "past", "COMPLETED")];
-  await mockAccount(page, state);
-  await page.goto("/app/history");
-  await page.getByRole("tab", { name: "Consultation sessions", exact: true }).click();
-  const month = page.locator(".history-month > summary");
-  await expect(month.getByText("Expand", { exact: true })).toBeVisible();
-  await month.click();
-  await expect(month.getByText("Collapse", { exact: true })).toBeVisible();
-  const week = page.locator(".history-week > summary");
-  await week.click();
-  await expect(week.getByText("Collapse", { exact: true })).toBeVisible();
-  const day = page.locator(".history-day > summary");
-  await day.click();
-  await expect(day.getByText("Collapse", { exact: true })).toBeVisible();
-  await month.click();
-  await expect(month.getByText("Expand", { exact: true })).toBeVisible();
+test("history month controls preserve the selected calendar tab", async ({ page }) => {
+  await mockAccount(page, snapshot());
+  await page.goto("/app/history?tab=appointments&month=2026-09");
+  await expect(page.getByLabel("History month")).toHaveValue("2026-09");
+  await page.getByRole("button", { name: "Previous month", exact: true }).click();
+  await expect(page.getByLabel("History month")).toHaveValue("2026-08");
+  await page.getByRole("tab", { name: "Handovers", exact: true }).click();
+  await expect(page.getByLabel("History month")).toHaveValue("2026-08");
+  await expect(page.locator(".history-calendar-day:visible")).toHaveCount(31);
 });
 
 test("patient pages embed clinics with matching empty sections and remove the clinic menu", async ({ page }) => {
@@ -207,6 +197,12 @@ async function mockAccount(page, state, options = {}) {
       : { message: "Please sign in." } });
     if (path.endsWith("/room-presence")) return route.fulfill({ json: { data: { status: "IN CONSULTATION" } } });
     if (path === "/api/workspace") return route.fulfill({ json: { data: state } });
+    if (path === "/api/history/calendar") {
+      const query = new URL(route.request().url()).searchParams, month = query.get("month");
+      const last = new Date(month + "-01T12:00:00Z"); last.setUTCMonth(last.getUTCMonth() + 1); last.setUTCDate(0);
+      return route.fulfill({ json: { data: { category: query.get("category"), month, summary: { records: 0 }, days: Array.from({ length: last.getUTCDate() }, (_, i) => ({ date: month + "-" + String(i + 1).padStart(2, "0"), summary: { records: 0 }, hasRecords: false })) } } });
+    }
+
     if (path.endsWith("/payhere-checkout") && route.request().method() === "GET") return route.fulfill({ json: { data: { total: "2500.00", walletUsed: "0.00", payhereAmount: "2500.00", balance: "0.00" } } });
     if (path === "/api/appointment-offers") return route.fulfill({ json: { data: [] } });
     if (path === "/api/wallet") return route.fulfill({ json: { data: { balance: "0", environment: "sandbox", frozen: false, entries: [], cashouts: [] } } });
@@ -513,9 +509,10 @@ test("handover queue and history request separate server-filtered views", async 
   await page.getByRole("tab", { name: "Handovers", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Upcoming handovers" })).toBeVisible();
   await page.getByRole("navigation", { name: "Workspace" }).getByRole("link", { name: "Consultation history" }).click();
-  await page.getByRole("tab", { name: "Handover history", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Handover history" })).toBeVisible();
-  await expect.poll(() => scopes).toContain("history");
+  const historyRead = page.waitForRequest((request) => new URL(request.url()).pathname === "/api/history/calendar" && new URL(request.url()).searchParams.get("category") === "handovers");
+  await page.getByRole("tab", { name: "Handovers", exact: true }).click();
+  await historyRead;
+  await expect(page.getByRole("heading", { name: "Handovers · September 2026" })).toBeVisible();
   expect(scopes).toContain("upcoming");
 });
 
@@ -662,9 +659,8 @@ test("professional queue separates one-off appointments and includes future offl
   await page.getByRole("tab", { name: "Individual appointments", exact: true }).click();
   await expect(page.getByRole("button", { name: "Call next", exact: true })).toBeEnabled();
   await page.goto("/app/history");
-  await page.getByRole("tab", { name: "Consultation sessions", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Past consultation sessions", exact: true })).toBeVisible();
-  await expect(page.getByText("September 2026", { exact: true })).toBeVisible();
+  await page.getByRole("tab", { name: "Weekly sessions", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Weekly sessions · September 2026", exact: true })).toBeVisible();
 });
 
 test("professional profile previews and removes a selected photo on mobile", async ({ page }) => {

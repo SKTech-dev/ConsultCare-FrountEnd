@@ -51,3 +51,12 @@ label:has(> input:required):not(:has(.required-mark))::before, label:has(> selec
   .section-tab-full { display: none; }
   .section-tab-compact { display: inline; }
 }
+
+/* Align every recent-activity status independently of its label length. */
+.ws .activity-row { display: grid; grid-template-columns: minmax(0, 1fr) 140px 110px; }
+.ws .activity-row > .ws-status { justify-self: start; white-space: nowrap; }
+.ws .activity-row > .ws-link { justify-self: end; }
+@media (max-width: 600px) {
+  .ws .activity-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .ws .activity-row > div:first-child { grid-column: 1 / -1; }
+}
