@@ -102,7 +102,7 @@ export default function Workspace() {
   ] : state.role === "admin" ? [
     ["/app", "Overview", LayoutDashboard], ["/app/admin", "People & verification", Users], ["/app/weekly-schedules", "Weekly schedules", CalendarDays], ["/app/appointments", "Individual appointments", CalendarDays], ["/app/clinics", "Group clinics", Users], ["/app/transfers", "Session handovers", CalendarDays], ["/app/payments", "Payments & refunds", ShieldCheck], ["/app/settlements", "Monthly settlements", CalendarDays],
   ] : [
-    ["/app", "Overview", LayoutDashboard], ["/app/queue", "Consultation queue", Users], ["/app/sessions", "My sessions", CalendarDays], ["/app/earnings", "My earnings", ShieldCheck], ["/app/history", "Consultation history", FileText], ["/app/profile", "Professional profile", UserRound],
+    ["/app", "Overview", LayoutDashboard], ["/app/queue", "Consultation queue", Users], ["/app/people", state.role === "lawyer" ? "My clients" : "My patients", Users], ["/app/sessions", "My sessions", CalendarDays], ["/app/earnings", "My earnings", ShieldCheck], ["/app/history", "Consultation history", FileText], ["/app/profile", "Professional profile", UserRound],
   ];
   return <div className="ws" style={Object.fromEntries(Object.entries(colors).map(([key, value]) => [`--ws-${key}`, value]))}>
     {mobile && open && <div className="ws-nav-backdrop" aria-hidden="true" onClick={() => setOpen(false)} />}
@@ -110,7 +110,7 @@ export default function Workspace() {
       <button type="button" className="ws-nav-close" aria-label="Close navigation" onClick={() => setOpen(false)}><X size={22} /></button>
       <div className="ws-brand-row"><Link className="ws-brand" to="/"><ShieldCheck />consultcare<span>.</span></Link>{!mobile && <button className="ws-sidebar-toggle" type="button" aria-label="Hide sidebar" title="Hide sidebar" onClick={() => mobile ? setOpen(false) : setSidebarCollapsed(true)}><PanelLeftClose size={19} /></button>}</div>
       <p className="ws-eyebrow ws-nav-label">{state.role === "user" ? "PATIENT & CLIENT" : state.role.toUpperCase()} WORKSPACE</p>
-      <nav aria-label="Workspace">{links.map(([to, label, Icon]) => <NavLink key={to} to={to} end onClick={() => setOpen(false)}><Icon size={18} />{label}</NavLink>)}</nav>
+      <nav aria-label="Workspace">{links.map(([to, label, Icon]) => <NavLink key={to} to={to} end={to !== "/app/people"} onClick={() => setOpen(false)}><Icon size={18} />{label}</NavLink>)}</nav>
       <div className="ws-sidebar-bottom"><ShieldCheck size={23} /><h3>A little clarity.<br />A better next step.</h3><p>Your conversations, all in one place.</p></div>
     </aside>
     <div inert={mobile && open ? "" : undefined} className={"ws-body " + (sidebarCollapsed ? "ws-body-expanded" : "")}>

@@ -25,6 +25,8 @@ const ProfessionalSessionHistory = lazy(() => import("./pages/workspace/Professi
 const HistoryDay = lazy(() => import("./pages/workspace/ProfessionalHistory").then((module) => ({ default: module.HistoryDay })));
 const Queue = lazy(() => import("./pages/workspace/Professional").then((module) => ({ default: module.Queue })));
 const Sessions = lazy(() => import("./pages/workspace/Professional").then((module) => ({ default: module.Sessions })));
+const ProfessionalPeople = lazy(() => import("./pages/workspace/ProfessionalPeople"));
+const PersonConsultations = lazy(() => import("./pages/workspace/ProfessionalPeople").then((module) => ({ default: module.PersonConsultations })));
 const Profile = lazy(() => import("./pages/workspace/Profile"));
 const SessionTransfers = lazy(() => import("./pages/workspace/SessionTransfers"));
 const ScheduledConsultations = lazy(() => import("./pages/workspace/ScheduledConsultations"));
@@ -79,6 +81,8 @@ const router = createBrowserRouter(createRoutesFromElements(
       <Route path="/app/sessions" element={<Sessions />} />
       <Route path="/app/clinics" element={<Clinics />} />
       <Route path="/app/clinics/:id" element={<ClinicDetails />} />
+      <Route path="/app/people" element={<ProfessionalPeople />} />
+      <Route path="/app/people/:personId" element={<PersonConsultations />} />
       <Route path="/app/profile" element={<Profile />} />
       <Route path="/app/admin" element={<AdminPeople />} />
       <Route path="/app/transfers" element={<SessionTransfers />} />

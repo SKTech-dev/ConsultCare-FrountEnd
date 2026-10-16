@@ -1,0 +1,26 @@
+.people-search { display:flex; align-items:flex-end; flex-wrap:wrap; gap:14px; margin-bottom:24px; }
+.people-search .ws-field { flex:1 1 260px; margin:0; }
+.people-search .ws-actions { margin:0; }
+.people-count { margin-bottom:18px; }
+.ws .people-table { min-width:0; table-layout:auto; }
+.people-table th { white-space:nowrap; }
+.people-table td { vertical-align:middle; }
+.people-table td small { display:block; margin-top:5px; color:var(--ws-textSecondary); font-size:11px; }
+.people-table .people-email { overflow-wrap:anywhere; max-width:260px; }
+.people-table .people-action { text-align:right; min-width:130px; }
+.people-table .ws-link { white-space:normal; }
+.people-pagination { display:flex; align-items:center; justify-content:center; gap:16px; flex-wrap:wrap; margin-top:24px; }
+.people-back { display:inline-flex; align-items:center; gap:8px; min-height:44px; margin-bottom:12px; color:var(--ws-accent); font-size:13px; font-weight:600; }
+@media(max-width:900px) {
+  .people-table, .people-table tbody, .people-table tr, .people-table td { display:block; width:100%; }
+  .people-table thead { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+  .people-table tr { border:1px solid var(--ws-border); border-radius:12px; padding:14px; margin-bottom:14px; }
+  .people-table td { display:grid; grid-template-columns:100px minmax(0,1fr); gap:12px; border:0; padding:8px 0; overflow-wrap:anywhere; }
+  .people-table td[data-label]::before { content:attr(data-label); font-size:11px; color:var(--ws-textSecondary); }
+  .people-table td:has(small) { display:block; }
+  .people-table td:has(small)::before { display:block; margin-bottom:5px; }
+  .people-table .people-email { max-width:none; }
+  .people-table td.people-action { display:block; padding:12px 0 0; text-align:left; min-width:0; }
+  .people-table .people-action .ws-link { width:100%; }
+}
+@media(max-width:400px) { .people-table td { grid-template-columns:78px minmax(0,1fr); gap:8px; } .people-search .ws-actions { width:100%; } }

@@ -39,6 +39,14 @@ export function BookingDetails() {
   const history = historyContext(params);
   const historyQuery = new URLSearchParams(params); historyQuery.delete("session");
   const historyBack = history ? params.get("session") ? "/app/history/session/" + encodeURIComponent(params.get("session")) + "?" + historyQuery : history.dayUrl : null;
+  const personQuery = new URLSearchParams();
+  const positivePage = (value) => Number.isSafeInteger(Number(value)) && Number(value) > 0 ? String(Number(value)) : "1";
+  if (params.get("peopleQuery")) personQuery.set("q", params.get("peopleQuery").slice(0, 120));
+  personQuery.set("peoplePage", positivePage(params.get("peoplePage")));
+  personQuery.set("page", positivePage(params.get("recordsPage")));
+  const personBack = ["doctor", "lawyer"].includes(s.role) && params.get("person") === b?.patientId
+    ? "/app/people/" + encodeURIComponent(b.patientId) + "?" + personQuery : null;
+
   useEffect(() => {
     let active = true;
     setOpening(true);
@@ -61,7 +69,8 @@ export function BookingDetails() {
   const session = s.sessions.find((x) => x.id === b.sessionId);
   const position = b.position || 0;
   return <>
-    {historyBack && <Link className="history-back" to={historyBack}>← {params.get("session") ? "Back to session records" : "Back to day details"}</Link>}
+    {personBack && <Link className="history-back" to={personBack}>← Back to {s.role === "lawyer" ? "client" : "patient"} records</Link>}
+    {!personBack && historyBack && <Link className="history-back" to={historyBack}>← {params.get("session") ? "Back to session records" : "Back to day details"}</Link>}
     <PageHeading title={p?.name || "Your consultation"} action={<Status>{b.status}</Status>}>{session ? `${session.date} · ${session.start}–${session.end}` : "Consultation record"} · {p?.speciality}</PageHeading>
     {opening && <GlobalLoader compact className="booking-loading" message="Loading your booking…" />}
     {paymentReturn === "return" && b.payment !== "paid" && <div className="ws-notice flex items-start gap-3" role="status">{!["refund requested", "refunded", "chargedback", "failed", "cancelled"].includes(b.payment) && b.status === "PAYMENT PENDING" && <Loader2 size={20} className="animate-spin shrink-0" aria-label="Checking payment confirmation" />}<p>{["refund requested", "refunded", "chargedback"].includes(b.payment) ? "This payment needs review or has been reversed. Please check its status below; it has not added you to the queue." : b.status === "CANCELLED" ? "This reservation has expired or was cancelled. Any payment received for it requires refund review." : ["failed", "cancelled"].includes(b.payment) ? "Payment was not completed. You can retry below." : "Waiting for PayHere to confirm your payment. Your queue will open automatically once confirmed. Please do not pay again while confirmation is pending."}</p></div>}
