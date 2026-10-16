@@ -33,7 +33,7 @@ export function ChatMessages({ booking }) {
   return booking.messages.length ? booking.messages.map((item) => <div key={item.id} className={"ws-message " + (item.senderId === viewer ? "ws-message-own" : "ws-message-other")}><small>{item.sender} · {new Date(item.time).toLocaleString()}</small>{item.text}</div>) : <p>No messages yet.</p>;
 }
 
-export function Prescription({ booking }) {
+export function Prescription({ booking, readOnly = false }) {
   const state = useWorkspace();
   const dispatch = useDispatch();
   const [text, setText] = useState("");
@@ -45,7 +45,7 @@ export function Prescription({ booking }) {
   const [notice, setNotice] = useState("");
   const [reason, setReason] = useState("");
   if (booking.patientContext?.profession !== "doctor") return null;
-  const canEdit = state.role === "doctor" && (booking.status === "IN CONSULTATION" || (booking.status === "COMPLETED" && Boolean(booking.prescription)));
+  const canEdit = !readOnly && state.role === "doctor" && (booking.status === "IN CONSULTATION" || (booking.status === "COMPLETED" && Boolean(booking.prescription)));
   async function download() {
     setBusy("download"); setError("");
     try {
