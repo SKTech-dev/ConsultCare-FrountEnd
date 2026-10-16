@@ -97,3 +97,15 @@ test("non-professional accounts do not show or fetch the patient directory", asy
   await expect(page.getByRole("link", { name: "My patients", exact: true })).toHaveCount(0);
   expect(requests).toHaveLength(0);
 });
+
+
+test("unpaid invitations show scheduling details without opening a clinical record", async ({ page }) => {
+  await setup(page);
+  await page.route("**/api/professional/people/person0/consultations?*", (route) => route.fulfill({ json: { data: { person: { id: "person0", name: longName, email: "patient@example.test" }, items: [{ id: "unpaid", date: "2026-10-18", start: "10:00", end: "11:00", status: "PAYMENT PENDING", type: "appointment", payment: "unpaid", fee: "2500", canViewRecord: false, invitationReason: "Discuss appointment arrangements" }], count: 1, pageSize: 30 } } }));
+  await page.goto("/app/people/person0");
+  await expect(page.getByRole("link", { name: "View details", exact: true })).toHaveCount(0);
+  await page.getByText("View invitation", { exact: true }).click();
+  await expect(page.getByText("Discuss appointment arrangements", { exact: true })).toBeVisible();
+  await expect(page.getByText("This invitation has not been accepted and paid.", { exact: false })).toBeVisible();
+  expect(new URL(page.url()).pathname).toBe("/app/people/person0");
+});

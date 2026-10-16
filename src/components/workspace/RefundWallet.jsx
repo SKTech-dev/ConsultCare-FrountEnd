@@ -4,7 +4,7 @@ import ListPages from "./ListPages";
 import SectionTabs from "../ui/SectionTabs";
 import { Loader2 } from "lucide-react";
 import { callApi } from "../../api/apiClient";
-import { Panel, Empty, Status } from "./Workspace";
+import { Panel, Empty, Status, useWorkspace } from "./Workspace";
 import { money } from "../../features/consultations/model";
 import { MessageOverlay } from "../ui/MessageBox";
 import { useUnsavedChanges } from "../ui/UnsavedChanges";
@@ -46,6 +46,9 @@ export default function RefundWallet() {
   const [entryPage, setEntryPage] = useState(1);
   const [cashoutPage, setCashoutPage] = useState(1);
   const state = useWalletData(entryPage === 1 && cashoutPage === 1 ? "/wallet" : `/wallet?entry_page=${entryPage}&cashout_page=${cashoutPage}`);
+  const walletUpdates = (useWorkspace().notificationSummary?.latest || []).filter((item) => item.kind?.startsWith("wallet.")).map((item) => item.id).join(":");
+  const lastWalletUpdates = useRef(walletUpdates);
+  useEffect(() => { if (lastWalletUpdates.current !== walletUpdates) { lastWalletUpdates.current = walletUpdates; state.load(); } }, [walletUpdates, state.load]);
   const [message, setMessage] = useState(null);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ bank: "", branch: "", accountName: "", accountNumber: "", reason: "" });

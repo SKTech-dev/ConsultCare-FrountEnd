@@ -8,7 +8,7 @@ function heading(element) {
 }
 
 const compactLabels = {
-  "Your details": "Details", "Profile visibility": "Privacy", "Professional verification": "Verification", "Refund wallet": "Wallet",
+  "Wallet reviews": "Reviews", "Your details": "Details", "Profile visibility": "Privacy", "Professional verification": "Verification", "Refund wallet": "Wallet",
   "Available doctor clinics": "Clinics", "Available lawyer clinics": "Clinics", "Consultation still in progress": "Ongoing",
   "Hand over a booked session": "Handover", "Requests & handover history": "History",
   "Your private consultations": "Private", "Private consultations": "Private", "Past private consultations": "Private",

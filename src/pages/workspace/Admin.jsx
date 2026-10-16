@@ -9,6 +9,7 @@ import { MessageOverlay } from "../../components/ui/MessageBox";
 import ReasonDialog from "../../components/ui/ReasonDialog";
 import Refunds from "./Refunds";
 import { AdminCashouts, AdminRefundClaims } from "../../components/workspace/RefundWallet";
+import WalletReviews from "../../components/workspace/WalletReviews";
 import PaymentRecovery from "../../components/workspace/PaymentRecovery";
 
 function ModerationPopups({ pending, error, submitting, onClose, onConfirm, onDismissError }) {
@@ -63,7 +64,7 @@ export function AdminPersonDetails() {
 }
 
 export function AdminPayments() {
-  return <><PageHeading title="Payments and refunds." /><SectionTabs ids={["payments", "refunds", "cashouts", "claims", "recovery"]} labels={["Payments", "Refunds", "Wallet cash-outs", "Absence claims", "Payment recovery"]}><PaymentOverview /><AdminRefunds /><AdminCashouts /><AdminRefundClaims /><PaymentRecovery /></SectionTabs></>;
+  return <><PageHeading title="Payments and refunds." /><SectionTabs ids={["payments", "refunds", "cashouts", "claims", "recovery", "wallet-reviews"]} labels={["Payments", "Refunds", "Wallet cash-outs", "Absence claims", "Payment recovery", "Wallet reviews"]}><PaymentOverview /><AdminRefunds /><AdminCashouts /><AdminRefundClaims /><PaymentRecovery /><WalletReviews /></SectionTabs></>;
 }
 
 function AdminRefunds() {

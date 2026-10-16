@@ -5,20 +5,27 @@ import GlobalLoader from "../../components/ui/GlobalLoader";
 import { Empty, Panel, useWorkspace } from "../../components/workspace/Workspace";
 import { PatientContext, ChatMessages, Prescription } from "./ConsultationRecord";
 
-function useHistory(endpoint, page) {
+function useHistory(endpoint, page, revision = "") {
+  const key = endpoint + ":" + page + ":" + revision;
   const [attempt, retry] = useState(0);
   const [state, setState] = useState({ loading: true });
   useEffect(() => {
     if (!endpoint) return;
     let active = true;
     const controller = new AbortController();
-    setState({ loading: true });
+    setState({ loading: true, key });
     callApi("GET", endpoint, null, { page }, { signal: controller.signal })
-      .then(({ data }) => { if (active) setState({ data }); })
-      .catch((error) => { if (active) setState({ error: error.message }); });
+      .then(({ data }) => { if (active) setState({ data, key }); })
+      .catch((error) => { if (active) setState({ error: error.message, key }); });
     return () => { active = false; controller.abort(); };
-  }, [endpoint, page, attempt]);
-  return { ...state, retry: () => retry((value) => value + 1) };
+  }, [endpoint, page, attempt, revision, key]);
+  useEffect(() => {
+    const refresh = () => { if (!document.hidden) retry((value) => value + 1); };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => { window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh); };
+  }, []);
+  return { ...(state.key === key ? state : { loading: true }), retry: () => retry((value) => value + 1) };
 }
 
 function LoadingOrError({ state }) {
@@ -50,8 +57,10 @@ export default function RoomHistory({ bookingId, renderDocuments }) {
 }
 
 function HistoryRecord({ bookingId, recordId, onBack, renderDocuments }) {
-  const state = useHistory("/bookings/" + bookingId + "/history/" + recordId, 1);
   const workspace = useWorkspace();
+  const liveRecord = workspace.bookings.find((item) => item.id === recordId);
+  const revision = [liveRecord?.updatedAt, liveRecord?.prescriptionRevision, liveRecord?.notesRevision].join(":");
+  const state = useHistory("/bookings/" + bookingId + "/history/" + recordId, 1, revision);
   const heading = useRef(null);
   useEffect(() => { heading.current?.focus(); }, []);
   const record = state.data;

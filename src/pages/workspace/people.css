@@ -24,3 +24,7 @@
   .people-table .people-action .ws-link { width:100%; }
 }
 @media(max-width:400px) { .people-table td { grid-template-columns:78px minmax(0,1fr); gap:8px; } .people-search .ws-actions { width:100%; } }
+
+.people-invitation { min-width: 0; max-width: 280px; }
+.people-invitation summary { cursor: pointer; }
+.people-invitation p { margin-top: 10px; overflow-wrap: anywhere; white-space: normal; }

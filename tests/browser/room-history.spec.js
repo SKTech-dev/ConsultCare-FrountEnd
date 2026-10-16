@@ -1,7 +1,8 @@
 import { test, expect } from "@playwright/test";
 
 async function account(page, role = "doctor") {
-  await page.routeWebSocket("**/api/workspace/live", () => {});
+  let live;
+  await page.routeWebSocket("**/api/workspace/live", (socket) => { live = socket; });
   const professional = { id: "pro", name: role === "lawyer" ? "Lawyer Test" : "Dr Test", role: role === "lawyer" ? "lawyer" : "doctor", status: "verified", speciality: "General", qualifications: "Qualified", registration: "123", languages: ["English"], fee: 2500 };
   const patient = { id: "patient", name: "Test Patient", email: "patient@example.test", dob: "1990-01-01", phone: "0771234567" };
   const booking = { id: "room", professionalId: "pro", patientId: "patient", patientName: patient.name, sessionId: "session", status: "IN CONSULTATION", payment: "paid", files: [], messages: [], notes: "", privateNotes: "", followUp: "", notesRevision: 0, prescription: "", prescriptionHistory: [], patientContext: { profession: professional.role, name: patient.name, dob: patient.dob } };
@@ -17,7 +18,7 @@ async function account(page, role = "doctor") {
     if (url.pathname === "/api/bookings/room/history/old") return route.fulfill({ json: { data: { ...booking, ...items[0], status: "COMPLETED", notes: "Previous shared advice", followUp: "Review in two weeks", privateNotes: role === "user" ? undefined : "Professional private observation", messages: [{ id: "msg", sender: patient.name, senderId: patient.id, text: "Earlier symptoms", time: "2026-10-12T15:00:00+05:30" }], files: [{ id: "report", name: "Earlier report.pdf", type: "application/pdf", size: 1024, uploaderId: "patient", uploaderName: patient.name }], prescription: professional.role === "doctor" ? "Previous medicine instructions" : "", prescribedAt: "2026-10-12T15:30:00+05:30", prescriptionRevision: 1 } } });
     return route.fulfill({ json: { data: { items: [], count: 0 } } });
   });
-  return { state, items, reads: () => reads };
+  return { state, items, reads: () => reads, push: (snapshot) => live.send(JSON.stringify(snapshot)) };
 }
 
 for (const role of ["doctor", "lawyer", "user"]) {
@@ -98,4 +99,28 @@ test("failed historical detail remains in the room and can be retried", async ({
   await page.getByRole("button", { name: "Retry history", exact: true }).click();
   await expect(page.getByText("Previous shared advice")).toBeVisible();
   await expect(page.getByRole("button", { name: "Join video call", exact: true })).toBeVisible();
+});
+
+
+test("a corrected prescription replaces cached room history without remounting video", async ({ page }) => {
+  const fixture = await account(page);
+  let revision = 1, release;
+  await page.route("**/api/bookings/room/history/old?*", async (route) => {
+    if (revision === 2) await new Promise((resolve) => { release = resolve; });
+    return route.fulfill({ json: { data: { ...fixture.state.bookings[0], id: "old", status: "COMPLETED", date: "2026-10-12", start: "15:00", end: "16:00", prescription: revision === 1 ? "Old prescription text" : "Corrected prescription text", prescriptionRevision: revision, prescribedAt: "2026-10-16T12:00:00+05:30" } } });
+  });
+  await page.goto("/app/room/room");
+  await page.locator(".room-video-panel").evaluate((panel) => { window.originalPanel = panel; });
+  await page.getByRole("tab", { name: "History", exact: true }).click();
+  await page.getByRole("button", { name: "View record", exact: true }).first().click();
+  await expect(page.getByText("Old prescription text", { exact: true })).toBeVisible();
+  revision = 2;
+  fixture.push({ ...fixture.state, snapshotAt: "2026-10-16T10:00:02.000000+00:00", bookings: [...fixture.state.bookings, { ...fixture.state.bookings[0], id: "old", status: "COMPLETED", updatedAt: "2026-10-16T10:00:01+00:00", prescriptionRevision: 2 }] });
+  await expect(page.getByText("Loading consultation history", { exact: true })).toBeVisible();
+  await expect(page.getByText("Old prescription text", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Download current PDF", exact: true })).toHaveCount(0);
+  await expect.poll(() => Boolean(release)).toBe(true);
+  release();
+  await expect(page.getByText("Corrected prescription text", { exact: true })).toBeVisible();
+  expect(await page.locator(".room-video-panel").evaluate((panel) => panel === window.originalPanel)).toBe(true);
 });

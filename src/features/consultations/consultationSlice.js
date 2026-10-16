@@ -5,7 +5,7 @@ const empty = {
   role: null, professionalId: null, patient: {}, patients: [], professionals: [],
   sessions: [], weeklyAvailability: [], bookings: [], loaded: false, loading: false,
   pending: 0, error: "", requestId: null, payhereEnabled: false,
-  feedback: null, liveConnected: false, familyProfessionalIds: [], onboarding: null, notificationSummary: null, livePending: null,
+  feedback: null, liveConnected: false, familyProfessionalIds: [], onboarding: null, notificationSummary: null, livePending: null, snapshotAt: null,
 };
 
 export const fetchWorkspace = createAsyncThunk("consultations/fetch", async (options, { rejectWithValue }) => {
@@ -38,9 +38,26 @@ export const sendPrescription = command("sendPrescription", ({ id, text, revisio
 // Keep that one message instead of also showing the generic workspace error popup.
 export const moderate = command("moderate", (p) => ["PATCH", "/admin/users/" + p.id, { status: p.status, ...(p.reason ? { reason: p.reason } : {}) }]);
 
+function olderSnapshot(payload, current) {
+  return Boolean(payload?.snapshotAt && current?.snapshotAt && payload.snapshotAt < current.snapshotAt);
+}
+
+// An older full response can supply missing historical records, but cannot undo
+// newer stream data or restore records removed from the latest authorization set.
+function fillHistory(state, payload) {
+  const allowed = new Set(state.visibleBookingIds || state.bookings.map((row) => row.id));
+  for (const field of ["bookings", "sessions", "professionals"]) {
+    const existing = new Set(state[field].map((row) => row.id));
+    const wanted = field === "bookings" ? allowed : new Set(state.bookings.map((row) => field === "sessions" ? row.sessionId : row.professionalId));
+    for (const row of payload[field] || []) if (!existing.has(row.id) && wanted.has(row.id)) { state[field].push(row); existing.add(row.id); }
+  }
+}
+
 function applyWorkspace(state, payload) {
   if (payload.bookingsScope !== "live") {
     Object.assign(state, payload);
+    state.visibleBookingIds = payload.bookings.map((row) => row.id);
+    state.bookingsScope = "full";
     return;
   }
   const allowed = new Set(payload.visibleBookingIds);
@@ -65,6 +82,7 @@ const slice = createSlice({
     liveStatus: (state, action) => { state.liveConnected = action.payload; },
     liveTick: (state) => { state.liveUpdatedAt = Date.now(); },
     receiveWorkspace: (state, action) => {
+      if (olderSnapshot(action.payload, state) || olderSnapshot(action.payload, state.livePending)) return;
       if (action.payload.bookingsScope === "live" && (!state.loaded || state.loading)) state.livePending = action.payload;
       if (action.payload.bookingsScope === "live" && !state.loaded) return;
       applyWorkspace(state, action.payload);
@@ -78,13 +96,16 @@ const slice = createSlice({
       .addCase(fetchWorkspace.pending, (state, action) => { state.loading = true; state.requestId = action.meta.requestId; })
       .addCase(fetchWorkspace.fulfilled, (state, action) => {
         if (state.requestId !== action.meta.requestId) return;
-        applyWorkspace(state, action.payload);
-        if (state.livePending) { applyWorkspace(state, state.livePending); state.livePending = null; }
+        if (olderSnapshot(action.payload, state)) {
+          if (action.payload.bookingsScope !== "live") fillHistory(state, action.payload);
+        } else applyWorkspace(state, action.payload);
+        if (state.livePending && !olderSnapshot(state.livePending, state)) applyWorkspace(state, state.livePending);
+        state.livePending = null;
         Object.assign(state, { loaded: true, loading: false });
       })
       .addCase(fetchWorkspace.rejected, (state, action) => {
         if (state.requestId !== action.meta.requestId) return;
-        state.loading = false; state.error = action.payload || "Could not load workspace.";
+        state.loading = false; state.livePending = null; state.error = action.payload || "Could not load workspace.";
       })
       .addMatcher((action) => action.type.startsWith("consultations/") && !action.type.startsWith("consultations/fetch") && action.type.endsWith("/pending"), (state, action) => {
         // Chat owns its own sending/retry state. Do not freeze the consultation room.
