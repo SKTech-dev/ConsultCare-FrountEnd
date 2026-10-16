@@ -15,14 +15,18 @@ import Workspace, { Empty } from "./components/workspace/Workspace";
 import Notifications from "./components/workspace/Notifications";
 import IncomingConsultation from "./components/workspace/IncomingConsultation";
 
+const Policies = lazy(() => import("./pages/Policies"));
 const Overview = lazy(() => import("./pages/workspace/Overview"));
 const Directory = lazy(() => import("./pages/workspace/Directory").then((module) => ({ default: module.Directory })));
 const ProfessionalDetails = lazy(() => import("./pages/workspace/Directory").then((module) => ({ default: module.ProfessionalDetails })));
 const Bookings = lazy(() => import("./pages/workspace/Bookings").then((module) => ({ default: module.Bookings })));
 const BookingDetails = lazy(() => import("./pages/workspace/Bookings").then((module) => ({ default: module.BookingDetails })));
-const ProfessionalSessionHistory = lazy(() => import("./pages/workspace/Bookings").then((module) => ({ default: module.ProfessionalSessionHistory })));
+const ProfessionalSessionHistory = lazy(() => import("./pages/workspace/ProfessionalHistory").then((module) => ({ default: module.HistorySessionRecords })));
+const HistoryDay = lazy(() => import("./pages/workspace/ProfessionalHistory").then((module) => ({ default: module.HistoryDay })));
 const Queue = lazy(() => import("./pages/workspace/Professional").then((module) => ({ default: module.Queue })));
 const Sessions = lazy(() => import("./pages/workspace/Professional").then((module) => ({ default: module.Sessions })));
+const ProfessionalPeople = lazy(() => import("./pages/workspace/ProfessionalPeople"));
+const PersonConsultations = lazy(() => import("./pages/workspace/ProfessionalPeople").then((module) => ({ default: module.PersonConsultations })));
 const Profile = lazy(() => import("./pages/workspace/Profile"));
 const SessionTransfers = lazy(() => import("./pages/workspace/SessionTransfers"));
 const ScheduledConsultations = lazy(() => import("./pages/workspace/ScheduledConsultations"));
@@ -39,7 +43,7 @@ const AdminSchedules = lazy(() => import("./pages/workspace/AdminSchedules"));
 export default function App() {
   const dispatch = useDispatch();
   useEffect(() => {
-    const expired = () => dispatch(clearAuthUser());
+    const expired = (event) => dispatch(clearAuthUser(event.detail?.message));
     window.addEventListener("auth:expired", expired);
     dispatch(fetchCurrentUser());
     return () => window.removeEventListener("auth:expired", expired);
@@ -50,6 +54,10 @@ export default function App() {
 const router = createBrowserRouter(createRoutesFromElements(
   <Route element={<UnsavedChangesProvider><IncomingConsultation /><ValidationFeedback /><Outlet /></UnsavedChangesProvider>}>
     <Route path="/" element={<Home />} />
+    <Route path="/privacy-policy" element={<Policies type="privacy" />} />
+    <Route path="/refund-policy" element={<Policies type="refunds" />} />
+    <Route path="/return-policy" element={<Navigate to="/refund-policy" replace />} />
+    <Route path="/terms" element={<Policies type="terms" />} />
     <Route path="/access-denied" element={<AccessDenied />} />
     <Route element={<PublicRoute />}>
       <Route path="/login" element={<Login />} />
@@ -66,12 +74,15 @@ const router = createBrowserRouter(createRoutesFromElements(
       <Route path="/app/bookings" element={<Bookings />} />
       <Route path="/app/history" element={<Bookings history />} />
       <Route path="/app/history/session/:sessionId" element={<ProfessionalSessionHistory />} />
+      <Route path="/app/history/:category/:date" element={<HistoryDay />} />
       <Route path="/app/booking/:id" element={<BookingDetails />} />
       <Route path="/app/room/:id" element={<Room />} />
       <Route path="/app/queue" element={<Queue />} />
       <Route path="/app/sessions" element={<Sessions />} />
       <Route path="/app/clinics" element={<Clinics />} />
       <Route path="/app/clinics/:id" element={<ClinicDetails />} />
+      <Route path="/app/people" element={<ProfessionalPeople />} />
+      <Route path="/app/people/:personId" element={<PersonConsultations />} />
       <Route path="/app/profile" element={<Profile />} />
       <Route path="/app/admin" element={<AdminPeople />} />
       <Route path="/app/transfers" element={<SessionTransfers />} />

@@ -113,20 +113,24 @@ test("patient can find expired invitations instead of losing them from the list"
   await setup(page, { pending: true });
   await page.route(/\/api\/appointment-offers(?:\?.*)?$/, (route) => route.fulfill({ json: { data: [{ id: "expired", professionalName: "Dr Test", fee: "5000", status: "expired", options: [{ id: "old", date: "2026-10-08", start: "00:00", end: "00:05", available: false }] }] } }));
   await page.goto("/app/bookings?tab=offers");
-  await page.getByLabel("Invitation view").selectOption("history");
+  await expect(page.getByRole("heading", { name: "Appointment invitations", exact: true })).toBeVisible();
   await expect(page.getByText("These times passed before a selection was made.", { exact: false })).toBeVisible();
   await expect(page.getByText("2026-10-08 · 00:00–00:05")).toBeVisible();
   await expect(page.getByRole("button", { name: "Continue to payment" })).toHaveCount(0);
 });
 
-test("professional queue has no view filter and invitations remain accessible in history", async ({ page }) => {
+test("professional queue has no view filter and history opens the appointments calendar", async ({ page }) => {
   await setup(page, { role: "doctor" });
-  await page.route(/\/api\/appointment-offers(?:\?.*)?$/, (route) => route.fulfill({ json: { data: [{ id: "expired", professionalName: "Dr Test", patientName: "Patient", fee: "5000", status: "expired", options: [{ id: "old", date: "2026-10-08", start: "00:00", end: "00:05", available: false }] }] } }));
+  await page.route("**/api/history/calendar?*", (route) => {
+    const query = new URL(route.request().url()).searchParams, month = query.get("month");
+    const last = new Date(month + "-01T12:00:00Z"); last.setUTCMonth(last.getUTCMonth() + 1); last.setUTCDate(0);
+    return route.fulfill({ json: { data: { category: "appointments", month, summary: { records: 0 }, days: Array.from({ length: last.getUTCDate() }, (_, i) => ({ date: month + "-" + String(i + 1).padStart(2, "0"), summary: { records: 0 }, hasRecords: false })) } } });
+  });
   await page.goto("/app/queue?tab=appointments");
   await expect(page.getByLabel("Appointment view")).toHaveCount(0);
-  await page.goto("/app/history?tab=sessions");
-  await expect(page.getByRole("heading", { name: "Past appointment invitations" })).toBeVisible();
-  await expect(page.getByText("2026-10-08 · 00:00–00:05")).toBeVisible();
+  await page.goto("/app/history?tab=appointments&month=2026-10");
+  await expect(page.getByRole("heading", { name: "Individual appointments · October 2026", exact: true })).toBeVisible();
+  await expect(page.locator(".history-calendar-day:visible")).toHaveCount(31);
 });
 
 test("video module failure offers a reload without exposing an import URL", async ({ page }) => {

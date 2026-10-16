@@ -1,3 +1,4 @@
+import GlobalLoader from "../ui/GlobalLoader";
 import { useEffect, useRef, useState } from "react";
 import { callApi } from "../../api/apiClient";
 
@@ -15,10 +16,10 @@ function loadGoogle() {
   return scriptPromise;
 }
 
-export default function GoogleSignIn({ mode = "login", role = "user", onSuccess, onError, onBusyChange, disabled = false, separator = false }) {
+export default function GoogleSignIn({ mode = "login", role = "user", onSuccess, onSessionConflict, onError, onBusyChange, disabled = false, separator = false }) {
   const holder = useRef(null);
-  const handlers = useRef({ onSuccess, onError, onBusyChange, disabled });
-  handlers.current = { onSuccess, onError, onBusyChange, disabled };
+  const handlers = useRef({ onSuccess, onSessionConflict, onError, onBusyChange, disabled });
+  handlers.current = { onSuccess, onSessionConflict, onError, onBusyChange, disabled };
   const [enabled, setEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -45,7 +46,11 @@ export default function GoogleSignIn({ mode = "login", role = "user", onSuccess,
             submitting = true;
             handlers.current.onBusyChange?.(true);
             try {
-              await callApi("POST", "/auth/google", { credential });
+              const response = await callApi("POST", "/auth/google", { credential });
+              if (response.requiresSessionReplacement) {
+                if (active) handlers.current.onSessionConflict?.(response);
+                return;
+              }
               const result = await callApi("GET", "/auth/me");
               if (active) handlers.current.onSuccess(result.data);
             } catch (error) { if (active) { holder.current?.replaceChildren(); observer?.disconnect(); setFailed(true); handlers.current.onError(error.message); } }
@@ -71,7 +76,7 @@ export default function GoogleSignIn({ mode = "login", role = "user", onSuccess,
     return () => { active = false; clearTimeout(timer); controller.abort(); observer?.disconnect(); };
   }, [mode, role, retry]);
   return <div hidden={!enabled} className="w-full min-w-0" inert={disabled ? "" : undefined}>
-    {loading && <p role="status">Loading Google sign-in...</p>}
+    {loading && <GlobalLoader compact message="Loading Google sign-in..." />}
     <div ref={holder} className="w-full max-w-[400px] mx-auto min-h-10" />
     {failed && <button type="button" className="w-full border rounded-lg px-4 py-3 text-sm font-semibold" disabled={disabled} onClick={() => setRetry(retry + 1)}>Retry Google sign-in</button>}
     {separator && <div className="flex items-center gap-3 mt-6 text-xs"><span className="flex-1 border-t" /><span>{mode === "signup" ? "or sign up with email" : "or sign in with email"}</span><span className="flex-1 border-t" /></div>}

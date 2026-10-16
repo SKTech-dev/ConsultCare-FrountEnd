@@ -1,6 +1,8 @@
+import { historyContext } from "../../features/consultations/calendar";
+import GlobalLoader from "../../components/ui/GlobalLoader";
 import SectionTabs from "../../components/ui/SectionTabs";
 import { useEffect, useState } from "react";
-import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { CalendarDays, Users, Video } from "lucide-react";
 import { callApi } from "../../api/apiClient";
@@ -44,7 +46,7 @@ function useClinics(endpoint) {
 
 function LoadState({ data, error, refresh }) {
   if (error) return <ErrorNotice error={error} onRetry={refresh} />;
-  if (!data) return <p role="status" className="ws-notice">Loading clinics…</p>;
+  if (!data) return <GlobalLoader compact message="Loading clinics…" />;
   return null;
 }
 
@@ -149,6 +151,8 @@ export function ClinicDetails() {
 }
 
 function ClinicDetailContent({ id }) {
+  const [historyParams] = useSearchParams();
+  const history = historyContext(historyParams);
   const { role, professionalId, payhereEnabled } = useWorkspace();
   const dispatch = useDispatch();
   const [page, setPage] = useState(1);
@@ -185,7 +189,7 @@ function ClinicDetailContent({ id }) {
   const canPay = registration?.status === "pending" && Date.now() < Date.parse(registration.paymentDueAt) && scheduled && before && clinic.professionalAvailable;
   const disabled = busy || Boolean(result.error);
   return <>
-    <Link className="ws-name-link" to={["doctor", "lawyer"].includes(role) ? (["completed", "cancelled"].includes(clinic.status) || Date.parse(clinic.endsAt) <= Date.now() ? "/app/history?tab=clinics" : "/app/queue?tab=clinics") : role === "user" ? (["completed", "cancelled"].includes(clinic.status) || Date.parse(clinic.endsAt) <= Date.now() ? "/app/history?tab=clinics" : "/app/bookings?tab=clinics") : "/app/clinics"}>← Back to {["doctor", "lawyer"].includes(role) ? "consultations" : role === "user" ? "my consultations" : "clinics"}</Link>
+    <Link className="ws-name-link" to={history?.dayUrl || (["doctor", "lawyer"].includes(role) ? (["completed", "cancelled"].includes(clinic.status) || Date.parse(clinic.endsAt) <= Date.now() ? "/app/history?tab=clinics" : "/app/queue?tab=clinics") : role === "user" ? (["completed", "cancelled"].includes(clinic.status) || Date.parse(clinic.endsAt) <= Date.now() ? "/app/history?tab=clinics" : "/app/bookings?tab=clinics") : "/app/clinics")}>← Back to {history ? "day details" : ["doctor", "lawyer"].includes(role) ? "consultations" : role === "user" ? "my consultations" : "clinics"}</Link>
     <PageHeading eyebrow="GROUP CLINIC · LECTURE" title={clinic.title} action={<Status>{clinic.status}</Status>}>{clinic.professionalName} · {clinic.profession}</PageHeading>
     <LoadState {...result} />
     <SectionTabs ids={["info", staff ? "manage" : "registration", ...(staff ? ["payments"] : [])]} order={role === "admin" ? ["payments", "manage", "info"] : staff ? ["manage", "payments", "info"] : ["registration", "info"]}><Panel title="Clinic information">

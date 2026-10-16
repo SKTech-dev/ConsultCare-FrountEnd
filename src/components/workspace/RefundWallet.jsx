@@ -1,8 +1,10 @@
+import GlobalLoader from "../ui/GlobalLoader";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ListPages from "./ListPages";
+import SectionTabs from "../ui/SectionTabs";
 import { Loader2 } from "lucide-react";
 import { callApi } from "../../api/apiClient";
-import { Panel, Empty, Status } from "./Workspace";
+import { Panel, Empty, Status, useWorkspace } from "./Workspace";
 import { money } from "../../features/consultations/model";
 import { MessageOverlay } from "../ui/MessageBox";
 import { useUnsavedChanges } from "../ui/UnsavedChanges";
@@ -34,7 +36,7 @@ async function downloadProof(id) {
 
 function Feedback({ state, message, setMessage }) {
   return <>
-    {state.loading && <p role="status" className="ws-actions"><Loader2 size={18} className="animate-spin" />Loading wallet records…</p>}
+    {state.loading && <GlobalLoader compact message="Loading wallet records…" />}
     {state.error && <p role="alert">{state.error} <button className="ws-name-link" onClick={state.load}>Retry</button></p>}
     {message && <MessageOverlay type={message.type} text={message.text} onClose={() => setMessage(null)} />}
   </>;
@@ -44,6 +46,9 @@ export default function RefundWallet() {
   const [entryPage, setEntryPage] = useState(1);
   const [cashoutPage, setCashoutPage] = useState(1);
   const state = useWalletData(entryPage === 1 && cashoutPage === 1 ? "/wallet" : `/wallet?entry_page=${entryPage}&cashout_page=${cashoutPage}`);
+  const walletUpdates = (useWorkspace().notificationSummary?.latest || []).filter((item) => item.kind?.startsWith("wallet.")).map((item) => item.id).join(":");
+  const lastWalletUpdates = useRef(walletUpdates);
+  useEffect(() => { if (lastWalletUpdates.current !== walletUpdates) { lastWalletUpdates.current = walletUpdates; state.load(); } }, [walletUpdates, state.load]);
   const [message, setMessage] = useState(null);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ bank: "", branch: "", accountName: "", accountNumber: "", reason: "" });
@@ -65,9 +70,10 @@ export default function RefundWallet() {
   return <Panel title="Refund wallet">
     <Feedback state={state} message={message} setMessage={setMessage} />
     {data && <>
+      <SectionTabs param="walletTab" ids={["balance", "cashouts", "activity"]} labels={["Balance", "Cash-outs", "Activity"]} label="Wallet sections">
+      <section aria-label="Wallet balance">
       <h3>Available credit: {money(data.balance)}</h3>
       <p>Credit is automatically used first for consultations and clinics. Only any remaining fee is paid through PayHere.</p>
-      {data.environment === "sandbox" && <p className="ws-notice">Sandbox wallet: these credits and bank payment records are for testing, not real transfers.</p>}
       {data.frozen && <p role="alert">Wallet spending and cash-out are paused for administrator review.</p>}
       {Number(data.balance) > 0 && !data.frozen && !(data.hasPendingCashout ?? data.cashouts.some((row) => row.status === "pending")) && <form className="ws-form" onSubmit={request}>
         <h3>Request your entire available balance by bank transfer</h3>
@@ -77,12 +83,17 @@ export default function RefundWallet() {
         <label><input type="checkbox" required checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} /> I have checked my bank details and want to reserve my entire available balance.</label>
         <button className="ws-link" disabled={busy || state.loading} aria-busy={busy}>{busy && <Loader2 size={18} className="animate-spin" />}Request full-balance cash-out</button>
       </form>}
+      </section>
+      <section aria-label="Cash-out requests">
       <h3>Cash-out requests</h3>
       {data.cashouts.length ? data.cashouts.map((row) => <div className="ws-row" key={row.id}><div><h4>{money(row.amount)} · {row.bank}</h4><p>{row.accountNumber} · {row.accountName}</p><p>{row.reason}</p>{row.reference && <p>Bank reference: {row.reference}</p>}</div><Status>{row.status}</Status>{row.hasProof && <button className="ws-link secondary" onClick={() => downloadProof(row.id).catch((error) => setMessage({ type: "error", text: error.message }))}>Download payment proof</button>}</div>) : <Empty title="No cash-out requests">Any bank cash-out requests and their payment evidence will appear here.</Empty>}
       <ListPages page={cashoutPage} setPage={setCashoutPage} hasMore={data.hasMoreCashouts} busy={busy || state.loading} label="Cash-out requests" />
+      </section>
+      <section aria-label="Wallet movements">
       <h3>Wallet movements</h3>
       {data.entries.length ? data.entries.map((entry) => <div className="ws-row" key={entry.id}><span>{entry.kind.replaceAll("_", " ")} · {new Date(entry.createdAt).toLocaleString("en-GB", { timeZone: "Asia/Colombo" })}</span><strong>{money(entry.amount)}</strong></div>) : <Empty title="No wallet movements">Verified refunds will be shown here.</Empty>}
       <ListPages page={entryPage} setPage={setEntryPage} hasMore={data.hasMoreEntries} busy={busy || state.loading} label="Wallet movements" />
+      </section></SectionTabs>
     </>}
   </Panel>;
 }

@@ -33,7 +33,7 @@ export default function Landing() {
         <div className="cc-header-account flex items-center gap-4 text-sm">{isAuthenticated ? <Link to="/app">My dashboard</Link> : <><Link to="/login">Log in</Link><Link className="cc-button" to="/signup">Sign up</Link></>}</div>
         <button className="cc-menu-toggle" type="button" aria-label={menuOpen ? "Close navigation" : "Open navigation"} aria-expanded={menuOpen} aria-controls="home-navigation" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X /> : <Menu />}</button>
       </header>
-      {menuOpen && <nav id="home-navigation" className="cc-mobile-nav cc-container" aria-label="Mobile navigation">{[["#services", "Our services"], ["#how-it-works", "How it works"], ["#privacy", "Our approach"]].map(([href, label]) => <a key={href} href={href} onClick={() => setMenuOpen(false)}>{label}<ArrowUpRight size={16} /></a>)}</nav>}
+      {menuOpen && <nav id="home-navigation" className="cc-mobile-nav cc-container" aria-label="Mobile navigation">{[["#services", "Our services"], ["#how-it-works", "How it works"], ["#privacy", "Our approach"]].map(([href, label]) => <a key={href} href={href} onClick={() => setMenuOpen(false)}>{label}<ArrowUpRight size={16} /></a>)}<div className="cc-mobile-account">{isAuthenticated ? <Link to="/app" onClick={() => setMenuOpen(false)}>My dashboard</Link> : <><Link to="/login" onClick={() => setMenuOpen(false)}>Log in</Link><Link className="cc-button" to="/signup" onClick={() => setMenuOpen(false)}>Sign up</Link></>}</div></nav>}
       <main id="main-content">
         <section className="cc-hero cc-container">
           <div className="cc-hero-copy">

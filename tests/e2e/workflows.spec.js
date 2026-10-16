@@ -155,3 +155,45 @@ test("Google signup verifies a signed provider token and leaves the doctor pendi
   expect(signedIn.role).toBe("doctor");
   expect(signedIn.verificationStatus).toBe("pending");
 });
+
+
+test("one active device: cancel keeps the first login; confirmation disconnects it", async ({ page, context, browser }) => {
+  await externalGoogleFixture(context);
+  await createPatient(page, "single-session");
+  const second = await browser.newContext({ baseURL: process.env.E2E_UI_ORIGIN, viewport: { width: 320, height: 800 } });
+  await externalGoogleFixture(second);
+  try {
+    const otherPage = await second.newPage();
+    const attempt = async () => {
+      await otherPage.goto("/login");
+      await otherPage.getByLabel("Email address", { exact: true }).fill("patient.single-session@e2e.example");
+      await otherPage.getByLabel("Password", { exact: true }).fill(fixture.password);
+      await otherPage.getByRole("button", { name: "Log in", exact: true }).click();
+      await expect(otherPage.getByRole("dialog")).toContainText("Already signed in");
+      expect((await second.request.get("/api/auth/me")).status()).toBe(401);
+      expect((await context.request.get("/api/auth/me")).status()).toBe(200);
+      expect(await otherPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    };
+    await attempt();
+    await otherPage.screenshot({ path: "e2e-artifacts/single-session-confirmation-mobile.png", fullPage: true });
+    await otherPage.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(otherPage.getByRole("dialog")).toHaveCount(0);
+    expect((await context.request.get("/api/auth/me")).status()).toBe(200);
+    expect((await second.request.get("/api/auth/me")).status()).toBe(401);
+    await expect(page.locator(".ws-main")).toBeVisible();
+
+    await attempt();
+    await otherPage.getByRole("button", { name: "Sign out there & continue", exact: true }).click();
+    await expect(otherPage).toHaveURL(/\/app/);
+    await expect(otherPage.locator(".ws-main")).toBeVisible();
+    // No navigation or click on the first device: its real live connection signs it out.
+    await expect(page).toHaveURL(/\/login/, { timeout: 15000 });
+    await expect(page.getByRole("alert")).toContainText("signed in on another device");
+    await expect(page.locator(".ws-main")).toHaveCount(0);
+    const revoked = await context.request.get("/api/auth/me");
+    expect(revoked.status()).toBe(401);
+    expect(revoked.headers()["x-session-replaced"]).toBe("1");
+    expect((await second.request.get("/api/auth/me")).status()).toBe(200);
+    await otherPage.screenshot({ path: "e2e-artifacts/single-session-mobile.png", fullPage: true });
+  } finally { await second.close(); }
+});

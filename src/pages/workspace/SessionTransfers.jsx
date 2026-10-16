@@ -1,7 +1,8 @@
+import GlobalLoader from "../../components/ui/GlobalLoader";
 import SectionTabs from "../../components/ui/SectionTabs";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
-import { ArrowRightLeft, Search, Loader2 } from "lucide-react";
+import { ArrowRightLeft, Search } from "lucide-react";
 import { callApi } from "../../api/apiClient";
 import { fetchWorkspace } from "../../features/consultations/consultationSlice";
 import { money } from "../../features/consultations/model";
@@ -75,7 +76,7 @@ export default function SessionTransfers({ embedded = false, view = "all", allow
       {workspace.role === "admin" && <ListFilters label="Filter booked sessions" onApply={(value) => { setSessions(null); setSessionFilters(value); setSessionPage(1); }} statuses={["available", "pending"]} />}
       <p>Choose a dated session with patients in its queue. The receiver must accept before ownership changes. Booked prices, queue order and weekly schedules stay the same.</p>
       <div className="ws-notice">Requests expire at the scheduled session end. Only sessions that have not started can be handed over. Amounts below are estimates; earnings count completed, paid consultations.</div>
-      {!sessions && !error && <p role="status"><Loader2 size={18} className="animate-spin" /> Loading booked sessions…</p>}
+      {!sessions && !error && <GlobalLoader compact message="Loading booked sessions…" />}
       {sessions?.items.length === 0 && <Empty title="No sessions available for handover">Future sessions with queued patients will appear here.</Empty>}
       {sessions?.items.map((session) => <div className="transfer-session" key={session.id}>
         <div><h3>{label(session)}</h3><p>{session.professionalName} · {session.queueCount} queued · {money(session.expectedAmount)}</p>
@@ -90,7 +91,7 @@ export default function SessionTransfers({ embedded = false, view = "all", allow
       {!embedded && workspace.role === "admin" && <label className="ws-field appointment-filter">Handover view<select value={adminView} onChange={(event) => { setAdminView(event.target.value); setHistory(null); setPage(1); }}><option value="all">All requests</option><option value="upcoming">Upcoming</option><option value="ongoing">Ongoing</option><option value="history">History</option></select></label>}
       {workspace.role === "admin" && <ListFilters label="Filter handover history" onApply={(value) => { setHistory(null); setHistoryFilters(value); setPage(1); }} statuses={["pending", "accepted", "rejected", "cancelled", "expired"]} />}
       <p>{view === "history" ? "Past sessions and resolved requests remain here for review, including their earnings attribution." : "Incoming requests have Accept and Reject actions. Accepted upcoming sessions remain here until they finish. Your original session stays assigned until acceptance."}</p>
-      {!history && !error && <p role="status">Loading requests…</p>}
+      {!history && !error && <GlobalLoader compact message="Loading requests…" />}
       {history?.items.length === 0 && <Empty title="No handovers yet">Incoming requests, your requests and their outcomes appear here.</Empty>}
       {history?.items.map((item) => <article className="transfer-card" key={item.id}>
         <div className="transfer-heading"><div><span className="transfer-eyebrow">{item.toId === workspace.professionalId ? "Incoming handover" : item.fromId === workspace.professionalId ? "Outgoing handover" : "Session handover"}</span><h3>{label(item)}</h3></div><Status>{item.status}</Status></div>

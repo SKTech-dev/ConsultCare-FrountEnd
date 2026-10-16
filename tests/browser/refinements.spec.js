@@ -36,7 +36,7 @@ test("tab deep links survive reload and browser history and preserve other query
   await page.reload();
   await expect(page.getByRole("tab", { name: "Individual appointments", exact: true })).toHaveAttribute("aria-selected", "true");
   await page.goto("/app/queue?tab=obsolete");
-  await expect(page.getByRole("tab").first()).toHaveText("Weekly queues");
+  await expect(page.getByRole("tab").first()).toHaveAccessibleName("Weekly queues");
   await expect(page.getByRole("tab").first()).toHaveAttribute("aria-selected", "true");
 });
 async function account(page, role = "doctor") {
@@ -266,4 +266,25 @@ test("failed logout tells the user they remain signed in", async ({ page }) => {
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(page.getByRole("dialog")).toContainText("Sign out unavailable");
   await expect(page).toHaveURL(/\/app$/);
+});
+
+
+for (const transport of ["live", "api"]) test(transport + " replacement signs out even with unsaved clinical notes", async ({ page }) => {
+  await account(page);
+  let live;
+  await page.routeWebSocket("**/api/workspace/live", (socket) => { live = socket; });
+  await page.goto("/app/room/record");
+  await page.getByRole("tab", { name: "Notes", exact: true }).click();
+  await page.getByLabel("Private notes (professional workspace only)").fill("Sensitive unsaved clinical note");
+  await expect(page.locator(".room-video-panel")).toBeVisible();
+  await page.route("**/api/auth/me", (route) => route.fulfill({ status: 401, headers: { "X-Session-Replaced": "1" }, json: { message: "You were signed out because your account was signed in on another device." } }));
+  if (transport === "live") {
+    await expect.poll(() => Boolean(live)).toBe(true);
+    live.send(JSON.stringify({ type: "session-ended", reason: "replaced" }));
+  } else await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(page).toHaveURL(/\/login/);
+  await expect(page.getByRole("alert")).toContainText("signed in on another device");
+  await expect(page.locator(".room-video-panel")).toHaveCount(0);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByText("Sensitive unsaved clinical note")).toHaveCount(0);
 });

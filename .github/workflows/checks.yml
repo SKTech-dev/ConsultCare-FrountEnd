@@ -53,14 +53,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: SKTech-dev/ConsultCare-BackEnd
-          # Paired PRs use the same source branch; pushes use the current branch.
-          ref: ${{ vars.CONSULTCARE_BACKEND_REF || github.head_ref || github.ref_name }}
+          # Use the PR target branch; feature branches need not exist in both repos.
+          # Push runs use development. Override for a paired branch, tag or SHA.
+          ref: ${{ vars.CONSULTCARE_BACKEND_REF || github.base_ref || 'development' }}
           path: backend
           token: ${{ secrets.CONSULTCARE_REPO_TOKEN }}
       - name: Validate companion backend
         run: >-
           test -f backend/tests/run_e2e.py ||
-          { echo 'The selected backend revision has no full-stack runner. Push the matching backend branch, or set CONSULTCARE_BACKEND_REF to its branch or SHA.'; exit 1; }
+          { echo 'The selected backend revision has no full-stack runner. Set CONSULTCARE_BACKEND_REF to a branch or SHA containing backend/tests/run_e2e.py.'; exit 1; }
       - uses: actions/setup-node@v4
         with:
           node-version: '24'

@@ -1,0 +1,7 @@
+.wallet-review-detail { display: grid; gap: 18px; }
+.wallet-review-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--ws-border); }
+.wallet-review-card > div { min-width: 0; overflow-wrap: anywhere; }
+.wallet-review-card button { flex-shrink: 0; }
+.wallet-review-card h3 { font-size: 15px; }
+.wallet-resolution-dialog fieldset { display: grid; gap: 16px; min-width: 0; }
+@media (max-width: 600px) { .wallet-review-card { flex-wrap: wrap; } }
