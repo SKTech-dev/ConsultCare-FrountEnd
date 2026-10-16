@@ -16,10 +16,10 @@ function loadGoogle() {
   return scriptPromise;
 }
 
-export default function GoogleSignIn({ mode = "login", role = "user", onSuccess, onError, onBusyChange, disabled = false, separator = false }) {
+export default function GoogleSignIn({ mode = "login", role = "user", onSuccess, onSessionConflict, onError, onBusyChange, disabled = false, separator = false }) {
   const holder = useRef(null);
-  const handlers = useRef({ onSuccess, onError, onBusyChange, disabled });
-  handlers.current = { onSuccess, onError, onBusyChange, disabled };
+  const handlers = useRef({ onSuccess, onSessionConflict, onError, onBusyChange, disabled });
+  handlers.current = { onSuccess, onSessionConflict, onError, onBusyChange, disabled };
   const [enabled, setEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -46,7 +46,11 @@ export default function GoogleSignIn({ mode = "login", role = "user", onSuccess,
             submitting = true;
             handlers.current.onBusyChange?.(true);
             try {
-              await callApi("POST", "/auth/google", { credential });
+              const response = await callApi("POST", "/auth/google", { credential });
+              if (response.requiresSessionReplacement) {
+                if (active) handlers.current.onSessionConflict?.(response);
+                return;
+              }
               const result = await callApi("GET", "/auth/me");
               if (active) handlers.current.onSuccess(result.data);
             } catch (error) { if (active) { holder.current?.replaceChildren(); observer?.disconnect(); setFailed(true); handlers.current.onError(error.message); } }

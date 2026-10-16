@@ -43,7 +43,7 @@ const AdminSchedules = lazy(() => import("./pages/workspace/AdminSchedules"));
 export default function App() {
   const dispatch = useDispatch();
   useEffect(() => {
-    const expired = () => dispatch(clearAuthUser());
+    const expired = (event) => dispatch(clearAuthUser(event.detail?.message));
     window.addEventListener("auth:expired", expired);
     dispatch(fetchCurrentUser());
     return () => window.removeEventListener("auth:expired", expired);

@@ -15,8 +15,10 @@ apiClient.interceptors.request.use((config) => {
 });
 
 apiClient.interceptors.response.use((response) => response, (error) => {
-  if (error.response?.status === 401 && !["/auth/login", "/auth/google"].includes(error.config?.url)) {
-    window.dispatchEvent(new Event("auth:expired"));
+  if (error.response?.status === 401 && !["/auth/login", "/auth/google", "/auth/replace-session"].includes(error.config?.url)) {
+    window.dispatchEvent(new CustomEvent("auth:expired", { detail: {
+      message: error.response?.headers?.["x-session-replaced"] === "1" ? error.response.data?.message : "",
+    } }));
   }
   return Promise.reject(error);
 });
