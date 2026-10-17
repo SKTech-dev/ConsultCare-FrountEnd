@@ -82,6 +82,29 @@ test("schedule tabs retain drafts and support keyboard navigation", async ({ pag
   await expect(page.locator(".weekly-fee input")).toHaveValue("6200");
   await page.getByRole("tab", { name: "Weekly availability", exact: true }).press("ArrowRight");
   await expect(page.getByRole("tab", { name: "Individual appointment", exact: true })).toBeFocused();
+  await expect(page.getByRole("tab", { name: "Individual appointment", exact: true })).toHaveAttribute("aria-selected", "true");
+});
+
+test("tab keyboard navigation follows focus while selected URL state differs", async ({ page }) => {
+  await account(page);
+  await page.goto("/app/sessions?tab=clinic");
+  const weekly = page.getByRole("tab", { name: "Weekly availability", exact: true });
+  const appointment = page.getByRole("tab", { name: "Individual appointment", exact: true });
+  const clinic = page.getByRole("tab", { name: "Group clinic", exact: true });
+  await expect(clinic).toHaveAttribute("aria-selected", "true");
+  // Reproduce focus moving before React Router commits the corresponding tab change.
+  await weekly.focus();
+  await weekly.press("ArrowRight");
+  await expect(appointment).toBeFocused();
+  await expect(appointment).toHaveAttribute("aria-selected", "true");
+  await appointment.press("Home");
+  await expect(weekly).toBeFocused();
+  await weekly.press("ArrowLeft");
+  await expect(clinic).toBeFocused();
+  await clinic.press("Home");
+  await expect(weekly).toBeFocused();
+  await weekly.press("End");
+  await expect(clinic).toBeFocused();
 });
 
 test("directory language filter handles existing mixed-case values", async ({ page }) => {
