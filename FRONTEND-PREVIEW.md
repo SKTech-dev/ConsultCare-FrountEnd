@@ -4,7 +4,6 @@ The earlier always-signed-in demo has been replaced by authenticated API access.
 There is no role switcher and the application no longer reads or writes the old
 localStorage workspace or IndexedDB demo files.
 
-
 Start the Python backend in ../backEnd, then run npm.cmd run dev here. Open
 http://localhost:5173 and register or log in. Use the same host consistently;
 Vite proxies /api to 127.0.0.1:8000.
