@@ -77,6 +77,17 @@ test("real registration, booking, signed payment, consultation, correction, PDF 
     await doctorPage.getByRole("button", { name: "Call next", exact: true }).first().click();
     await expect(doctorPage).toHaveURL(new RegExp(`/app/room/${bid}`));
     await doctorPage.getByRole("dialog").getByRole("button", { name: "OK", exact: true }).click();
+    // Real UI upload and authenticated download exercise private external storage.
+    await doctorPage.getByRole("tab", { name: "Documents", exact: true }).click();
+    const report = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAADElEQVR4nGNgGB4AAADIAAGtQHYiAAAAAElFTkSuQmCC", "base64");
+    await doctorPage.getByLabel("Upload consultation document").setInputFiles({ name: "e2e-report.png", mimeType: "image/png", buffer: report });
+    await expect(doctorPage.getByText("Sent by Dr E2E", { exact: true })).toBeVisible();
+    const uploadedState = (await (await doctor.request.get("/api/workspace")).json()).data;
+    const uploaded = uploadedState.bookings.find((row) => row.id === bid).files.find((row) => row.name === "e2e-report.png");
+    expect(uploaded).toBeTruthy();
+    const sharedFile = await context.request.get(`/api/documents/${uploaded.id}`);
+    expect(sharedFile.status()).toBe(200);
+    expect(await sharedFile.body()).toEqual(report);
     await doctorPage.getByRole("tab", { name: "Prescription", exact: true }).click();
     await doctorPage.getByRole("textbox", { name: "Prescription", exact: true }).fill("Original E2E medicine instructions");
     await doctorPage.getByRole("button", { name: "Send prescription", exact: true }).click();
