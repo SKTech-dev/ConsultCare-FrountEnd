@@ -125,7 +125,7 @@ test("missing callback is recovered against the provider and cannot duplicate pa
 test("Google signup verifies a signed provider token and leaves the doctor pending approval", async ({ page, context }) => {
   await externalGoogleFixture(context);
   await page.goto("/signup");
-  await page.getByRole("radio", { name: "Doctor", exact: true }).check();
+  await page.getByRole("combobox", { name: "I am joining as", exact: true }).selectOption("doctor");
   await page.getByRole("button", { name: "Sign in with Google", exact: true }).click();
   await expect(page).toHaveURL(/\/app/);
   const session = await context.request.get("/api/auth/me");

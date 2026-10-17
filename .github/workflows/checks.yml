@@ -50,12 +50,33 @@ jobs:
             echo '::error::Set the CONSULTCARE_REPO_TOKEN Actions secret with Contents read access to SKTech-dev/ConsultCare-BackEnd. The default GitHub token cannot read the private companion repository.'
             exit 1
           fi
+      - name: Select companion revision
+        id: companion
+        uses: actions/github-script@v7
+        env:
+          COMPANION_REF_OVERRIDE: ${{ vars.CONSULTCARE_BACKEND_REF }}
+        with:
+          github-token: ${{ secrets.CONSULTCARE_REPO_TOKEN }}
+          script: |
+            const override = process.env.COMPANION_REF_OVERRIDE;
+            const branch = context.payload.pull_request?.head.ref || context.ref.replace(/^refs\/heads\//, '');
+            const fallback = context.payload.pull_request?.base.ref || 'development';
+            let ref = override || fallback;
+            if (!override && branch) {
+              try {
+                await github.rest.repos.getBranch({ owner: 'SKTech-dev', repo: 'ConsultCare-BackEnd', branch });
+                ref = branch;
+              } catch (error) {
+                if (error.status !== 404) throw error;
+                core.info(`No matching companion branch ${branch}; using ${fallback}.`);
+              }
+            }
+            core.info(`Companion revision: ${ref}`);
+            core.setOutput('ref', ref);
       - uses: actions/checkout@v4
         with:
           repository: SKTech-dev/ConsultCare-BackEnd
-          # Use the PR target branch; feature branches need not exist in both repos.
-          # Push runs use development. Override for a paired branch, tag or SHA.
-          ref: ${{ vars.CONSULTCARE_BACKEND_REF || github.base_ref || 'development' }}
+          ref: ${{ steps.companion.outputs.ref }}
           path: backend
           token: ${{ secrets.CONSULTCARE_REPO_TOKEN }}
       - name: Validate companion backend
