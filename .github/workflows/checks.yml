@@ -12,6 +12,11 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run check
+      - name: Validate Netlify production build and redirects
+        run: npm run build:netlify
+        env:
+          BACKEND_ORIGIN: https://api.example.test
+          VITE_API_BASE_URL: /api
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -97,7 +102,7 @@ jobs:
           cache: npm
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: '3.14'
       - run: npm ci
       - run: python -m pip install -c requirements.lock -e '.[dev]'
         working-directory: backend
