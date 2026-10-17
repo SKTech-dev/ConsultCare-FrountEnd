@@ -133,7 +133,7 @@ function ConsultationRoom({ id, onFinishing }) {
   const room = useRef(null);
   const [expanded, setExpanded] = useState(false);
   const [savingNotes, setSavingNotes] = useState(false);
-  const professional = ["doctor", "lawyer"].includes(s.role);
+  const professional = ["doctor", "lawyer", "counsellor"].includes(s.role);
   useEffect(() => {
     const sync = () => setExpanded(document.fullscreenElement === room.current);
     document.addEventListener("fullscreenchange", sync);

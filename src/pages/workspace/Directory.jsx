@@ -3,7 +3,7 @@ import SectionTabs from "../../components/ui/SectionTabs";
 import { useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { BadgeCheck, HeartPulse, Scale } from "lucide-react";
+import { BadgeCheck, HeartPulse, Scale, MessageCircle } from "lucide-react";
 import { useWorkspace, PageHeading, Panel, Empty, Status } from "../../components/workspace/Workspace";
 import { book, saveFamily } from "../../features/consultations/consultationSlice";
 import { isBookableSession, money, sessionLabel, sortUpcomingSessions } from "../../features/consultations/model";
@@ -24,16 +24,16 @@ export function Directory({ profession }) {
   const family = new Set(s.familyProfessionalIds || []);
   const booked = new Set(s.bookings.map((booking) => booking.professionalId));
   const groups = [["Family " + profession + "s", found.filter((p) => family.has(p.id))], ["Previously booked " + profession + "s", found.filter((p) => !family.has(p.id) && booked.has(p.id))], ["Discover " + profession + "s", found.filter((p) => !family.has(p.id) && !booked.has(p.id))]];
-  const Icon = profession === "doctor" ? HeartPulse : Scale;
+  const Icon = profession === "doctor" ? HeartPulse : profession === "counsellor" ? MessageCircle : Scale;
   return <>
     <PageHeading eyebrow={profession === "doctor" ? "FOR YOUR HEALTH" : "FOR YOUR PEACE OF MIND"} title={"Find your " + profession + "."}>Choose a professional who fits your needs, language, and schedule. Review their qualifications and available consultation sessions.</PageHeading>
-    <SectionTabs ids={["consultations", "clinics"]}><Panel title={profession === "doctor" ? "Doctor consultations" : "Lawyer consultations"}>
+    <SectionTabs ids={["consultations", "clinics"]}><Panel title={profession === "doctor" ? "Doctor consultations" : profession === "counsellor" ? "Counselling consultations" : "Lawyer consultations"}>
     <div className="ws-filters"><label>Search<input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Name or speciality" /></label><label>Speciality<select value={speciality} onChange={(e) => setSpeciality(e.target.value)}><option value="">All specialities</option>{[...new Set(list.map((p) => p.speciality))].map((x) => <option key={x}>{x}</option>)}</select></label><label>Language<select value={language} onChange={(e) => setLanguage(e.target.value)}><option value="">All languages</option>{["English", "Sinhala", "Tamil"].map((x) => <option key={x}>{x}</option>)}</select></label><label>Maximum fee (LKR)<input type="number" min="0" value={fee} onChange={(e) => setFee(e.target.value)} placeholder="Any fee" /></label></div>
     <div className="flex justify-between mb-5 text-xs"><span>{found.length} professionals</span><label className="flex gap-2"><input type="checkbox" checked={online} onChange={(e) => setOnline(e.target.checked)} />Session online now</label></div>
     {groups.map(([title, professionals]) => professionals.length > 0 && <section className="directory-group" key={title}><h2>{title}</h2><div className="ws-grid">{professionals.map((p) => { const next = sortUpcomingSessions(publicSessions.filter((x) => x.professionalId === p.id))[0]; return <article className="ws-panel ws-professional" key={p.id}><div className="ws-person-top"><div className="ws-person-avatar">{p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover rounded-[inherit]" /> : <Icon size={28} strokeWidth={1.3} />}</div><Status>verified</Status></div><h3>{p.name}</h3><p>{p.speciality}</p><div className="ws-tags">{p.languages.map((l) => <span key={l}>{l}</span>)}</div><p>{p.bio}</p><div className="ws-row"><strong>{money(p.fee)}</strong><span className="ws-muted">per consultation</span></div><p>{next ? sessionLabel(next) : "No upcoming sessions"}</p><div className="ws-actions">{s.role === "user" && <button className="ws-link secondary" onClick={() => dispatch(saveFamily({ id: p.id, saved: !family.has(p.id) }))}>{family.has(p.id) ? "Remove from family professionals" : "Save as family " + profession}</button>}<Link className="ws-link" to={"/app/professionals/" + p.id + "?tab=book"}>View profile & availability →</Link></div></article>; })}</div></section>)}
     {!found.length && <Empty title="No matching professionals">Try another name, speciality, language, or fee.</Empty>}
     </Panel>
-    <ClinicList embedded view="available" profession={profession} title={profession === "doctor" ? "Available doctor clinics" : "Available lawyer clinics"} />
+    <ClinicList embedded view="available" profession={profession} title={profession === "doctor" ? "Available doctor clinics" : profession === "counsellor" ? "Available counselling clinics" : "Available lawyer clinics"} />
     </SectionTabs>
   </>;
 }

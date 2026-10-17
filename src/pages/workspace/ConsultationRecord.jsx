@@ -20,7 +20,7 @@ export function PatientContext({ booking }) {
     <div className="consultation-context-grid"><section className="consultation-facts">
       {context.profession === "doctor" && <><div><span>Age at consultation</span><strong>{age}</strong></div><div><span>Weight</span><strong>{context.weightKg == null ? "Not provided" : context.weightKg + " kg"}</strong></div><div><span>Emergency contact</span><strong>{context.emergency || "Not provided"}</strong></div></>}
       <div><span>Contact number</span><strong>{context.phone || "Not provided"}</strong></div>
-    </section><section className="consultation-context-details"><div><h3>Relevant {context.profession === "doctor" ? "medical" : "legal"} information</h3><p className="whitespace-pre-wrap">{context.information || "No information provided."}</p></div>
+    </section><section className="consultation-context-details"><div><h3>Relevant {context.profession === "doctor" ? "medical" : context.profession === "counsellor" ? "counselling" : "legal"} information</h3><p className="whitespace-pre-wrap">{context.information || "No information provided."}</p></div>
       {context.details && <div><h3>General consultation information</h3><p className="whitespace-pre-wrap">{context.details}</p></div>}
       <div><h3>What would you like to discuss?</h3><p className="whitespace-pre-wrap">{booking.reason || "No booking note provided."}</p></div>
     </section></div>

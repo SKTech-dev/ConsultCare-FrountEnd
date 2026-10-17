@@ -15,7 +15,7 @@ export function notificationDestination(item, role) {
   } else if (/^\/app\/room\/[^/]+$/.test(url.pathname)) {
     tab = kind.startsWith("document.") ? "documents" : kind === "prescription.sent" ? "prescription" : role === "user" ? "chat" : "patient";
   } else if (/^\/app\/clinics\/[^/]+$/.test(url.pathname)) {
-    tab = role === "admin" ? "payments" : ["doctor", "lawyer"].includes(role) ? "manage" : "registration";
+    tab = role === "admin" ? "payments" : ["doctor", "lawyer", "counsellor"].includes(role) ? "manage" : "registration";
   } else if (url.pathname === "/app/payments") {
     tab = kind.includes("refund") ? "refunds" : "payments";
   } else if (url.pathname === "/app/profile") {

@@ -22,7 +22,7 @@ import { Loader2 } from "lucide-react";
 export function Bookings({ history = false }) {
   const s = useWorkspace();
   if (!history && s.role === "user") return <PatientQueues />;
-  if (history && ["doctor", "lawyer"].includes(s.role)) return <ProfessionalHistory />;
+  if (history && ["doctor", "lawyer", "counsellor"].includes(s.role)) return <ProfessionalHistory />;
   const list = s.bookings.filter((b) => canRead(s, b) && (history !== isUpcomingBooking(b, s.sessions.find((session) => session.id === b.sessionId))));
   return <><PageHeading title={history ? "Your consultation history." : "Your upcoming conversations."}>{history ? "Revisit consultation records, shared notes, and professional documents." : "Follow your booking from payment to the waiting room."}</PageHeading><SectionTabs ids={history ? ["clinics", "consultations"] : ["consultations"]} order={["consultations", "clinics"]}>{history && <ClinicList embedded view="history" title="Past group clinics" />}<Panel title={history ? "Past private consultations" : "Private consultations"}>{list.length ? <div>{list.slice().reverse().map((b) => <div className="ws-row" key={b.id}><div><h3>{s.professionals.find((p) => p.id === b.professionalId)?.name}</h3><p>{s.role !== "user" && b.patientName + " · "}{s.sessions.find((x) => x.id === b.sessionId)?.date} · {money(b.fee)}</p></div><Status>{b.status}</Status><Link className="ws-link secondary" to={"/app/booking/" + b.id}>View record →</Link></div>)}</div> : <Empty title={history ? "No past consultations yet" : "No bookings yet"}>Your consultations will appear here as you work through the booking flow.</Empty>}</Panel></SectionTabs></>;
 }
@@ -44,7 +44,7 @@ export function BookingDetails() {
   if (params.get("peopleQuery")) personQuery.set("q", params.get("peopleQuery").slice(0, 120));
   personQuery.set("peoplePage", positivePage(params.get("peoplePage")));
   personQuery.set("page", positivePage(params.get("recordsPage")));
-  const personBack = ["doctor", "lawyer"].includes(s.role) && params.get("person") === b?.patientId
+  const personBack = ["doctor", "lawyer", "counsellor"].includes(s.role) && params.get("person") === b?.patientId
     ? "/app/people/" + encodeURIComponent(b.patientId) + "?" + personQuery : null;
 
   useEffect(() => {
@@ -69,7 +69,7 @@ export function BookingDetails() {
   const session = s.sessions.find((x) => x.id === b.sessionId);
   const position = b.position || 0;
   return <>
-    {personBack && <Link className="history-back" to={personBack}>← Back to {s.role === "lawyer" ? "client" : "patient"} records</Link>}
+    {personBack && <Link className="history-back" to={personBack}>← Back to {s.role !== "doctor" ? "client" : "patient"} records</Link>}
     {!personBack && historyBack && <Link className="history-back" to={historyBack}>← {params.get("session") ? "Back to session records" : "Back to day details"}</Link>}
     <PageHeading title={p?.name || "Your consultation"} action={<Status>{b.status}</Status>}>{session ? `${session.date} · ${session.start}–${session.end}` : "Consultation record"} · {p?.speciality}</PageHeading>
     {opening && <GlobalLoader compact className="booking-loading" message="Loading your booking…" />}

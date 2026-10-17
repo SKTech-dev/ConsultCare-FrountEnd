@@ -22,8 +22,8 @@ const dateLabel = (value) => value ? new Intl.DateTimeFormat("en-GB", {
 const timeLabel = (value) => value ? new Intl.DateTimeFormat("en-GB", {
   hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Colombo",
 }).format(new Date(value)) : "—";
-const roleLabels = { doctor: "Doctors", lawyer: "Lawyers" };
-const allowed = (role) => ["admin", "doctor", "lawyer"].includes(role);
+const roleLabels = { doctor: "Doctors", lawyer: "Lawyers", counsellor: "Counsellors" };
+const allowed = (role) => ["admin", "doctor", "lawyer", "counsellor"].includes(role);
 
 function useEarnings(endpoint) {
   const [result, setResult] = useState({ endpoint: null, data: null, error: "" });
@@ -97,7 +97,7 @@ export function MonthlyEarnings() {
           </summary>
           <div className="earnings-groups">
             {Object.entries(roleLabels).map(([category, label]) => {
-              const group = month.groups[category];
+              const group = month.groups[category] || { professionals: [], count: 0, total: 0 };
               return <details className="earnings-group" key={category}>
                 <summary className="earnings-summary"><div><h3>{label}</h3><p>{group.professionals.length} professionals · {group.count} paid items</p><EarningsBreakdown totals={group} /></div><strong>{cash(group.total)}</strong><ChevronDown aria-hidden="true" size={18} /></summary>
                 {group.professionals.length ? <div className="earnings-professionals">{group.professionals.map((person) => <div className="earnings-professional" key={person.id}>
@@ -144,7 +144,7 @@ export function MonthlyEarningsDetails() {
     <Link className="ws-name-link earnings-back" to={admin ? "/app/settlements" : "/app/earnings"}><ArrowLeft aria-hidden="true" size={16} />Back to {admin ? "monthly settlements" : "my earnings"}</Link>
     <LoadState {...result} />
     {data && <>
-      <PageHeading eyebrow={admin ? "MONTHLY SETTLEMENT" : "MY EARNINGS"} title={monthLabel(data.month)} action={<PayoutStatus payout={data.payout} />}>{data.professional.name} · {data.professional.role === "doctor" ? "Doctor" : "Lawyer"}</PageHeading>
+      <PageHeading eyebrow={admin ? "MONTHLY SETTLEMENT" : "MY EARNINGS"} title={monthLabel(data.month)} action={<PayoutStatus payout={data.payout} />}>{data.professional.name} · {data.professional.role === "doctor" ? "Doctor" : data.professional.role === "counsellor" ? "Counsellor" : "Lawyer"}</PageHeading>
       <div className="earnings-month-detail"><div className="earnings-totals">
         <Panel title="Monthly earnings"><strong>{cash(data.total)}</strong><p>Full amount · no institution commission</p></Panel>
         <Panel title="Consultations & clinic tickets"><strong>{data.earningsCount ?? data.count}</strong><p>Completed in {monthLabel(data.month)}</p><EarningsBreakdown totals={data} /></Panel>

@@ -45,7 +45,7 @@
 .cc-section-heading{display:flex;justify-content:space-between;align-items:end;gap:24px;margin-bottom:36px}
 .cc-home h2{font-family:Georgia,serif;font-size:clamp(30px,3.1vw,42px);font-weight:400;letter-spacing:-1.4px;line-height:1.2;color:var(--cc-primary)}
 .cc-section-heading h2{margin-top:12px}.cc-section-heading>p{font-size:12px;line-height:1.8;color:var(--cc-textSecondary)}
-.cc-service-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.cc-service-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}
 .cc-service{padding:32px 34px 0;border-radius:6px;background:var(--cc-background)}
 .cc-service-medical{background:color-mix(in srgb,var(--cc-gradientMid) 30%,var(--cc-outerBackground))}
 .cc-service-legal{background:var(--cc-appBg)}
@@ -117,3 +117,6 @@
 .cc-policy section { margin-top: 28px; }
 .cc-policy section h2 { font: 600 19px/1.4 Arial, sans-serif; letter-spacing: 0; margin-bottom: 10px; }
 .cc-policy section p { color: var(--cc-textSecondary); font-size: 14px; line-height: 1.9; }
+
+.cc-hero-actions{flex-wrap:wrap}.cc-service-counselling{background:var(--cc-sectionBg)}
+@media(min-width:721px) and (max-width:1050px){.cc-service-grid{grid-template-columns:1fr 1fr}.cc-service-counselling{grid-column:1/-1}}

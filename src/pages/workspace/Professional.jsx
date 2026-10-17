@@ -40,7 +40,7 @@ export function Queue() {
     } finally { setCalling(null); }
   }
   const [skip, setSkip] = useState(null);
-  if (!["doctor", "lawyer"].includes(s.role)) return <Empty title="Professional workspace">Sign in with a professional account to view its queue.</Empty>;
+  if (!["doctor", "lawyer", "counsellor"].includes(s.role)) return <Empty title="Professional workspace">Sign in with a professional account to view its queue.</Empty>;
   const p = s.professionals.find((professional) => professional.id === s.professionalId);
   const sessions = s.sessions.filter((session) => !session.clinicBlocked && !session.privateAppointment && session.professionalId === p.id && isUpcomingSession(session)).sort((a, b) => sessionStartsAt(a) - sessionStartsAt(b));
   const ongoing = s.bookings.filter((booking) => booking.professionalId === p.id && booking.status === "IN CONSULTATION");
@@ -78,7 +78,7 @@ export function Sessions() {
   const markSaved = useUnsavedChanges({ days, fee });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-  if (!["doctor", "lawyer"].includes(s.role)) return <Empty title="Professional workspace">Sign in with a professional account to manage availability.</Empty>;
+  if (!["doctor", "lawyer", "counsellor"].includes(s.role)) return <Empty title="Professional workspace">Sign in with a professional account to manage availability.</Empty>;
   const p = s.professionals.find((professional) => professional.id === s.professionalId);
   const updateDay = (weekday, change) => setDays((current) => current.map((day) => day.weekday === weekday ? { ...day, ...change } : day));
   const addSlot = (weekday) => { const day = days.find((item) => item.weekday === weekday); updateDay(weekday, { slots: [...day.slots, blankSlot()] }); };

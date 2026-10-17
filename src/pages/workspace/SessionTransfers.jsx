@@ -18,7 +18,7 @@ const label = (s) => `${s.date} · ${s.start}–${s.end} (Sri Lanka)`;
 
 export default function SessionTransfers({ embedded = false, view = "all", allowRequest = false }) {
   const workspace = useWorkspace();
-  const allowed = ["admin", "doctor", "lawyer"].includes(workspace.role);
+  const allowed = ["admin", "doctor", "lawyer", "counsellor"].includes(workspace.role);
   const [chooseSession, setChooseSession] = useState(false);
   const showSessions = view === "all" || view === "request" || chooseSession;
   const showHistory = view !== "request";

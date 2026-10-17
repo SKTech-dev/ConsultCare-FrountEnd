@@ -12,7 +12,7 @@ export default function ListFilters({ label, onApply, statuses = [], children, d
   return <form className="ws-list-filters" aria-label={label} onSubmit={(event) => { event.preventDefault(); onApply({ ...draft, q: draft.q.trim() }); }}>
     {children}
     <label className="ws-field">Professional name or email<input type="search" maxLength={120} placeholder="Search professionals" {...field("q")} /></label>
-    <label className="ws-field">Profession<select {...field("profession")}><option value="">Doctors & lawyers</option><option value="doctor">Doctors</option><option value="lawyer">Lawyers</option></select></label>
+    <label className="ws-field">Profession<select {...field("profession")}><option value="">All professions</option><option value="doctor">Doctors</option><option value="lawyer">Lawyers</option><option value="counsellor">Counsellors</option></select></label>
     {statuses.length > 0 && <label className="ws-field">Status<select {...field("status")}><option value="">All statuses</option>{statuses.map((status) => <option key={status} value={status}>{status.replaceAll("-", " ").replace(/^./, (letter) => letter.toUpperCase())}</option>)}</select></label>}
     {dates && <><label className="ws-field">From date<input type="date" max={draft.date_to || undefined} {...field("date_from")} /></label>
     <label className="ws-field">To date<input type="date" min={draft.date_from || undefined} {...field("date_to")} /></label></>}

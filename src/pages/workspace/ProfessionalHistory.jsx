@@ -79,7 +79,7 @@ export default function ProfessionalHistory() {
     if (!validMonth(value)) return;
     setParams((previous) => { const next = new URLSearchParams(previous); next.set("month", value); next.delete("date"); return next; });
   }
-  if (!["doctor", "lawyer"].includes(role)) return <Empty title="Professional history">Consultation history calendars are available in professional accounts.</Empty>;
+  if (!["doctor", "lawyer", "counsellor"].includes(role)) return <Empty title="Professional history">Consultation history calendars are available in professional accounts.</Empty>;
   return <>
     <PageHeading title="Consultation history.">A month at a glance. Choose a date to revisit sessions, appointments, clinics and past handovers.</PageHeading>
     <div className="history-month-controls"><div className="history-month-stepper"><button type="button" className="history-icon-button" aria-label="Previous month" disabled={month === "1900-01"} onClick={() => changeMonth(shiftMonth(month, -1))}><ChevronLeft size={20} /></button><label className="history-month-input"><span className="sr-only">History month</span><CalendarDays size={18} /><input type="month" value={month} min="1900-01" max="9998-12" onChange={(event) => changeMonth(event.target.value)} /></label><button type="button" className="history-icon-button" aria-label="Next month" disabled={month === "9998-12"} onClick={() => changeMonth(shiftMonth(month, 1))}><ChevronRight size={20} /></button></div><button className="ws-link secondary" onClick={() => changeMonth(sriLankanDate().slice(0, 7))}>Today</button></div>
@@ -103,7 +103,7 @@ export function HistoryDay() {
   const { role } = useWorkspace();
   const [params, setParams] = useSearchParams();
   const tab = historyTabs.find((value) => value.category === category);
-  const valid = tab && validDate(date) && ["doctor", "lawyer"].includes(role);
+  const valid = tab && validDate(date) && ["doctor", "lawyer", "counsellor"].includes(role);
   const month = validMonth(params.get("month")) ? params.get("month") : valid ? date.slice(0, 7) : sriLankanDate().slice(0, 7);
   const page = pageNumber(params);
   const result = useHistory(valid ? "/history/day?category=" + category + "&date=" + date + "&page=" + page : null);

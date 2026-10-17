@@ -17,7 +17,7 @@ import AppointmentOffers from "../../components/workspace/AppointmentOffers";
 export default function ScheduledConsultations({ embedded = false, renderQueue }) {
   const state = useWorkspace();
   const dispatch = useDispatch();
-  const allowed = ["admin", "doctor", "lawyer"].includes(state.role);
+  const allowed = ["admin", "doctor", "lawyer", "counsellor"].includes(state.role);
   const [scope, setScope] = useState("upcoming");
   const [filters, setFilters] = useState({ ...emptyFilters });
   const [page, setPage] = useState(1);

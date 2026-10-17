@@ -2,11 +2,11 @@ import { test, expect } from "@playwright/test";
 
 const longName = "Alexandra Jayawardene Wickramasinghe";
 async function setup(page, role = "doctor") {
-  const professional = { id: "professional", name: "Test Professional", role, status: "verified", speciality: role === "lawyer" ? "Family law" : "General practice", registration: "REG-1", qualifications: "Test qualification", languages: ["English"] };
+  const professional = { id: "professional", name: "Test Professional", role, status: "verified", speciality: role !== "doctor" ? "Family law" : "General practice", registration: "REG-1", qualifications: "Test qualification", languages: ["English"] };
   const people = Array.from({ length: 32 }, (_, index) => ({ id: "person" + index, name: index ? "Patient " + String(index).padStart(2, "0") : longName, email: index ? "patient" + index + "@example.test" : "alexandra.long.email.address@example.test", latestDate: "2026-10-16", consultationCount: index ? 1 : 35 }));
   const records = Array.from({ length: 35 }, (_, index) => ({ id: "record" + index, patientId: "person0", professionalId: "professional", sessionId: "session" + index, patientName: longName, status: index === 1 ? "CANCELLED" : index === 2 ? "NO-SHOW" : "COMPLETED", date: index ? "2026-10-15" : "2026-10-16", start: "10:00", end: "11:00", type: index % 2 ? "appointment" : "weekly", fee: 2500, payment: "paid", files: [], messages: [], notes: "Shared consultation note", privateNotes: "Professional note", followUp: "Review if needed" }));
   const sessions = records.map((booking) => ({ id: booking.sessionId, professionalId: "professional", date: booking.date, start: booking.start, end: booking.end, capacity: 10 }));
-  const state = { role, professionalId: role === "doctor" || role === "lawyer" ? "professional" : null, professionals: [professional], patient: { id: "patient", name: "Patient" }, patients: [], bookings: records, sessions, weeklyAvailability: [], onboarding: null };
+  const state = { role, professionalId: ["doctor", "lawyer", "counsellor"].includes(role) ? "professional" : null, professionals: [professional], patient: { id: "patient", name: "Patient" }, patients: [], bookings: records, sessions, weeklyAvailability: [], onboarding: null };
   await page.routeWebSocket("**/api/workspace/live", () => {});
   const requests = [];
   await page.route("**/api/**", (route) => {
@@ -30,10 +30,10 @@ async function setup(page, role = "doctor") {
   return { requests };
 }
 
-for (const role of ["doctor", "lawyer"]) {
+for (const role of ["doctor", "lawyer", "counsellor"]) {
   test(role + " can browse all people, search and open consultation records with return context", async ({ page }, testInfo) => {
     const { requests } = await setup(page, role);
-    const noun = role === "lawyer" ? "clients" : "patients";
+    const noun = role !== "doctor" ? "clients" : "patients";
     await page.goto("/app/people");
     await expect(page.getByRole("heading", { name: "My " + noun + ".", exact: true })).toBeVisible();
     await expect(page.getByRole("table", { name: "Your " + noun }).getByRole("row")).toHaveCount(31);
@@ -52,7 +52,7 @@ for (const role of ["doctor", "lawyer"]) {
     await expect(page.getByRole("link", { name: "View details", exact: true })).toHaveCount(5);
     await page.getByRole("link", { name: "View details", exact: true }).first().click();
     await expect(page.getByText("YOUR CONSULTATION SPACE", { exact: true })).toBeVisible();
-    const back = page.getByRole("link", { name: role === "lawyer" ? "Back to client records" : "Back to patient records", exact: false });
+    const back = page.getByRole("link", { name: role !== "doctor" ? "Back to client records" : "Back to patient records", exact: false });
     await expect(back).toBeVisible();
     await page.reload();
     await back.click();
