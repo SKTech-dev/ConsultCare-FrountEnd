@@ -58,11 +58,19 @@ jobs:
         with:
           github-token: ${{ secrets.CONSULTCARE_REPO_TOKEN }}
           script: |
-            const override = process.env.COMPANION_REF_OVERRIDE;
+            const override = process.env.COMPANION_REF_OVERRIDE?.trim();
             const branch = context.payload.pull_request?.head.ref || context.ref.replace(/^refs\/heads\//, '');
             const fallback = context.payload.pull_request?.base.ref || 'development';
-            let ref = override || fallback;
-            if (!override && branch) {
+            // Release checks must test the deployed companion, not a stale feature override.
+            const stable = context.payload.pull_request?.base.ref === 'main'
+              ? 'main'
+              : !context.payload.pull_request && ['main', 'development'].includes(branch)
+                ? branch : null;
+            if (stable && override) {
+              core.warning(`Ignoring CONSULTCARE_BACKEND_REF=${override} for ${stable} checks.`);
+            }
+            let ref = stable || override || fallback;
+            if (!stable && !override && branch) {
               try {
                 await github.rest.repos.getBranch({ owner: 'SKTech-dev', repo: 'ConsultCare-BackEnd', branch });
                 ref = branch;
@@ -82,7 +90,7 @@ jobs:
       - name: Validate companion backend
         run: >-
           test -f backend/tests/run_e2e.py ||
-          { echo 'The selected backend revision has no full-stack runner. Set CONSULTCARE_BACKEND_REF to a branch or SHA containing backend/tests/run_e2e.py.'; exit 1; }
+          { echo 'The selected companion backend has no full-stack runner. Check the Select companion revision log. For a release, merge backend/tests/run_e2e.py into backend main first; for feature checks, correct CONSULTCARE_BACKEND_REF.'; exit 1; }
       - uses: actions/setup-node@v4
         with:
           node-version: '24'

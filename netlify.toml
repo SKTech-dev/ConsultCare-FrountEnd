@@ -1,14 +1,5 @@
 [build]
-  command = "npm run build"
+  command = "npm run build:netlify"
   publish = "dist"
 
-[[redirects]]
-  from = "/api/*"
-  to = "https://consultcare-backend-production.up.railway.app/api/:splat"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+# Routing is generated into dist/_redirects from BACKEND_ORIGIN at build time.
