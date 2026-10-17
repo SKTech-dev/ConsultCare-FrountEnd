@@ -14,7 +14,7 @@ import GoogleSignIn from "./GoogleSignIn";
 export default function AuthForm({ signup = false }) {
   const [params] = useSearchParams();
   const next = params.get("next");
-  const suffix = ["/consult/doctors", "/consult/lawyers"].includes(next) ? `?next=${encodeURIComponent(next)}` : "";
+  const suffix = ["/consult/doctors", "/consult/lawyers", "/consult/counsellors"].includes(next) ? `?next=${encodeURIComponent(next)}` : "";
   const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "", role: "user" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -80,12 +80,12 @@ export default function AuthForm({ signup = false }) {
 
   return <PlatformLayout>
     <div className="grid gap-12 lg:grid-cols-2 items-start">
-      <div className="max-w-md"><p className="cc-eyebrow">{signup ? "YOUR NEXT CHAPTER STARTS HERE" : "WELCOME BACK"}</p><h1 className="font-serif text-4xl sm:text-5xl leading-tight mt-5">{signup ? "Good guidance starts with a connection." : "A familiar space. A fresh conversation."}</h1><p className="mt-6 leading-8">{signup ? "Create an account to consult a doctor or lawyer, or apply to join as a professional." : "Sign in to access your account. Continue with Google or use your email and password."}</p><div className="flex gap-5 mt-8 text-sm"><Link to="/consult/doctors">Doctor consultations</Link><Link to="/consult/lawyers">Lawyer consultations</Link></div></div>
+      <div className="max-w-md"><p className="cc-eyebrow">{signup ? "YOUR NEXT CHAPTER STARTS HERE" : "WELCOME BACK"}</p><h1 className="font-serif text-4xl sm:text-5xl leading-tight mt-5">{signup ? "Good guidance starts with a connection." : "A familiar space. A fresh conversation."}</h1><p className="mt-6 leading-8">{signup ? "Create an account to consult a doctor, lawyer or counsellor, or apply to join as a professional." : "Sign in to access your account. Continue with Google or use your email and password."}</p><div className="flex gap-5 mt-8 text-sm"><Link to="/consult/doctors">Doctor consultations</Link><Link to="/consult/lawyers">Lawyer consultations</Link><Link to="/consult/counsellors">Counselling</Link></div></div>
       <section className="border rounded-2xl p-6 sm:p-9 max-w-lg w-full" style={{ borderColor: "var(--cc-border)", background: "var(--cc-background)" }}>
         <h2>{signup ? "Create your account" : "Log in to ConsultCare"}</h2>
         {sessionNotice && <p role="alert" className="my-4 text-sm">{sessionNotice}</p>}
         {created ? <div role="status"><p className="my-6">Your registration was submitted. You can now sign in. Professional accounts require administrator approval.</p><Link className="cc-button" to={`/login${suffix}`}>Continue to login</Link></div> : <form onSubmit={submit} className="space-y-5 mt-7">
-          {signup && <><fieldset disabled={locked}><legend className="text-sm font-semibold mb-3">I am joining as</legend><div className="flex flex-wrap gap-3">{[["user", "Patient / client"], ["doctor", "Doctor"], ["lawyer", "Lawyer"]].map(([value, label]) => <label key={value} className="flex gap-2 items-center border rounded-lg p-3 text-sm cursor-pointer"><input type="radio" name="role" value={value} checked={form.role === value} onChange={change} />{label}</label>)}</div></fieldset>{form.role !== "user" && <p className="text-sm leading-6">Your professional credentials must be verified by an administrator before you can offer consultations.</p>}</>}
+          {signup && <><label className="flex flex-col gap-2 text-sm font-semibold">I am joining as<select className="border rounded-lg p-3 bg-transparent" name="role" value={form.role} onChange={change} disabled={locked}>{[["user", "Patient / client"], ["doctor", "Doctor"], ["lawyer", "Lawyer"], ["counsellor", "Counsellor"]].map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>{form.role !== "user" && <p className="text-sm leading-6">Your professional credentials must be verified by an administrator before you can offer consultations.</p>}</>}
           <GoogleSignIn key={googleAttempt} onSessionConflict={requestReplacement} mode={signup ? "signup" : "login"} role={form.role} separator disabled={locked} onBusyChange={setBusy} onError={setError} onSuccess={(user) => { markSaved(); dispatch(setAuthUser(user)); navigate(getDestination(user, next), { replace: true }); }} />
           {signup && <Input label="Full name" name="name" value={form.name} onChange={change} autoComplete="name" maxLength={120} required disabled={locked} />}
           <Input label="Email address" type="email" name="email" value={form.email} onChange={change} autoComplete="email" required disabled={locked} />
@@ -94,7 +94,7 @@ export default function AuthForm({ signup = false }) {
           {!signup && <p className="text-xs">For account recovery, contact your administrator. Automated password reset is not available yet.</p>}
           <Button type="submit" disabled={locked}>{busy ? "Please wait…" : signup ? "Create account" : "Log in"}</Button>
           <p className="text-sm">{signup ? "Already registered? " : "New to ConsultCare? "}<Link className="underline font-semibold" to={`${signup ? "/login" : "/signup"}${suffix}`}>{signup ? "Log in" : "Sign up"}</Link></p>
-          {!signup && <p className="text-xs leading-5">Doctors, lawyers, users, and administrators use this same secure login. Administrator accounts are provisioned privately.</p>}
+          {!signup && <p className="text-xs leading-5">Doctors, lawyers, counsellors, users, and administrators use this same secure login. Administrator accounts are provisioned privately.</p>}
         </form>}
       </section>
     </div>

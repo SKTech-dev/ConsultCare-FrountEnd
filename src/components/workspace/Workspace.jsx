@@ -1,6 +1,6 @@
 import { Link, NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { CalendarDays, FileText, HeartPulse, LayoutDashboard, Scale, ShieldCheck, UserRound, Users, Menu, X, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { CalendarDays, FileText, HeartPulse, MessageCircle, LayoutDashboard, Scale, ShieldCheck, UserRound, Users, Menu, X, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import GlobalLoader from "../ui/GlobalLoader";
 import { logoutUser } from "../../features/auth/authSlice";
@@ -98,11 +98,11 @@ export default function Workspace() {
   const professional = state.professionals.find((p) => p.id === state.professionalId);
   const name = state.role === "user" ? state.patient.name : state.role === "admin" ? "Platform administrator" : professional.name;
   const links = state.role === "user" ? [
-    ["/app", "Overview", LayoutDashboard], ["/consult/doctors", "Find a doctor", HeartPulse], ["/consult/lawyers", "Find a lawyer", Scale], ["/app/bookings", "My consultations", CalendarDays], ["/app/history", "My history", FileText], ["/app/profile", "My profile", UserRound],
+    ["/app", "Overview", LayoutDashboard], ["/consult/doctors", "Find a doctor", HeartPulse], ["/consult/lawyers", "Find a lawyer", Scale], ["/consult/counsellors", "Find a counsellor", MessageCircle], ["/app/bookings", "My consultations", CalendarDays], ["/app/history", "My history", FileText], ["/app/profile", "My profile", UserRound],
   ] : state.role === "admin" ? [
     ["/app", "Overview", LayoutDashboard], ["/app/admin", "People & verification", Users], ["/app/weekly-schedules", "Weekly schedules", CalendarDays], ["/app/appointments", "Individual appointments", CalendarDays], ["/app/clinics", "Group clinics", Users], ["/app/transfers", "Session handovers", CalendarDays], ["/app/payments", "Payments & refunds", ShieldCheck], ["/app/settlements", "Monthly settlements", CalendarDays],
   ] : [
-    ["/app", "Overview", LayoutDashboard], ["/app/queue", "Consultation queue", Users], ["/app/people", state.role === "lawyer" ? "My clients" : "My patients", Users], ["/app/sessions", "My sessions", CalendarDays], ["/app/earnings", "My earnings", ShieldCheck], ["/app/history", "Consultation history", FileText], ["/app/profile", "Professional profile", UserRound],
+    ["/app", "Overview", LayoutDashboard], ["/app/queue", "Consultation queue", Users], ["/app/people", state.role === "doctor" ? "My patients" : "My clients", Users], ["/app/sessions", "My sessions", CalendarDays], ["/app/earnings", "My earnings", ShieldCheck], ["/app/history", "Consultation history", FileText], ["/app/profile", "Professional profile", UserRound],
   ];
   return <div className="ws" style={Object.fromEntries(Object.entries(colors).map(([key, value]) => [`--ws-${key}`, value]))}>
     {mobile && open && <div className="ws-nav-backdrop" aria-hidden="true" onClick={() => setOpen(false)} />}

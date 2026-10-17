@@ -1,16 +1,17 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { ArrowDown, ArrowRight, ArrowUpRight, CalendarDays, Check, FileText, HeartPulse, Menu, Scale, ShieldCheck, Video, X } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUpRight, CalendarDays, Check, FileText, MessageCircle, HeartPulse, Menu, Scale, ShieldCheck, Video, X } from "lucide-react";
 import "./landing.css";
 
 const services = [
   { id: "medical", number: "01", label: "For your health", title: "A little clarity.\nA lot of reassurance.", description: "Talk through your health concerns with a doctor, from the comfort of your own space.", icon: HeartPulse, tags: ["Health concerns", "Follow-up care", "Report discussions"], action: "Explore medical consultations" },
   { id: "legal", number: "02", label: "For your peace of mind", title: "Your questions.\nAn informed next step.", description: "Make sense of your legal questions with a professional who can help you understand your options.", icon: Scale, tags: ["Personal matters", "Business questions", "Document discussions"], action: "Explore legal consultations" },
+  { id: "counselling", number: "03", label: "For your wellbeing", title: "Space to talk.\nSupport to move forward.", description: "Explore personal concerns, relationships and life changes with a counsellor at your own pace.", icon: MessageCircle, tags: ["Emotional wellbeing", "Relationships", "Life changes"], action: "Explore counselling consultations" },
 ];
 
 const steps = [
-  ["01", "Find your person.", "Choose a doctor or lawyer who fits your needs, language, and schedule."],
+  ["01", "Find your person.", "Choose a doctor, lawyer or counsellor who fits your needs, language, and schedule."],
   ["02", "Make time for you.", "Select a session, review the fee, and confirm your booking."],
   ["03", "Let's talk it through.", "Join your private consultation with your questions and documents ready."],
 ];
@@ -39,20 +40,20 @@ export default function Landing() {
           <div className="cc-hero-copy">
             <p className="cc-eyebrow"><span /> A good conversation changes things</p>
             <h1>Life has questions.<br />Find your<br /><em>way forward.</em></h1>
-            <p className="cc-intro">For your health. For your peace of mind. Connect with doctors and lawyers for thoughtful guidance, wherever you are.</p>
-            <div className="cc-hero-actions"><Link to="/consult/doctors" className="cc-button">Consult a doctor <ArrowUpRight size={19} /></Link><Link to="/consult/lawyers" className="cc-text-link">Consult a lawyer <ArrowUpRight size={16} /></Link></div>
+            <p className="cc-intro">For your health. For your peace of mind. Connect with doctors, lawyers and counsellors for thoughtful guidance, wherever you are.</p>
+            <div className="cc-hero-actions"><Link to="/consult/doctors" className="cc-button">Consult a doctor <ArrowUpRight size={19} /></Link><Link to="/consult/lawyers" className="cc-text-link">Consult a lawyer <ArrowUpRight size={16} /></Link><Link to="/consult/counsellors" className="cc-text-link">Consult a counsellor <ArrowUpRight size={16} /></Link></div>
             <div className="cc-hero-note"><span className="cc-note-line" /><span>Real conversations.<br /><strong>With people who understand.</strong></span></div>
           </div>
           <div className="cc-hero-art">
-            <div className="cc-art-heading"><span>THE SPACE TO TALK</span><span>01 / 02</span></div>
+            <div className="cc-art-heading"><span>THE SPACE TO TALK</span><span>01 / 03</span></div>
             <div className="cc-orbit cc-orbit-one" /><div className="cc-orbit cc-orbit-two" />
             <div className="cc-symbol cc-symbol-medical"><HeartPulse strokeWidth={1.15} /></div>
             <div className="cc-symbol cc-symbol-legal"><Scale strokeWidth={1.15} /></div>
-            <div className="cc-art-caption"><span>Expertise meets empathy.</span><p>Two kinds of support.<br />One place to begin.</p></div>
+            <div className="cc-art-caption"><span>Expertise meets empathy.</span><p>Three kinds of support.<br />One place to begin.</p></div>
             <div className="cc-art-foot"><Video size={17} /><span>Personal. Online. On your terms.</span><ArrowUpRight size={18} /></div>
           </div>
         </section>
-        <div className="cc-principles cc-container"><span><HeartPulse size={19} /> Medical & legal expertise</span><span><Video size={19} /> One-to-one conversations</span><span><CalendarDays size={19} /> A time that works for you</span><span><FileText size={19} /> Documents in one place</span></div>
+        <div className="cc-principles cc-container"><span><HeartPulse size={19} /> Medical, legal & counselling support</span><span><Video size={19} /> One-to-one conversations</span><span><CalendarDays size={19} /> A time that works for you</span><span><FileText size={19} /> Documents in one place</span></div>
 
         <section id="services" className="cc-services cc-container">
           <div className="cc-section-heading"><div><p className="cc-eyebrow">THE RIGHT SUPPORT</p><h2>What brings you here?</h2></div><p>Different questions. The same care.<br />Start with what matters to you.</p></div>
@@ -62,7 +63,7 @@ export default function Landing() {
               <h3>{title.split("\n").map((line, i) => <span key={line}>{i > 0 && <br />}{line}</span>)}</h3>
               <p>{description}</p>
               <ul className="cc-tags">{tags.map((tag) => <li key={tag}>{tag}</li>)}</ul>
-              <Link className="cc-service-link" to={id === "medical" ? "/consult/doctors" : "/consult/lawyers"}>{action}<ArrowUpRight size={21} /></Link>
+              <Link className="cc-service-link" to={id === "medical" ? "/consult/doctors" : id === "counselling" ? "/consult/counsellors" : "/consult/lawyers"}>{action}<ArrowUpRight size={21} /></Link>
             </article>
           ))}</div>
         </section>
@@ -76,8 +77,8 @@ export default function Landing() {
         <section id="consultation-guide" className="cc-guide cc-container" aria-labelledby="guide-title">
           <div><p className="cc-eyebrow">A LITTLE PREPARATION GOES A LONG WAY</p><h2 id="guide-title">Make space for<br /><em>the conversation.</em></h2><p>Knowing what you want to discuss helps you get more from your time together.</p></div>
           <div className="cc-guide-panel">
-            <div className="cc-service-switch" role="group" aria-label="Consultation guide">{services.map(({ id }) => <button key={id} type="button" aria-pressed={selected === id} onClick={() => setSelected(id)}>{id === "medical" ? "Doctor consultation" : "Lawyer consultation"}</button>)}</div>
-            <div className="cc-guide-content" aria-live="polite"><ServiceIcon size={28} strokeWidth={1.5} /><h3>{selected === "medical" ? "Before you speak with a doctor" : "Before you speak with a lawyer"}</h3><ul>{(selected === "medical" ? ["Write down the concerns you want to discuss.", "Have relevant reports and medication details ready.", "Choose a quiet place for your conversation."] : ["Summarise the question you need help with.", "Gather relevant documents and important dates.", "Note the outcome you would like to work towards."]).map((item) => <li key={item}><Check size={16} /><span>{item}</span></li>)}</ul><p className="cc-launch-note">Choose a professional and an available session to begin your consultation journey.</p></div>
+            <div className="cc-service-switch" role="group" aria-label="Consultation guide">{services.map(({ id }) => <button key={id} type="button" aria-pressed={selected === id} onClick={() => setSelected(id)}>{id === "medical" ? "Doctor consultation" : id === "counselling" ? "Counselling consultation" : "Lawyer consultation"}</button>)}</div>
+            <div className="cc-guide-content" aria-live="polite"><ServiceIcon size={28} strokeWidth={1.5} /><h3>{selected === "medical" ? "Before you speak with a doctor" : selected === "counselling" ? "Before you speak with a counsellor" : "Before you speak with a lawyer"}</h3><ul>{(selected === "medical" ? ["Write down the concerns you want to discuss.", "Have relevant reports and medication details ready.", "Choose a quiet place for your conversation."] : selected === "counselling" ? ["Think about what you would like support with.", "Share only what you feel ready to discuss.", "Choose a private, comfortable space for your conversation."] : ["Summarise the question you need help with.", "Gather relevant documents and important dates.", "Note the outcome you would like to work towards."]).map((item) => <li key={item}><Check size={16} /><span>{item}</span></li>)}</ul><p className="cc-launch-note">Choose a professional and an available session to begin your consultation journey.</p></div>
           </div>
         </section>
 

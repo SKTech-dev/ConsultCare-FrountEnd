@@ -38,14 +38,14 @@ function ProfileForm({ source, patient }) {
     reader.onerror = () => { setFeedback("Could not read this photo."); setReadingImage(false); };
     reader.readAsDataURL(file);
   }
-  const fields = patient ? [["name", "Full name", "text"], ["dob", "Date of birth", "date"], ["weightKg", "Weight (kg)", "number"], ["phone", "Contact number", "tel"], ["email", "Email address", "email"], ["emergency", "Emergency contact", "text"], ["address", "Billing address", "text"], ["city", "City", "text"]] : [["name", "Professional name", "text"], ["phone", "Mobile number for session handovers", "tel"], ["speciality", "Speciality", "text"], ["registration", "Registration number", "text"], ["qualifications", "Qualifications", "text"], ["languages", "Languages (comma separated)", "text"]];
+  const fields = patient ? [["name", "Full name", "text"], ["dob", "Date of birth", "date"], ["weightKg", "Weight (kg)", "number"], ["phone", "Contact number", "tel"], ["email", "Email address", "email"], ["emergency", "Emergency contact", "text"], ["address", "Billing address", "text"], ["city", "City", "text"]] : [["name", "Professional name", "text"], ["phone", "Mobile number for session handovers", "tel"], ["speciality", source.role === "counsellor" ? "Counselling focus" : "Speciality", "text"], ["registration", source.role === "counsellor" ? "Professional membership / credential reference" : "Registration number", "text"], ["qualifications", "Qualifications", "text"], ["languages", "Languages (comma separated)", "text"]];
   async function save(event) {
     event.preventDefault();
     if (saving || readingImage || !form.name.trim()) return;
     setSaving(true);
     setFeedback("");
     try {
-      const action = await dispatch(saveProfile(patient ? { name: form.name.trim(), dob: form.dob, phone: form.phone, address: form.address || "", city: form.city || "", email: form.email, emergency: form.emergency, details: form.details, image: form.image || "", weightKg: form.weightKg === "" || form.weightKg == null ? null : Number(form.weightKg), medicalDetails: form.medicalDetails || "", legalDetails: form.legalDetails || "" } : { name: form.name.trim(), phone: form.phone || "", speciality: form.speciality, registration: form.registration, qualifications: form.qualifications, languages: form.languages.split(",").map((l) => l.trim()).filter(Boolean), bio: form.bio, image: form.image || "" }));
+      const action = await dispatch(saveProfile(patient ? { name: form.name.trim(), dob: form.dob, phone: form.phone, address: form.address || "", city: form.city || "", email: form.email, emergency: form.emergency, details: form.details, image: form.image || "", weightKg: form.weightKg === "" || form.weightKg == null ? null : Number(form.weightKg), medicalDetails: form.medicalDetails || "", legalDetails: form.legalDetails || "", counsellingDetails: form.counsellingDetails || "" } : { name: form.name.trim(), phone: form.phone || "", speciality: form.speciality, registration: form.registration, qualifications: form.qualifications, languages: form.languages.split(",").map((l) => l.trim()).filter(Boolean), bio: form.bio, image: form.image || "" }));
       if (!action.error) markSaved();
     } finally { setSaving(false); }
   }
@@ -81,7 +81,8 @@ function ProfileForm({ source, patient }) {
               <p>Your saved billing address and city are used automatically for secure payments.</p>
               <label className="ws-field">Medical information for your doctor<textarea maxLength={5000} value={form.medicalDetails || ""} onChange={(event) => setForm({ ...form, medicalDetails: event.target.value })} placeholder="Allergies, current medicines, medical conditions and relevant history" /></label>
               <label className="ws-field">Legal information for your lawyer<textarea maxLength={5000} value={form.legalDetails || ""} onChange={(event) => setForm({ ...form, legalDetails: event.target.value })} placeholder="Relevant background for legal consultations" /></label>
-              <p>Medical details and weight are shared with your consulting doctor. Legal details are shared with your consulting lawyer. General consultation information is shared with either.</p>
+              <label className="ws-field">Counselling information for your counsellor<textarea maxLength={5000} value={form.counsellingDetails || ""} onChange={(event) => setForm({ ...form, counsellingDetails: event.target.value })} placeholder="Concerns, goals and relevant background you want to share with your counsellor" /></label>
+              <p>Medical details and weight are shared with your consulting doctor. Legal details are shared with your consulting lawyer. Counselling information is shared with your consulting counsellor. General consultation information is shared with your consulting professional.</p>
             </>}
             <div className="profile-save"><Button type="submit" disabled={saving || readingImage}>{saving ? "Saving profile…" : "Save profile"}</Button></div>
           </fieldset>

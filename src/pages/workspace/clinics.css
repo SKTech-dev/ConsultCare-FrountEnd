@@ -5,7 +5,10 @@
 .professional-sections .clinic-cards { grid-template-columns: 1fr; }
 .clinic-card { display:flex; flex-direction:column; gap:10px; }
 .clinic-card > .ws-link { align-self:flex-start; margin-top:auto; }
-.clinic-list .transfer-search .ws-field { margin-bottom:0; }
+.clinic-search { display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:end; gap:12px; margin:20px 0 24px; }
+.clinic-search .ws-field { min-width:0; margin:0; }
+.clinic-search > button { min-height:42px; white-space:nowrap; }
+@media (max-width:480px) { .clinic-search { grid-template-columns:1fr 1fr; } .clinic-search .ws-field { grid-column:1/-1; } }
 .clinic-card { background: var(--ws-cardBg); border: 1px solid var(--ws-border); border-radius: 14px; padding: 22px; }
 .clinic-card h3 { font-size: 19px; margin: 16px 0 8px; }
 .clinic-card h3 a:hover { text-decoration: underline; }

@@ -41,8 +41,8 @@ function range(data, page) {
 }
 export default function ProfessionalPeople() {
   const { role } = useWorkspace();
-  const allowed = ["doctor", "lawyer"].includes(role);
-  const noun = role === "lawyer" ? "clients" : "patients";
+  const allowed = ["doctor", "lawyer", "counsellor"].includes(role);
+  const noun = role !== "doctor" ? "clients" : "patients";
   const [params, setParams] = useSearchParams();
   const q = (params.get("q") || "").slice(0, 120), page = pageNumber(params.get("page"));
   const [search, setSearch] = useState(q);
@@ -78,8 +78,8 @@ export default function ProfessionalPeople() {
 export function PersonConsultations() {
   const { personId } = useParams();
   const { role } = useWorkspace();
-  const allowed = ["doctor", "lawyer"].includes(role);
-  const noun = role === "lawyer" ? "client" : "patient";
+  const allowed = ["doctor", "lawyer", "counsellor"].includes(role);
+  const noun = role !== "doctor" ? "client" : "patient";
   const [params, setParams] = useSearchParams();
   const q = (params.get("q") || "").slice(0, 120), page = pageNumber(params.get("page"));
   const peoplePage = pageNumber(params.get("peoplePage"));

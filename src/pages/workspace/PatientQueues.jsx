@@ -49,7 +49,7 @@ export default function PatientQueues() {
         </div>
       </Panel>;
     })}</div>
-    {!bookings.length && <Empty title="No active bookings">Book a doctor or lawyer to see your consultation queue here.</Empty>}
+    {!bookings.length && <Empty title="No active bookings">Book a doctor, lawyer or counsellor to see your consultation queue here.</Empty>}
     </Panel></SectionTabs>
     {cancel && <ReasonDialog title="Cancel consultation?" text="Your queue place will be released. Any paid booking will require refund review. Your reason will be shared with the professional." busy={state.pending > 0} onClose={() => setCancel(null)} onConfirm={async (reason) => { await dispatch(transition({ id: cancel, status: "CANCELLED", reason })); setCancel(null); }} />}
   </>;

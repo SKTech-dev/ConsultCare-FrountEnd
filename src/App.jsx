@@ -70,6 +70,7 @@ const router = createBrowserRouter(createRoutesFromElements(
       <Route path="/app/notifications" element={<Notifications />} />
       <Route path="/consult/doctors" element={<Directory key="doctors" profession="doctor" />} />
       <Route path="/consult/lawyers" element={<Directory key="lawyers" profession="lawyer" />} />
+      <Route path="/consult/counsellors" element={<Directory key="counsellors" profession="counsellor" />} />
       <Route path="/app/professionals/:id" element={<ProfessionalDetails />} />
       <Route path="/app/bookings" element={<Bookings />} />
       <Route path="/app/history" element={<Bookings history />} />
@@ -96,7 +97,7 @@ const router = createBrowserRouter(createRoutesFromElements(
       <Route path="/app/earnings/:month" element={<MonthlyEarningsDetails />} />
       <Route path="*" element={<Empty title="Page not found">Use the workspace navigation to continue.</Empty>} />
     </Route>
-    {["/dashboard", "/doctor/dashboard", "/lawyer/dashboard", "/admin/dashboard"].map((path) => <Route key={path} path={path} element={<Navigate to="/app" replace />} />)}
+    {["/dashboard", "/doctor/dashboard", "/lawyer/dashboard", "/counsellor/dashboard", "/admin/dashboard"].map((path) => <Route key={path} path={path} element={<Navigate to="/app" replace />} />)}
     </Route>
   </Route>
 ));

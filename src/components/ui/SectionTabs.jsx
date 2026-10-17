@@ -14,7 +14,7 @@ const compactLabels = {
   "Your private consultations": "Private", "Private consultations": "Private", "Past private consultations": "Private",
   "Your upcoming group clinics": "Clinics", "Past group clinics": "Clinics", "Group clinics": "Clinics",
   "Doctor consultations": "Doctors", "Lawyer consultations": "Lawyers", "Patient information": "Patient",
-  "Doctor verification": "Doctors", "Lawyer verification": "Lawyers", "Patient / client accounts": "Patients",
+  "Counsellor verification": "Counsellors", "Counselling consultations": "Counsellors", "Available counselling clinics": "Clinics", "Doctor verification": "Doctors", "Lawyer verification": "Lawyers", "Patient / client accounts": "Patients",
   "Account information": "Account", "Professional introduction": "Introduction", "Profile information": "Profile",
   "Individual appointments": "Appointments", "Individual appointment": "Appointment", "Weekly availability": "Weekly",
   "Recurring availability": "Availability", "Consultation sessions": "Sessions", "Handover history": "Handovers",
