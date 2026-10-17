@@ -1,3 +1,4 @@
+import { profileImageSrc } from "../../features/auth/profileImages";
 import GlobalLoader from "../../components/ui/GlobalLoader";
 import SectionTabs from "../../components/ui/SectionTabs";
 import { useState } from "react";
@@ -61,7 +62,7 @@ function ProfileForm({ source, patient }) {
             <div className="profile-photo-editor">
               <label className="profile-photo-preview" title="Change profile photo">
                 <input className="profile-photo-input" type="file" accept=".jpg,.jpeg,.png,.webp" onChange={selectImage} aria-label="Change profile photo" aria-describedby="profile-photo-help" />
-                {form.image && !imageFailed ? <img src={form.image} alt="Profile preview" onError={() => setImageFailed(true)} /> : <span aria-label="Profile initials">{initials}</span>}
+                {form.image && !imageFailed ? <img src={profileImageSrc(form.image)} alt="Profile preview" onError={() => setImageFailed(true)} /> : <span aria-label="Profile initials">{initials}</span>}
                 <span className="profile-photo-change"><Camera size={16} /> Edit</span>
               </label>
               <div className="profile-photo-controls">
