@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import { callApi } from "../../api/apiClient";
+import { callApi } from "../../api/apiClient.js";
 
 export const fetchCurrentUser = createAsyncThunk(
   "auth/fetchCurrentUser",
@@ -29,6 +29,7 @@ const initialState = {
   user: null,
   loading: true,
   isAuthenticated: false,
+  sessionNotice: "",
 };
 
 const authSlice = createSlice({
@@ -36,11 +37,13 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     setAuthUser: (state, action) => {
+      state.sessionNotice = "";
       state.user = action.payload;
       state.isAuthenticated = Boolean(action.payload);
       state.loading = false;
     },
-    clearAuthUser: (state) => {
+    clearAuthUser: (state, action) => {
+      state.sessionNotice = action.payload || state.sessionNotice || "";
       state.user = null;
       state.isAuthenticated = false;
       state.loading = false;
@@ -62,6 +65,7 @@ const authSlice = createSlice({
         state.loading = false;
       })
       .addCase(logoutUser.fulfilled, (state) => {
+        state.sessionNotice = "";
         state.user = null;
         state.isAuthenticated = false;
         state.loading = false;

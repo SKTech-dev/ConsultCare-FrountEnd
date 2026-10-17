@@ -41,6 +41,7 @@ pids/
 coverage/
 playwright-report/
 test-results/
+e2e-artifacts/
 *.lcov
 
 # Temporary folders

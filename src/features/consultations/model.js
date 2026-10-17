@@ -17,15 +17,23 @@ export function sessionStartsAt(session) {
 }
 
 export function isSessionLive(session, at = Date.now()) {
-  return Boolean(session && sessionStartsAt(session) <= at && at < sessionEndsAt(session));
+  return Boolean(session && !session.closedAt && sessionStartsAt(session) <= at && (session.startedAt || at < sessionEndsAt(session)));
 }
 
 export function isUpcomingSession(session, at = Date.now()) {
-  return Boolean(session?.date && session.date >= sriLankanDate(at) && sessionEndsAt(session) > at);
+  return Boolean(session?.date && !session.closedAt && (session.startedAt || (session.date >= sriLankanDate(at) && sessionEndsAt(session) > at)));
+}
+
+export function isUpcomingBooking(booking, session, at = Date.now()) {
+  if (["COMPLETED", "CANCELLED", "NO-SHOW"].includes(booking.status)) return false;
+  // An over-running call must remain reachable even after its scheduled end.
+  if (booking.status === "IN CONSULTATION") return true;
+  return Boolean(session && ((session.startedAt && !session.closedAt) || sessionEndsAt(session) > at));
 }
 
 export function isBookableSession(session, at = Date.now()) {
-  return Boolean(session?.online && isUpcomingSession(session, at));
+  // Overrunning queues stay visible, but must not accept new paid bookings.
+  return Boolean(session?.online && session?.date >= sriLankanDate(at) && sessionEndsAt(session) > at);
 }
 
 export function sortUpcomingSessions(sessions) {
@@ -51,5 +59,5 @@ export function queueFor(state, professionalId, sessionId) {
 export function canRead(state, booking) {
   return Boolean(booking && (state.role === "user"
     ? booking.patientId === state.patient.id
-    : ["doctor", "lawyer"].includes(state.role) && booking.professionalId === state.professionalId && (!booking.scheduledById || Boolean(booking.acceptedAt))));
+    : ["doctor", "lawyer", "counsellor"].includes(state.role) && booking.professionalId === state.professionalId && (!booking.scheduledById || Boolean(booking.acceptedAt))));
 }

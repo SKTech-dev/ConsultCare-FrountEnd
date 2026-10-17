@@ -1,5 +1,8 @@
+import { historyContext } from "../../features/consultations/calendar";
+import GlobalLoader from "../../components/ui/GlobalLoader";
+import SectionTabs from "../../components/ui/SectionTabs";
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { CalendarDays, Users, Video } from "lucide-react";
 import { callApi } from "../../api/apiClient";
@@ -8,7 +11,14 @@ import { money, sriLankanDate } from "../../features/consultations/model";
 import { Empty, PageHeading, Panel, Status, useWorkspace } from "../../components/workspace/Workspace";
 import { MessageOverlay } from "../../components/ui/MessageBox";
 import VideoCall from "../../components/workspace/VideoCall";
+import PayHereCheckout from "../../components/workspace/PayHereCheckout";
+import RefundRequest from "../../components/workspace/RefundRequest";
 import "./clinics.css";
+import { useUnsavedChanges } from "../../components/ui/UnsavedChanges";
+import ErrorNotice from "../../components/ui/ErrorNotice";
+import ListFilters, { emptyFilters, filterParams } from "../../components/workspace/ListFilters";
+import EditSessionTime from "../../components/workspace/EditSessionTime";
+import ReasonDialog from "../../components/ui/ReasonDialog";
 
 function useClinics(endpoint) {
   const [result, setResult] = useState({ endpoint: null, data: null, error: "" });
@@ -35,8 +45,8 @@ function useClinics(endpoint) {
 }
 
 function LoadState({ data, error, refresh }) {
-  if (error) return <p className="ws-notice" role="alert">{error} <button className="underline" onClick={refresh}>Retry</button></p>;
-  if (!data) return <p role="status" className="ws-notice">Loading clinics…</p>;
+  if (error) return <ErrorNotice error={error} onRetry={refresh} />;
+  if (!data) return <GlobalLoader compact message="Loading clinics…" />;
   return null;
 }
 
@@ -48,6 +58,7 @@ export function ScheduleClinic() {
   const [form, setForm] = useState({ title: "", description: "", date: sriLankanDate(), start: "", end: "", capacity: 20, fee: "" });
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState(null);
+  const markSaved = useUnsavedChanges(form);
   const enabled = professional?.status === "verified";
   const field = (key) => ({ value: form[key], onChange: (event) => setForm((old) => ({ ...old, [key]: event.target.value })) });
   async function submit(event) {
@@ -60,6 +71,7 @@ export function ScheduleClinic() {
     try {
       const response = await callApi("POST", "/clinics", { ...form, title: form.title.trim(), description: form.description.trim(), capacity: Number(form.capacity), fee: Number(form.fee) });
       await dispatch(fetchWorkspace());
+      markSaved();
       setNotice({ type: "success", text: response.message, id: response.data.id });
     } catch (error) { setNotice({ type: "error", text: error.message }); }
     finally { setBusy(false); }
@@ -81,34 +93,39 @@ export function ScheduleClinic() {
           <label className="ws-field">Clinic consultation fee (LKR)<input type="number" required min="0.01" max="1000000" step="0.01" {...field("fee")} /></label>
           <label className="ws-field">Clinic places<input type="number" required min="2" max="100" step="1" {...field("capacity")} /></label>
         </div>
-        <p className="ws-muted">Fee per attendee, for this clinic only. All times use Sri Lanka time. Attendees must pay before joining; their camera and microphone are disabled for this lecture.</p>
-        <div className="ws-actions"><button className="ws-link" disabled={busy || !enabled}>{busy ? "Scheduling clinic…" : "Schedule clinic"}</button><Link className="ws-link secondary" to="/app/clinics">View my clinics</Link></div>
+        <p className="ws-muted">Fee per attendee, for this clinic only. All times use Sri Lanka time. Attendees must pay before joining. Microphones start muted and can be enabled; attendee cameras and chat are disabled.</p>
+        <div className="ws-actions"><button className="ws-link" disabled={busy || !enabled}>{busy ? "Scheduling clinic…" : "Schedule clinic"}</button><Link className="ws-link secondary" to="/app/queue?tab=clinics">View my clinics</Link></div>
       </fieldset>
     </form>
     {notice && <MessageOverlay type={notice.type} text={notice.text} onClose={() => { const id = notice.id; setNotice(null); if (id) navigate(`/app/clinics/${id}`); }} />}
   </Panel>;
 }
 
-export function ClinicList({ view = "upcoming", profession, title = "Group clinics", embedded = false }) {
+export function ClinicList({ view = "upcoming", profession, title = "Group clinics", embedded = false, filters = emptyFilters }) {
+  const { role } = useWorkspace();
   const [pagination, setPagination] = useState({ key: "", page: 1 });
-  const key = `${view}/${profession || ""}`;
+  const [search, setSearch] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const query = new URLSearchParams({ view, ...filterParams(filters), ...(profession ? { profession } : {}), ...(view === "available" ? { q: appliedSearch } : {}) });
+  const key = query.toString();
   const page = pagination.key === key ? pagination.page : 1;
-  const result = useClinics(`/clinics?view=${view}${profession ? `&profession=${profession}` : ""}&page=${page}`);
-  return <section className={embedded ? "ws-space" : ""} aria-label={title}>
+  const result = useClinics(`/clinics?${key}&page=${page}`);
+  return <section className="clinic-list" aria-label={title}>
     <Panel title={title}>
       <p>{view === "available" ? "Join a paid group lecture with a verified professional. Clinics have their own fees and no individual queue." : "Group lectures are separate from your private consultation queues. Status updates every 10 seconds."}</p>
+      {view === "available" && <form className="clinic-search" onSubmit={(event) => { event.preventDefault(); setAppliedSearch(search.trim()); }}><label className="ws-field">Search clinics by professional name<input type="search" maxLength={120} value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`Search ${profession || "professional"} name`} /></label><button className="ws-link">Search</button><button type="button" className="ws-link secondary" onClick={() => { setSearch(""); setAppliedSearch(""); }}>Clear</button></form>}
       <LoadState {...result} />
       {result.data && <>
-        {!result.data.items.length && <p className="ws-muted clinic-empty">No clinics in this view.</p>}
-        <div className="clinic-cards">{result.data.items.map((clinic) => <article className="clinic-card" key={clinic.id}>
+        {!result.data.items.length && <Empty title="No clinics in this view">{view === "available" ? "Available group clinics will appear here when professionals schedule them." : "Clinics matching this view and any selected filters will appear here."}</Empty>}
+        {result.data.items.length > 0 && <div className="clinic-cards">{result.data.items.map((clinic) => <article className="clinic-card" key={clinic.id}>
           <div className="clinic-card-top"><span className="clinic-type"><Users size={16} />Group lecture</span><Status>{clinic.status}</Status></div>
-          <h3><Link to={`/app/clinics/${clinic.id}`}>{clinic.title}</Link></h3>
+          <h3><Link to={`/app/clinics/${clinic.id}?tab=${clinic.registration?.status === "pending" ? "registration" : role === "admin" ? "payments" : ["doctor", "lawyer", "counsellor"].includes(role) ? "manage" : "registration"}`}>{clinic.title}</Link></h3>
           <p>{clinic.professionalName} · {clinic.profession}</p>
           <p className="clinic-date"><CalendarDays size={16} />{clinic.date} · {clinic.start}–{clinic.end}</p>
           <div className="clinic-card-bottom"><strong>{money(clinic.registration?.fee || clinic.fee)}</strong><span>{clinic.remaining} of {clinic.capacity} places available</span></div>
           {clinic.registration && <p>Your registration: {clinic.registration.status} · {clinic.registration.payment}</p>}
-          <Link className="ws-link secondary" to={`/app/clinics/${clinic.id}`}>{clinic.registration?.status === "pending" ? "Continue to clinic payment" : clinic.status === "live" ? "Open clinic room" : "View clinic"}</Link>
-        </article>)}</div>
+          <Link className="ws-link secondary" to={`/app/clinics/${clinic.id}?tab=${role === "admin" ? "payments" : ["doctor", "lawyer", "counsellor"].includes(role) ? "manage" : "registration"}`}>{clinic.registration?.status === "pending" ? "Continue to clinic payment" : clinic.status === "live" ? "Open clinic room" : "View clinic"}</Link>
+        </article>)}</div>}
         {result.data.count > result.data.pageSize && <div className="clinic-pagination"><button className="ws-link secondary" disabled={page === 1} onClick={() => setPagination({ key, page: page - 1 })}>Previous</button><span>Page {page} of {Math.ceil(result.data.count / result.data.pageSize)}</span><button className="ws-link secondary" disabled={page * result.data.pageSize >= result.data.count} onClick={() => setPagination({ key, page: page + 1 })}>Next</button></div>}
       </>}
     </Panel>
@@ -118,9 +135,13 @@ export function ClinicList({ view = "upcoming", profession, title = "Group clini
 export default function Clinics() {
   const { role } = useWorkspace();
   const [view, setView] = useState("upcoming");
+  const [filters, setFilters] = useState({ ...emptyFilters });
+  if (["doctor", "lawyer", "counsellor"].includes(role)) return <Navigate to="/app/queue?tab=clinics" replace />;
+  if (role === "user") return <Navigate to="/app/bookings?tab=clinics" replace />;
   return <><PageHeading title={role === "admin" ? "Clinics & registrations." : "Your group clinics."}>Review schedules, confirmed registrations and clinic payments separately from private consultations.</PageHeading>
-    <label className="ws-field clinic-filter">Clinic view<select value={view} onChange={(event) => setView(event.target.value)}><option value="upcoming">Upcoming and live</option><option value="history">Past and cancelled</option><option value="all">All clinics</option>{role === "user" && <option value="available">Available clinics</option>}</select></label>
-    <ClinicList view={view} />
+    <label className="ws-field clinic-filter">Clinic view<select value={view} onChange={(event) => setView(event.target.value)}><option value="upcoming">Upcoming</option><option value="ongoing">Ongoing</option><option value="history">Past and cancelled</option><option value="all">All clinics</option>{role === "user" && <option value="available">Available clinics</option>}</select></label>
+    <ListFilters label="Filter group clinics" onApply={setFilters} statuses={["scheduled", "live", "completed", "cancelled"]} />
+    <ClinicList view={view} filters={filters} />
   </>;
 }
 
@@ -130,7 +151,9 @@ export function ClinicDetails() {
 }
 
 function ClinicDetailContent({ id }) {
-  const { role, professionalId } = useWorkspace();
+  const [historyParams] = useSearchParams();
+  const history = historyContext(historyParams);
+  const { role, professionalId, payhereEnabled } = useWorkspace();
   const dispatch = useDispatch();
   const [page, setPage] = useState(1);
   const result = useClinics(`/clinics/${id}?page=${page}`);
@@ -138,13 +161,16 @@ function ClinicDetailContent({ id }) {
   const [notice, setNotice] = useState(null);
   const [confirm, setConfirm] = useState(null);
   const [consent, setConsent] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [reason, setReason] = useState("");
+  const markSaved = useUnsavedChanges({ reason, consent });
   const clinic = result.data;
   async function action(path, body) {
     if (busy) return;
     setConfirm(null); setBusy(true);
     try {
       const response = await callApi("POST", `/clinics/${id}/${path}`, body);
+      markSaved();
       setNotice({ type: "success", text: response.message });
       result.refresh();
       await dispatch(fetchWorkspace());
@@ -158,15 +184,15 @@ function ClinicDetailContent({ id }) {
   const before = Date.now() < Date.parse(clinic.startsAt);
   const liveTime = !before && Date.now() < Date.parse(clinic.endsAt);
   const scheduled = clinic.status === "scheduled";
-  const paid = registration?.status === "confirmed" && registration.payment === "paid (mock)";
+  const paid = registration?.status === "confirmed" && registration.payment === "paid";
   const canJoin = clinic.status === "live" && liveTime && clinic.professionalAvailable && (owner || paid);
   const canPay = registration?.status === "pending" && Date.now() < Date.parse(registration.paymentDueAt) && scheduled && before && clinic.professionalAvailable;
   const disabled = busy || Boolean(result.error);
   return <>
-    <Link className="ws-name-link" to="/app/clinics">← Back to clinics</Link>
+    <Link className="ws-name-link" to={history?.dayUrl || (["doctor", "lawyer", "counsellor"].includes(role) ? (["completed", "cancelled"].includes(clinic.status) || Date.parse(clinic.endsAt) <= Date.now() ? "/app/history?tab=clinics" : "/app/queue?tab=clinics") : role === "user" ? (["completed", "cancelled"].includes(clinic.status) || Date.parse(clinic.endsAt) <= Date.now() ? "/app/history?tab=clinics" : "/app/bookings?tab=clinics") : "/app/clinics")}>← Back to {history ? "day details" : ["doctor", "lawyer", "counsellor"].includes(role) ? "consultations" : role === "user" ? "my consultations" : "clinics"}</Link>
     <PageHeading eyebrow="GROUP CLINIC · LECTURE" title={clinic.title} action={<Status>{clinic.status}</Status>}>{clinic.professionalName} · {clinic.profession}</PageHeading>
     <LoadState {...result} />
-    <div className="ws-grid-two"><Panel title="Clinic information">
+    <SectionTabs ids={["info", staff ? "manage" : "registration", ...(staff ? ["payments"] : [])]} order={role === "admin" ? ["payments", "manage", "info"] : staff ? ["manage", "payments", "info"] : ["registration", "info"]}><Panel title="Clinic information">
       <p className="clinic-description">{clinic.description || "No additional description."}</p>
       <div className="ws-row"><span>Date and time</span><strong>{clinic.date} · {clinic.start}–{clinic.end}</strong></div>
       <p className="ws-muted">Sri Lanka time</p>
@@ -174,8 +200,8 @@ function ClinicDetailContent({ id }) {
       <div className="ws-row"><span>Available places</span><strong>{clinic.remaining} / {clinic.capacity}</strong></div>
       {clinic.cancellationReason && <p className="ws-notice">Cancellation: {clinic.cancellationReason}</p>}
     </Panel><Panel title={staff ? "Manage clinic" : "Your clinic registration"}>
-      <div className="ws-notice">This is a shared lecture, not a private consultation. Attendees watch and listen with camera, microphone and chat disabled. Do not share personal medical or legal information. Reports and private consultation records are not shared here.</div>
-      {clinic.mockPayments ? <p className="ws-muted">Test payments only. No real money is charged or refunded.</p> : <p className="ws-notice">Online payments are not connected. Reservations cannot be paid until a payment provider is configured.</p>}
+      <div className="ws-notice">This is a shared group clinic. Your microphone starts muted; you can turn it on to speak. Attendee cameras and chat are disabled. Do not share personal medical or legal information. Private consultation records are not shared here.</div>
+      {payhereEnabled ? <p className="ws-muted">Payments are securely processed by PayHere. Your place is confirmed only after PayHere verifies payment.</p> : <p className="ws-notice">Online payments are not connected. Reservations cannot be paid until a payment provider is configured.</p>}
       {role === "user" && <>
         {registration && <div className="ws-row"><Status>{registration.status}</Status><span>{registration.payment} · {money(registration.fee)}</span></div>}
         {(!registration || registration.status === "expired") && scheduled && before && <>
@@ -184,28 +210,33 @@ function ClinicDetailContent({ id }) {
         </>}
         {registration?.status === "pending" && <p className="ws-muted">Pay before {new Date(registration.paymentDueAt).toLocaleString("en-GB", { timeZone: "Asia/Colombo" })} (Sri Lanka time). Unpaid places expire automatically.</p>}
         <div className="ws-actions">
-          {registration?.status === "pending" && <button className="ws-link" disabled={disabled || !canPay || !clinic.mockPayments} onClick={() => setConfirm({ title: "Confirm test clinic payment?", text: `Confirm the test payment of ${money(registration.fee)} for this group lecture. No real money is charged.`, path: "payment-simulation", body: { success: true } })}>Pay for clinic (test)</button>}
-          {registration && ["pending", "confirmed"].includes(registration.status) && scheduled && before && <button className="ws-link secondary" disabled={disabled} onClick={() => setConfirm({ title: "Cancel clinic registration?", text: "Your place will be released. Paid test registrations need an administrator's simulated refund. A cancelled registration cannot be rebooked.", path: "cancel-registration" })}>Cancel registration</button>}
+          {registration && ["pending", "confirmed"].includes(registration.status) && scheduled && before && <button className="ws-link secondary" disabled={disabled} onClick={() => setConfirm({ title: "Cancel clinic registration?", text: "Your place will be released. Verified payments are marked for refund review. A cancelled registration cannot be rebooked.", path: "cancel-registration" })}>Cancel registration</button>}
         </div>
+        {registration?.status === "pending" && <PayHereCheckout endpoint={`/clinics/${id}/payhere-checkout`} amount={money(registration.fee)} disabled={disabled || !canPay} label={payhereEnabled ? "Pay with PayHere" : "Pay using wallet credit"} />}
         {paid && scheduled && <p className="ws-notice">Your place is confirmed. The group room opens when the professional starts the clinic during its scheduled time.</p>}
+        {registration && (scheduled || registration.walletCredited) && <RefundRequest clinic booking={registration} session={clinic} />}
       </>}
       {staff && <>
         <div className="ws-actions">
+          {clinic.canUpdate && <button className="ws-link secondary" disabled={disabled} onClick={() => setEditing(true)}>Update time & places</button>}
           {owner && scheduled && <button className="ws-link" disabled={disabled || !liveTime || !clinic.professionalAvailable} onClick={() => setConfirm({ title: "Start group clinic?", text: "Paid attendees will be able to enter the lecture room. Starting commits this clinic to the scheduled end time.", path: "start" })}><Video size={16} />Start clinic</button>}
           {clinic.status === "live" && <button className="ws-link" disabled={disabled} onClick={() => setConfirm({ title: "Complete clinic?", text: "The group room will close for everyone. Confirmed paid tickets will count toward the professional's clinic earnings, including attendees who did not join.", path: "complete" })}>Complete clinic</button>}
         </div>
-        {["scheduled", "live"].includes(clinic.status) && <div className="clinic-cancel"><label className="ws-field">Cancellation reason<textarea maxLength={1000} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Explain why the clinic cannot take place." /></label><button className="ws-link secondary" disabled={disabled || reason.trim().length < 3} onClick={() => setConfirm({ title: "Cancel the entire clinic?", text: "All registrations will be cancelled, paid test payments will need refunds, and the date will be released.", path: "cancel", body: { reason: reason.trim() } })}>Cancel clinic</button></div>}
+        {clinic.canCancel && <div className="clinic-cancel"><label className="ws-field">Cancellation reason<textarea maxLength={1000} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Explain why the clinic cannot take place." /></label><button className="ws-link secondary" disabled={disabled || reason.trim().length < 3} onClick={() => setConfirm({ title: "Cancel the entire clinic?", text: "All unpaid registrations will be cancelled and the date will be released.", path: "cancel", body: { reason: reason.trim() } })}>Cancel clinic</button></div>}
+        {clinic.canUpdate && !clinic.canCancel && <p className="ws-notice">This clinic has received payment. You can update its time and places, but cannot cancel it.</p>}
       </>}
       {busy && <p role="status">Saving clinic changes…</p>}
-    </Panel></div>
-    {canJoin && <div className="ws-space"><VideoCall clinicId={id} /></div>}
+    </Panel>
     {staff && <div className="ws-space"><Panel title="Clinic registrations & payments">
-      <div className="clinic-payment-summary"><span>Collected (test): <strong>{money(clinic.paymentTotals?.["paid (mock)"] || 0)}</strong></span><span>Refund requested: <strong>{money(clinic.paymentTotals?.["refund requested"] || 0)}</strong></span><span>Refunded (test): <strong>{money(clinic.paymentTotals?.["refunded (mock)"] || 0)}</strong></span></div>
+      <div className="clinic-payment-summary"><span>Collected: <strong>{money(clinic.paymentTotals?.paid || 0)}</strong></span><span>Refund requested: <strong>{money(clinic.paymentTotals?.["refund requested"] || 0)}</strong></span></div>
       <p className="ws-muted">Clinic ticket revenue enters monthly earnings only after the clinic completes. Access authorization is not proof of attendance. No private records are linked to this roster.</p>
-      {clinic.registrations?.length ? <div className="ws-table-wrap"><table className="ws-table"><caption className="sr-only">Clinic registrations and test payments</caption><thead><tr><th>Patient / client</th><th>Registration</th><th>Payment</th><th>Amount</th><th>Paid at (Sri Lanka)</th>{role === "admin" && <th>Action</th>}</tr></thead><tbody>{clinic.registrations.map((row) => <tr key={row.id}><td>{row.patientName}</td><td>{row.status}</td><td>{row.payment}</td><td>{money(row.fee)}</td><td>{row.paidAt ? new Date(row.paidAt).toLocaleString("en-GB", { timeZone: "Asia/Colombo" }) : "Not paid"}</td>{role === "admin" && <td>{row.payment === "refund requested" && <button className="ws-link secondary" disabled={disabled || !clinic.mockPayments} onClick={() => setConfirm({ title: "Record test refund?", text: "This records a simulated refund only. No real money is transferred.", path: `registrations/${row.id}/refund-simulation` })}>Simulate refund</button>}</td>}</tr>)}</tbody></table></div> : <Empty title="No registrations yet">Paid and unpaid registrations will appear here.</Empty>}
+      {clinic.registrations?.length ? <div className="ws-table-wrap"><table className="ws-table"><caption className="sr-only">Clinic registrations and PayHere payment status</caption><thead><tr><th>Patient / client</th><th>Registration</th><th>Payment</th><th>Amount</th><th>Paid at (Sri Lanka)</th></tr></thead><tbody>{clinic.registrations.map((row) => <tr key={row.id}><td>{row.patientName}</td><td>{row.status}</td><td>{row.payment}</td><td>{money(row.fee)}</td><td>{row.paidAt ? new Date(row.paidAt).toLocaleString("en-GB", { timeZone: "Asia/Colombo" }) : "Not paid"}</td></tr>)}</tbody></table></div> : <Empty title="No registrations yet">Paid and unpaid registrations will appear here.</Empty>}
       {clinic.registrationCount > clinic.pageSize && <div className="clinic-pagination"><button className="ws-link secondary" disabled={page === 1} onClick={() => setPage((n) => n - 1)}>Previous</button><span>Page {page}</span><button className="ws-link secondary" disabled={page * clinic.pageSize >= clinic.registrationCount} onClick={() => setPage((n) => n + 1)}>Next</button></div>}
     </Panel></div>}
-    {confirm && <MessageOverlay type="confirm" title={confirm.title} text={confirm.text} onClose={() => setConfirm(null)} onConfirm={() => action(confirm.path, confirm.body)} />}
+    </SectionTabs>
+    {canJoin && <div className="ws-space"><VideoCall clinicId={id} /></div>}
+    {editing && <EditSessionTime clinic item={clinic} endpoint={`/clinics/${id}`} onClose={() => setEditing(false)} onSaved={async (text) => { setEditing(false); setNotice({ type: "success", text }); result.refresh(); await dispatch(fetchWorkspace()); }} />}
+    {confirm && (confirm.path === "cancel-registration" ? <ReasonDialog title={confirm.title} text={confirm.text} busy={busy} onClose={() => setConfirm(null)} onConfirm={(reason) => action(confirm.path, { reason })} /> : <MessageOverlay type="confirm" title={confirm.title} text={confirm.text} onClose={() => setConfirm(null)} onConfirm={() => action(confirm.path, confirm.body)} />)}
     {notice && <MessageOverlay type={notice.type} text={notice.text} onClose={() => setNotice(null)} />}
   </>;
 }

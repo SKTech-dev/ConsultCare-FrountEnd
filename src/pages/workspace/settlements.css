@@ -19,6 +19,10 @@ details[open]>.earnings-summary>svg{transform:rotate(180deg)}
 .earnings-open{font-weight:600;font-size:12px}
 .earnings-back{display:inline-flex;align-items:center;gap:8px;margin-bottom:22px}
 .earnings-totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.earnings-month-detail{--earnings-gap:20px;display:grid;gap:var(--earnings-gap);min-width:0}
+.earnings-month-detail .earnings-totals{gap:var(--earnings-gap)}
+.earnings-month-detail>.earnings-pagination,.earnings-month-detail>.earnings-pay,.earnings-month-detail>.ws-notice{margin:0}
+.earnings-month-detail>.section-tabs>.section-tab-list{margin-bottom:var(--earnings-gap)}
 .earnings-totals .ws-panel>strong{font-size:27px;display:block;color:var(--ws-primary);overflow-wrap:anywhere}
 .earnings-status-paid{color:var(--ws-success);border:1px solid currentColor}
 .earnings-status-failed{color:var(--ws-error)}
@@ -29,3 +33,6 @@ details[open]>.earnings-summary>svg{transform:rotate(180deg)}
 .earnings-pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:20px;font-size:12px}
 @media(max-width:900px){.earnings-totals{grid-template-columns:1fr}.earnings-summary{flex-wrap:wrap;gap:12px}.earnings-summary>strong{font-size:16px}}
 .earnings-breakdown { font-size: 12px; line-height: 1.6; color: var(--ws-textSecondary); margin-top: 8px; }
+.earnings-pagination{flex-wrap:wrap}
+.earnings-summary>strong,.earnings-month-link>strong{white-space:normal;overflow-wrap:anywhere;max-width:100%}
+@media(max-width:520px){.earnings-group{padding:12px}.earnings-summary>div{flex-basis:100%}.earnings-month-link>div,.earnings-professional>div{min-width:0;flex-basis:100%}.earnings-months{gap:20px}}

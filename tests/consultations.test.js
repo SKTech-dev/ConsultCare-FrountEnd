@@ -2,12 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { configureStore } from "@reduxjs/toolkit";
 import { apiClient } from "../src/api/apiClient.js";
-import reducer, { fetchWorkspace, book, pay, moderate, saveWeeklyAvailability } from "../src/features/consultations/consultationSlice.js";
+import reducer, { fetchWorkspace, book, moderate, saveWeeklyAvailability } from "../src/features/consultations/consultationSlice.js";
 
 globalThis.document = { cookie: "cc_csrf=test-csrf" };
 globalThis.window = { dispatchEvent() {} };
 const snapshot = { role: "user", professionalId: null, patient: { id: "real-user" },
-  patients: [], professionals: [], sessions: [], bookings: [], issues: [], mockPayments: true };
+  patients: [], professionals: [], sessions: [], bookings: [], issues: [], payhereEnabled: true };
 const store = () => configureStore({ reducer: { consultations: reducer } });
 
 test("weekly schedule sends its own fee in the same request", async () => {
@@ -55,17 +55,7 @@ test("booking uses server identity and fee, includes CSRF, and refreshes state",
   assert.equal(value.id, "server-booking");
   assert.deepEqual(JSON.parse(requests[0].data), { sessionId: "session-id", reason: "Question" });
   assert.equal(requests[0].headers["X-CSRF-Token"], "test-csrf");
-  assert.equal(requests[1].url, "/workspace");
-  assert.equal(s.getState().consultations.pending, 0);
-});
-
-test("failed server changes expose errors without optimistic success", async () => {
-  apiClient.defaults.adapter = async () => { throw { response: { status: 409, data: { message: "Session is full." } } }; };
-  const s = store();
-  const action = await s.dispatch(pay({ id: "booking", success: true }));
-  assert.ok(action.error);
-  assert.equal(s.getState().consultations.error, "Session is full.");
-  assert.equal(s.getState().consultations.bookings.length, 0);
+  assert.equal(requests[1].url, "/workspace?live=true");
   assert.equal(s.getState().consultations.pending, 0);
 });
 
@@ -74,7 +64,7 @@ test("admin moderation can use one contextual error instead of a duplicate globa
   const s = store();
   const action = await s.dispatch(moderate({ id: "professional", status: "verified", localFeedback: true }));
   assert.ok(action.error);
-  assert.equal(s.getState().consultations.error, "Complete credentials first.");
+  assert.equal(s.getState().consultations.error, "");
   assert.equal(s.getState().consultations.feedback, null);
 });
 

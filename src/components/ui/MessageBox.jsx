@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { useEffect, useId, useRef } from "react";
 import { useSelector } from "react-redux";
 
@@ -36,6 +37,7 @@ export const MessageOverlay = ({
   }, []);
 
   function keyDown(event) {
+    event.stopPropagation();
     if (event.key === "Escape" && !isProcessing) {
       event.preventDefault();
       onClose();
@@ -53,7 +55,7 @@ export const MessageOverlay = ({
     }
   }
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center"
       style={{ backgroundColor: colors.overlay }}
@@ -65,7 +67,7 @@ export const MessageOverlay = ({
         aria-describedby={textId}
         tabIndex={-1}
         onKeyDown={keyDown}
-        className="w-[90%] max-w-md rounded-2xl p-6 shadow-xl text-center"
+        className="w-[90%] max-w-md max-h-[90dvh] overflow-y-auto break-words rounded-2xl p-5 sm:p-6 shadow-xl text-center"
         style={{
           backgroundColor: colors.cardBg,
           border: `1px solid ${borderColor}`,
@@ -122,6 +124,6 @@ export const MessageOverlay = ({
           </button>
         )}
       </div>
-    </div>
+    </div>, document.fullscreenElement || document.querySelector(".video-expanded") || document.querySelector(".room-expanded") || document.body
   );
 };

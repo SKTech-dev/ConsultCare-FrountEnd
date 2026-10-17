@@ -2,6 +2,7 @@ export const ROLE_HOME = {
   user: "/dashboard",
   doctor: "/doctor/dashboard",
   lawyer: "/lawyer/dashboard",
+  counsellor: "/counsellor/dashboard",
   admin: "/admin/dashboard",
 };
 
@@ -17,7 +18,7 @@ export function getHome(user) {
 // Only known destinations are accepted; never redirect to an arbitrary URL.
 export function getDestination(user, requested) {
   const role = getRole(user);
-  if (role === "user" && ["/consult/doctors", "/consult/lawyers"].includes(requested)) {
+  if (role === "user" && ["/consult/doctors", "/consult/lawyers", "/consult/counsellors"].includes(requested)) {
     return requested;
   }
   return getHome(user);

@@ -4,52 +4,89 @@ import { callApi } from "../../api/apiClient.js";
 const empty = {
   role: null, professionalId: null, patient: {}, patients: [], professionals: [],
   sessions: [], weeklyAvailability: [], bookings: [], loaded: false, loading: false,
-  pending: 0, error: "", requestId: null, mockPayments: false,
-  feedback: null, liveConnected: false, familyProfessionalIds: [], onboarding: null, transferNotifications: [],
+  pending: 0, error: "", requestId: null, payhereEnabled: false,
+  feedback: null, liveConnected: false, familyProfessionalIds: [], onboarding: null, notificationSummary: null, livePending: null, snapshotAt: null,
 };
 
-export const fetchWorkspace = createAsyncThunk("consultations/fetch", async (_, { rejectWithValue }) => {
-  try { return (await callApi("GET", "/workspace")).data; }
+export const fetchWorkspace = createAsyncThunk("consultations/fetch", async (options, { rejectWithValue }) => {
+  try { return (await callApi("GET", options?.live ? "/workspace?live=true" : "/workspace")).data; }
   catch (e) { return rejectWithValue(e.message); }
 });
 
 function command(name, request) {
   return createAsyncThunk("consultations/" + name, async (payload, context) => {
     try {
-      const [method, url, body] = request(payload, context.getState().consultations);
-      const response = await callApi(method, url, body);
+      const [method, url, body, config] = request(payload, context.getState().consultations);
+      const response = await callApi(method, url, body, null, config);
       // A failed refresh must not report an already-committed write as failed.
-      const refresh = await context.dispatch(fetchWorkspace());
+      const refresh = await context.dispatch(fetchWorkspace({ live: true }));
       if (refresh.error) context.dispatch(refreshWarning());
       return response.data || response;
     } catch (e) { return context.rejectWithValue(e.message || e); }
   });
 }
 
-export const saveProfile = command("saveProfile", (p) => ["PUT", "/profile", p]);
+export const saveProfile = command("saveProfile", (p) => ["PUT", "/profile", p, { timeout: 120000 }]);
 export const saveFamily = command("saveFamily", ({ id, saved }) => ["PUT", "/family-professionals/" + id, { saved }]);
 export const saveWeeklyAvailability = command("saveWeeklyAvailability", ({ days, fee }) => ["PUT", "/weekly-availability", { days, fee }]);
 export const book = command("book", (p) => ["POST", "/bookings", { sessionId: p.sessionId, reason: p.reason || "" }]);
-export const pay = command("pay", (p) => ["POST", "/bookings/" + p.id + "/payment-simulation", { success: p.success }]);
-export const transition = command("transition", (p) => ["PATCH", "/bookings/" + p.id + "/status", { status: p.status }]);
+export const transition = command("transition", (p) => ["PATCH", "/bookings/" + p.id + "/status", { status: p.status, ...(p.reason ? { reason: p.reason } : {}), ...(p.notesRevision != null ? { notesRevision: p.notesRevision } : {}) }]);
 export const message = command("message", (p) => ["POST", "/bookings/" + p.id + "/messages", { text: p.text }]);
-export const saveNotes = command("saveNotes", ({ id, ...p }) => ["PUT", "/bookings/" + id + "/notes", p]);
-export const sendPrescription = command("sendPrescription", ({ id, text }) => ["PUT", "/bookings/" + id + "/prescription", { text }]);
+export const saveNotes = command("saveNotes", ({ id, localPending, ...p }) => ["PUT", "/bookings/" + id + "/notes", p]);
+export const sendPrescription = command("sendPrescription", ({ id, text, revision = 0, reason = "" }) => ["PUT", "/bookings/" + id + "/prescription", { text, revision, reason }]);
 // Admin moderation has its own contextual popup (for example, incomplete credentials).
 // Keep that one message instead of also showing the generic workspace error popup.
-export const moderate = command("moderate", (p) => ["PATCH", "/admin/users/" + p.id, { status: p.status }]);
-export const refund = command("refund", (id) => ["POST", "/admin/bookings/" + id + "/refund-simulation"]);
+export const moderate = command("moderate", (p) => ["PATCH", "/admin/users/" + p.id, { status: p.status, ...(p.reason ? { reason: p.reason } : {}) }]);
+
+function olderSnapshot(payload, current) {
+  return Boolean(payload?.snapshotAt && current?.snapshotAt && payload.snapshotAt < current.snapshotAt);
+}
+
+// An older full response can supply missing historical records, but cannot undo
+// newer stream data or restore records removed from the latest authorization set.
+function fillHistory(state, payload) {
+  const allowed = new Set(state.visibleBookingIds || state.bookings.map((row) => row.id));
+  for (const field of ["bookings", "sessions", "professionals"]) {
+    const existing = new Set(state[field].map((row) => row.id));
+    const wanted = field === "bookings" ? allowed : new Set(state.bookings.map((row) => field === "sessions" ? row.sessionId : row.professionalId));
+    for (const row of payload[field] || []) if (!existing.has(row.id) && wanted.has(row.id)) { state[field].push(row); existing.add(row.id); }
+  }
+}
+
+function applyWorkspace(state, payload) {
+  if (payload.bookingsScope !== "live") {
+    Object.assign(state, payload);
+    state.visibleBookingIds = payload.bookings.map((row) => row.id);
+    state.bookingsScope = "full";
+    return;
+  }
+  const allowed = new Set(payload.visibleBookingIds);
+  const records = new Map(state.bookings.filter((row) => allowed.has(row.id)).map((row) => [row.id, row]));
+  for (const row of payload.bookings) records.set(row.id, row);
+  // History sessions remain available while their authorized bookings remain.
+  const retainedSessions = new Set([...records.values()].map((row) => row.sessionId));
+  const sessions = new Map(state.sessions.filter((row) => retainedSessions.has(row.id)).map((row) => [row.id, row]));
+  for (const row of payload.sessions) sessions.set(row.id, row);
+  const historicalProfessionals = new Set([...records.values()].map((row) => row.professionalId));
+  const professionals = new Map(state.professionals.filter((row) => historicalProfessionals.has(row.id)).map((row) => [row.id, row]));
+  for (const row of payload.professionals) professionals.set(row.id, row);
+  Object.assign(state, payload, { bookings: [...records.values()], sessions: [...sessions.values()], professionals: [...professionals.values()] });
+}
 
 const slice = createSlice({
   name: "consultations", initialState: empty,
   reducers: {
     clearWorkspaceError: (state) => { state.error = ""; },
-    clearFeedback: (state) => { state.feedback = null; },
+    clearFeedback: (state) => { if (state.feedback?.type === "error" && state.error === state.feedback.text) state.error = ""; state.feedback = null; },
     refreshWarning: (state) => { state.error = "Your changes were saved, but the page could not refresh. Reload to see the latest information."; },
     liveStatus: (state, action) => { state.liveConnected = action.payload; },
     liveTick: (state) => { state.liveUpdatedAt = Date.now(); },
     receiveWorkspace: (state, action) => {
-      Object.assign(state, action.payload, { loaded: true, loading: false, requestId: null });
+      if (olderSnapshot(action.payload, state) || olderSnapshot(action.payload, state.livePending)) return;
+      if (action.payload.bookingsScope === "live" && (!state.loaded || state.loading)) state.livePending = action.payload;
+      if (action.payload.bookingsScope === "live" && !state.loaded) return;
+      applyWorkspace(state, action.payload);
+      if (action.payload.bookingsScope !== "live") Object.assign(state, { loaded: true, loading: false, requestId: null });
     },
   },
   extraReducers: (builder) => {
@@ -59,11 +96,16 @@ const slice = createSlice({
       .addCase(fetchWorkspace.pending, (state, action) => { state.loading = true; state.requestId = action.meta.requestId; })
       .addCase(fetchWorkspace.fulfilled, (state, action) => {
         if (state.requestId !== action.meta.requestId) return;
-        Object.assign(state, action.payload, { loaded: true, loading: false });
+        if (olderSnapshot(action.payload, state)) {
+          if (action.payload.bookingsScope !== "live") fillHistory(state, action.payload);
+        } else applyWorkspace(state, action.payload);
+        if (state.livePending && !olderSnapshot(state.livePending, state)) applyWorkspace(state, state.livePending);
+        state.livePending = null;
+        Object.assign(state, { loaded: true, loading: false });
       })
       .addCase(fetchWorkspace.rejected, (state, action) => {
         if (state.requestId !== action.meta.requestId) return;
-        state.loading = false; state.error = action.payload || "Could not load workspace.";
+        state.loading = false; state.livePending = null; state.error = action.payload || "Could not load workspace.";
       })
       .addMatcher((action) => action.type.startsWith("consultations/") && !action.type.startsWith("consultations/fetch") && action.type.endsWith("/pending"), (state, action) => {
         // Chat owns its own sending/retry state. Do not freeze the consultation room.
@@ -72,12 +114,12 @@ const slice = createSlice({
       })
       .addMatcher((action) => action.type.startsWith("consultations/") && !action.type.startsWith("consultations/fetch") && /\/(fulfilled|rejected)$/.test(action.type), (state, action) => {
         if (!action.meta.arg?.localPending) state.pending = Math.max(0, state.pending - 1);
-        if (action.type.endsWith("/rejected") && !action.meta.arg?.localPending) state.error = action.payload || "Could not save changes.";
+        if (action.type.endsWith("/rejected") && !action.meta.arg?.localPending && !action.meta.arg?.localFeedback) state.error = action.payload || "Could not save changes.";
         const name = action.type.split("/")[1];
         if (action.type.endsWith("/rejected")) {
           if (!action.meta.arg?.localFeedback && !action.meta.arg?.localPending) state.feedback = { type: "error", text: String(action.payload || "Could not save changes.") };
-        } else if (name !== "message") {
-          const messages = { book: "Booking reserved. Continue with payment to join the queue.", saveProfile: "Your profile has been saved.", saveWeeklyAvailability: "Your weekly sessions have been saved.", saveFamily: "Your family professionals have been updated.", transition: action.meta.arg.status === "CANCELLED" ? "Consultation cancelled." : "Consultation status updated.", pay: "Payment status updated.", saveNotes: "Notes saved.", sendPrescription: "Prescription sent to the patient." };
+        } else if (name !== "message" && !action.meta.arg?.localPending) {
+          const messages = { book: "Booking reserved. Continue with payment to join the queue.", saveProfile: "Your profile has been saved.", saveWeeklyAvailability: "Your weekly sessions have been saved.", saveFamily: "Your family professionals have been updated.", transition: action.meta.arg.status === "CANCELLED" ? "Consultation cancelled." : "Consultation status updated.", saveNotes: "Notes saved.", sendPrescription: "Prescription sent to the patient." };
           state.feedback = { type: "success", text: messages[name] || "Changes saved successfully." };
         }
       });

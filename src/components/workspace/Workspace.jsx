@@ -1,39 +1,72 @@
 import { Link, NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { CalendarDays, FileText, HeartPulse, LayoutDashboard, Scale, ShieldCheck, UserRound, Users, Menu, X, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { CalendarDays, FileText, HeartPulse, MessageCircle, LayoutDashboard, Scale, ShieldCheck, UserRound, Users, Menu, X, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import GlobalLoader from "../ui/GlobalLoader";
 import { logoutUser } from "../../features/auth/authSlice";
 import { fetchWorkspace, clearWorkspaceError, clearFeedback } from "../../features/consultations/consultationSlice";
 import { MessageOverlay } from "../ui/MessageBox";
 import "./workspace.css";
-import TransferNotices from "./TransferNotices";
+import "./refinements.css";
+import ErrorNotice from "../ui/ErrorNotice";
+import { NotificationBell, NotificationAlerts } from "./Notifications";
+import PatientRingtone from "./PatientRingtone";
+import { useConfirmLeave } from "../ui/UnsavedChanges";
+import AccountMenu from "./AccountMenu";
 
 export function useWorkspace() { return useSelector((s) => s.consultations); }
 export function PageHeading({ eyebrow = "YOUR CONSULTATION SPACE", title, children, action }) {
   return <div className="ws-heading"><div><p className="ws-eyebrow">{eyebrow}</p><h1>{title}</h1>{children && <p>{children}</p>}</div>{action}</div>;
 }
-export function Status({ children }) { return <span className={"ws-status " + (["COMPLETED", "verified", "NEXT", "paid (mock)"].includes(children) ? "ws-good" : "")}>{children}</span>; }
+export function Status({ children }) { return <span className={"ws-status " + (["COMPLETED", "verified", "NEXT", "paid"].includes(children) ? "ws-good" : "")}>{children}</span>; }
 export function Empty({ title, children }) { return <div className="ws-empty"><CalendarDays size={30} /><h3>{title}</h3><p>{children}</p></div>; }
 export function Panel({ title, children }) { return <section className="ws-panel">{title && <h2>{title}</h2>}{children}</section>; }
 
 export default function Workspace() {
   const state = useWorkspace();
   const colors = useSelector((s) => s.theme.colors);
+  const user = useSelector((s) => s.auth.user);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  const [mobile, setMobile] = useState(() => window.matchMedia("(max-width: 1024px)").matches);
+  const sidebar = useRef(null);
+  const menuButton = useRef(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [onboardingNotice, setOnboardingNotice] = useState(null);
+  const [logoutError, setLogoutError] = useState("");
   const onboardingStep = useRef(null);
   const redirectedLocation = useRef(null);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 1024px)");
+    const change = () => { setMobile(media.matches); setOpen(false); };
+    media.addEventListener("change", change);
+    return () => media.removeEventListener("change", change);
+  }, []);
+  useEffect(() => { setOpen(false); }, [location.pathname]);
+  useEffect(() => {
+    if (!open || !mobile || !state.loaded) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    sidebar.current?.querySelector("button")?.focus();
+    return () => { document.body.style.overflow = previousOverflow; menuButton.current?.focus(); };
+  }, [open, mobile, state.loaded]);
+  function navigationKeys(event) {
+    if (!mobile || !open) return;
+    if (event.key === "Escape") { event.preventDefault(); setOpen(false); }
+    if (event.key !== "Tab") return;
+    const items = [...sidebar.current.querySelectorAll('a[href], button:not([disabled])')].filter((item) => item.getClientRects().length);
+    const first = items[0], last = items[items.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+  }
   useEffect(() => {
     dispatch(fetchWorkspace());
   }, [dispatch]);
   // This runs before paint: an incomplete account never briefly shows another workspace page.
   useLayoutEffect(() => {
-    if (!state.loaded || !state.onboarding) return;
+    if (!state.loaded || !state.onboarding || location.pathname === "/app/notifications") return;
     const destination = "/app/" + state.onboarding;
     if (location.pathname === destination) {
       onboardingStep.current = state.onboarding;
@@ -54,39 +87,44 @@ export default function Workspace() {
       : { title: "Set your weekly sessions first", text: "Please save at least one weekly session and its consultation fee before continuing to other pages." });
     navigate(destination, { replace: true });
   }, [state.loaded, state.onboarding, location.pathname, location.key, navigate]);
-  const signOut = async () => {
+  const confirmLeave = useConfirmLeave();
+  const signOut = () => confirmLeave(async () => {
+    setLogoutError("");
     const action = await dispatch(logoutUser());
     if (!action.error) navigate("/login", { replace: true });
-  };
-  if (!state.loaded) return state.error ? <div className="p-12"><p role="alert">{state.error}</p><button className="underline mr-5" onClick={() => dispatch(fetchWorkspace())}>Retry</button><button className="underline" onClick={signOut}>Sign out</button></div> : <GlobalLoader fullPage message="Loading your workspace..." />;
+    else setLogoutError(action.payload || "Sign out failed. Please retry; you are still signed in.");
+  });
+  if (!state.loaded) return state.error ? <div className="p-12"><ErrorNotice error={logoutError || state.error} /><button className="underline mr-5" onClick={() => dispatch(fetchWorkspace())}>Retry</button><button className="underline" onClick={signOut}>Sign out</button></div> : <GlobalLoader fullPage message="Loading your workspace..." />;
   const professional = state.professionals.find((p) => p.id === state.professionalId);
   const name = state.role === "user" ? state.patient.name : state.role === "admin" ? "Platform administrator" : professional.name;
   const links = state.role === "user" ? [
-    ["/app", "Overview", LayoutDashboard], ["/app/clinics", "Group clinics", Users], ["/consult/doctors", "Find a doctor", HeartPulse], ["/consult/lawyers", "Find a lawyer", Scale], ["/app/bookings", "My consultations", CalendarDays], ["/app/history", "My history", FileText], ["/app/profile", "My profile", UserRound],
+    ["/app", "Overview", LayoutDashboard], ["/consult/doctors", "Find a doctor", HeartPulse], ["/consult/lawyers", "Find a lawyer", Scale], ["/consult/counsellors", "Find a counsellor", MessageCircle], ["/app/bookings", "My consultations", CalendarDays], ["/app/history", "My history", FileText], ["/app/profile", "My profile", UserRound],
   ] : state.role === "admin" ? [
-    ["/app", "Overview", LayoutDashboard], ["/app/clinics", "Group clinics", Users], ["/app/admin", "People & verification", Users], ["/app/transfers", "Session handovers", CalendarDays], ["/app/appointments", "Scheduled consultations", CalendarDays], ["/app/settlements", "Monthly settlements", CalendarDays], ["/app/payments", "Payments & refunds", ShieldCheck],
+    ["/app", "Overview", LayoutDashboard], ["/app/admin", "People & verification", Users], ["/app/weekly-schedules", "Weekly schedules", CalendarDays], ["/app/appointments", "Individual appointments", CalendarDays], ["/app/clinics", "Group clinics", Users], ["/app/transfers", "Session handovers", CalendarDays], ["/app/payments", "Payments & refunds", ShieldCheck], ["/app/settlements", "Monthly settlements", CalendarDays],
   ] : [
-    ["/app", "Overview", LayoutDashboard], ["/app/clinics", "Group clinics", Users], ["/app/queue", "Consultation queue", Users], ["/app/sessions", "My sessions", CalendarDays], ["/app/earnings", "My earnings", ShieldCheck], ["/app/history", "Consultation history", FileText], ["/app/profile", "Professional profile", UserRound],
+    ["/app", "Overview", LayoutDashboard], ["/app/queue", "Consultation queue", Users], ["/app/people", state.role === "doctor" ? "My patients" : "My clients", Users], ["/app/sessions", "My sessions", CalendarDays], ["/app/earnings", "My earnings", ShieldCheck], ["/app/history", "Consultation history", FileText], ["/app/profile", "Professional profile", UserRound],
   ];
   return <div className="ws" style={Object.fromEntries(Object.entries(colors).map(([key, value]) => [`--ws-${key}`, value]))}>
-    <aside className={"ws-sidebar " + (open ? "ws-sidebar-open " : "") + (sidebarCollapsed ? "ws-sidebar-collapsed" : "")}>
-      <Link className="ws-brand" to="/"><ShieldCheck />consultcare<span>.</span></Link>
+    {mobile && open && <div className="ws-nav-backdrop" aria-hidden="true" onClick={() => setOpen(false)} />}
+    <aside ref={sidebar} id="workspace-navigation" role={mobile && open ? "dialog" : undefined} aria-modal={mobile && open ? true : undefined} aria-label="Workspace navigation" inert={(mobile ? !open : sidebarCollapsed) ? "" : undefined} onKeyDown={navigationKeys} className={"ws-sidebar " + (open ? "ws-sidebar-open " : "") + (sidebarCollapsed ? "ws-sidebar-collapsed" : "")}>
+      <button type="button" className="ws-nav-close" aria-label="Close navigation" onClick={() => setOpen(false)}><X size={22} /></button>
+      <div className="ws-brand-row"><Link className="ws-brand" to="/"><ShieldCheck />consultcare<span>.</span></Link>{!mobile && <button className="ws-sidebar-toggle" type="button" aria-label="Hide sidebar" title="Hide sidebar" onClick={() => mobile ? setOpen(false) : setSidebarCollapsed(true)}><PanelLeftClose size={19} /></button>}</div>
       <p className="ws-eyebrow ws-nav-label">{state.role === "user" ? "PATIENT & CLIENT" : state.role.toUpperCase()} WORKSPACE</p>
-      <nav aria-label="Workspace">{links.map(([to, label, Icon]) => <NavLink key={to} to={to} end onClick={() => setOpen(false)}><Icon size={18} />{label}</NavLink>)}</nav>
-      <div className="ws-sidebar-bottom"><ShieldCheck size={23} /><h3>A little clarity.<br />A better next step.</h3><p>Your conversations, all in one place.</p><div className="ws-sidebar-footer"><Link to="/">Back to home →</Link><button className="ws-sidebar-toggle" type="button" aria-label="Hide sidebar" title="Hide sidebar" onClick={() => window.matchMedia("(max-width: 760px)").matches ? setOpen(false) : setSidebarCollapsed(true)}><PanelLeftClose size={16} /></button></div></div>
+      <nav aria-label="Workspace">{links.map(([to, label, Icon]) => <NavLink key={to} to={to} end={to !== "/app/people"} onClick={() => setOpen(false)}><Icon size={18} />{label}</NavLink>)}</nav>
+      <div className="ws-sidebar-bottom"><ShieldCheck size={23} /><h3>A little clarity.<br />A better next step.</h3><p>Your conversations, all in one place.</p></div>
     </aside>
-    <div className={"ws-body " + (sidebarCollapsed ? "ws-body-expanded" : "")}>
-      {sidebarCollapsed && <button className="ws-sidebar-restore" type="button" aria-label="Show sidebar" title="Show sidebar" onClick={() => setSidebarCollapsed(false)}><PanelLeftOpen size={18} /></button>}
-      <header className="ws-topbar"><button className="ws-menu" aria-label="Toggle navigation" onClick={() => setOpen(!open)}>{open ? <X /> : <Menu />}</button><div><span className="ws-eyebrow">WELCOME BACK</span><p>{name}</p></div><div className="ws-identity"><span className="ws-avatar">{name.split(" ").map((w) => w[0]).slice(0, 2).join("")}</span></div></header>
-      <div className="ws-preview"><div><strong>{state.role === "user" ? "Patient / client" : state.role} workspace</strong><span> · Connected to your account{state.mockPayments ? " · Test payments enabled" : ""}</span></div><button className="underline font-semibold" onClick={signOut}>Sign out</button></div>
-      {state.error && <div className="ws-notice mx-6" role="alert">{state.error}<button className="underline ml-4" onClick={() => dispatch(clearWorkspaceError())}>Dismiss</button></div>}
+    <div inert={mobile && open ? "" : undefined} className={"ws-body " + (sidebarCollapsed ? "ws-body-expanded" : "")}>
+      <header className="ws-topbar">{sidebarCollapsed && !mobile && <button className="ws-sidebar-toggle" type="button" aria-label="Show sidebar" title="Show sidebar" onClick={() => setSidebarCollapsed(false)}><PanelLeftOpen size={20} /></button>}<button ref={menuButton} type="button" className="ws-menu" aria-label="Toggle navigation" aria-expanded={open} aria-controls="workspace-navigation" onClick={() => setOpen(!open)}>{open ? <X /> : <Menu />}</button><div className="ws-welcome"><span className="ws-eyebrow">WELCOME BACK</span><p>{name}</p></div><NotificationBell /><AccountMenu name={name} email={user?.email || state.patient?.email || professional?.email || ""} role={state.role} image={state.role === "user" ? state.patient.image : professional?.image} signOut={signOut} /></header>
+      {state.error && <div className="mx-6"><ErrorNotice error={state.feedback ? "" : state.error} onRetry={() => { dispatch(clearWorkspaceError()); dispatch(fetchWorkspace()); }} /></div>}
+      {logoutError && <div className="mx-6"><ErrorNotice error={logoutError} onRetry={signOut} /></div>}
       {state.pending > 0 && <GlobalLoader fullPage message="Saving changes..." />}
       {state.feedback && <MessageOverlay type={state.feedback.type} text={state.feedback.text} onClose={() => dispatch(clearFeedback())} />}
       {onboardingNotice && <MessageOverlay type="error" title={onboardingNotice.title} text={onboardingNotice.text} onClose={() => setOnboardingNotice(null)} />}
       <main className="ws-main">
-        {!state.onboarding && <TransferNotices />}
+        <NotificationAlerts />
+        <PatientRingtone />
         {state.onboarding && <div className="ws-notice">{state.onboarding === "profile" ? "Welcome. Complete your required profile details to continue." : "Next, save at least one weekly session and its consultation fee to finish your professional setup."}</div>}
-        {(!state.onboarding || location.pathname === "/app/" + state.onboarding) ? <Outlet /> : <GlobalLoader message="Opening your required setup page..." />}
+        {(!state.onboarding || location.pathname === "/app/" + state.onboarding || location.pathname === "/app/notifications") ? <Outlet /> : <GlobalLoader message="Opening your required setup page..." />}
       </main>
     </div>
   </div>;
