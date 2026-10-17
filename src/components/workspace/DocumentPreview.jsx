@@ -1,3 +1,4 @@
+import { FILE_TRANSFER_TIMEOUT } from "../../features/consultations/files";
 import GlobalLoader from "../ui/GlobalLoader";
 import { useEffect, useState } from "react";
 import Modal from "../ui/Modal";
@@ -10,7 +11,7 @@ export default function DocumentPreview({ file, onClose }) {
   useEffect(() => {
     const controller = new AbortController();
     let objectUrl;
-    apiClient.get("/documents/" + file.id, { responseType: "blob", signal: controller.signal }).then((response) => {
+    apiClient.get("/documents/" + file.id, { responseType: "blob", timeout: FILE_TRANSFER_TIMEOUT, signal: controller.signal }).then((response) => {
       if (controller.signal.aborted) return;
       const type = response.data.type;
       if (!["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(type)) throw new Error("Unsupported preview");

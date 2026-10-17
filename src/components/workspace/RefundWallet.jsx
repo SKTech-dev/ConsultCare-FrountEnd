@@ -1,3 +1,4 @@
+import { FILE_TRANSFER_TIMEOUT, PROOF_MAX_BYTES, validateFileSize } from "../../features/consultations/files";
 import GlobalLoader from "../ui/GlobalLoader";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ListPages from "./ListPages";
@@ -27,7 +28,7 @@ function useWalletData(endpoint) {
 }
 
 async function downloadProof(id) {
-  const blob = await callApi("GET", `/wallet/cashouts/${id}/proof`, null, null, { responseType: "blob" });
+  const blob = await callApi("GET", `/wallet/cashouts/${id}/proof`, null, null, { responseType: "blob", timeout: FILE_TRANSFER_TIMEOUT });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url; link.download = "bank-payment-proof"; link.click();
@@ -108,9 +109,13 @@ export function AdminCashouts() {
   async function act(event, row) {
     event.preventDefault(); if (busy) return;
     const form = new FormData(event.currentTarget);
+    if (form.get("action") === "paid") {
+      try { validateFileSize(form.get("file"), PROOF_MAX_BYTES); }
+      catch (error) { setMessage({ type: "error", text: error.message }); return; }
+    }
     setBusy(true);
     try {
-      const response = form.get("action") === "reject" ? await callApi("POST", `/admin/wallet/cashouts/${row.id}/reject`, { reason: form.get("reason") }) : await callApi("POST", `/admin/wallet/cashouts/${row.id}/paid`, form);
+      const response = form.get("action") === "reject" ? await callApi("POST", `/admin/wallet/cashouts/${row.id}/reject`, { reason: form.get("reason") }) : await callApi("POST", `/admin/wallet/cashouts/${row.id}/paid`, form, null, { timeout: FILE_TRANSFER_TIMEOUT });
       setMessage({ type: "success", text: response.message }); setSelected(null); await state.load();
     } catch (error) { setMessage({ type: "error", text: error.message }); }
     finally { setBusy(false); }

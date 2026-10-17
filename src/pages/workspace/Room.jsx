@@ -8,7 +8,7 @@ import { FileText, UploadCloud, ShieldCheck, MessageSquare, ImageOff, Loader2, R
 import { useWorkspace, PageHeading, Panel, Empty, Status } from "../../components/workspace/Workspace";
 import { ACTIVE, canRead, isSessionLive } from "../../features/consultations/model";
 import { fetchWorkspace, message, saveNotes, transition } from "../../features/consultations/consultationSlice";
-import { saveFile, downloadFile } from "../../features/consultations/files";
+import { saveFile, downloadFile, validateFileSize, DEFAULT_DOCUMENT_MAX_BYTES, FILE_TRANSFER_TIMEOUT } from "../../features/consultations/files";
 import { PatientContext, ChatMessages, Prescription } from "./ConsultationRecord";
 import { apiClient, callApi } from "../../api/apiClient";
 import "./room.css";
@@ -26,7 +26,7 @@ function DocumentImage({ file, onPreview }) {
     let active = true;
     let objectUrl;
     setState("loading"); setUrl("");
-    apiClient.get("/documents/" + file.id, { responseType: "blob" }).then((response) => {
+    apiClient.get("/documents/" + file.id, { responseType: "blob", timeout: FILE_TRANSFER_TIMEOUT }).then((response) => {
       if (!active) return;
       objectUrl = URL.createObjectURL(response.data);
       setUrl(objectUrl); setState("ready");
@@ -63,7 +63,10 @@ function BookingDocuments({ booking }) {
     inFlight.current.add(item.id);
     setUploads((old) => old.map((entry) => entry.id === item.id ? { ...entry, status: "sending", error: "" } : entry));
     try {
-      const saved = await saveFile(booking.id, item.file, item.private, item.id);
+      const saved = await saveFile(booking.id, item.file, item.private, item.id, {
+        maxBytes: s.uploadPolicy?.maxBytes || DEFAULT_DOCUMENT_MAX_BYTES,
+        onProgress: (progress) => setUploads((old) => old.map((entry) => entry.id === item.id ? { ...entry, progress } : entry)),
+      });
       setUploads((old) => old.map((entry) => entry.id === item.id ? { ...entry, status: "saved", saved, file: null } : entry));
       await dispatch(fetchWorkspace());
     } catch (failure) {
@@ -74,17 +77,19 @@ function BookingDocuments({ booking }) {
     const file = event.target.files[0]; event.target.value = "";
     if (!file) return;
     if (!["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(file.type)) { setError("Choose a PDF, JPEG, PNG, or WebP file."); return; }
-    const item = { id: crypto.randomUUID(), file, name: file.name, private: privateNote, status: "sending" };
+    try { validateFileSize(file, s.uploadPolicy?.maxBytes || DEFAULT_DOCUMENT_MAX_BYTES); }
+    catch (failure) { setError(failure.message); return; }
+    const item = { progress: 0, id: crypto.randomUUID(), file, name: file.name, private: privateNote, status: "sending" };
     setUploads((old) => [...old, item]);
     sendUpload(item);
   }
   return <Panel title="Reports, images & documents">
     <p>Shared attachments are available to both participants. Private attachments are visible only to the professional who uploaded them.</p>
     {!files.length && !uploads.length && <div className="room-documents-empty"><FileText size={22} /><span>No attachments yet.</span></div>}
-    {uploads.filter((item) => item.status !== "saved").map((item) => <div className="document-transfer" key={item.id} aria-live="polite"><FileText size={19} /><div><strong>{item.name}</strong><small>{item.status === "sending" ? "Uploading…" : "Upload not confirmed. Check the document list before retrying."}</small></div>{item.status === "sending" ? <Loader2 className="animate-spin" size={20} aria-label="Uploading" /> : <><span tabIndex={0} className="document-error" title={item.error} aria-label={item.error}><AlertTriangle size={20} /><span role="tooltip">{item.error}</span></span><button type="button" className="ws-link secondary" onClick={() => sendUpload(item)}>Retry</button><button type="button" className="ws-name-link" onClick={() => setUploads((old) => old.filter((entry) => entry.id !== item.id))}>Dismiss</button></>}</div>)}
+    {uploads.filter((item) => item.status !== "saved").map((item) => <div className="document-transfer" key={item.id} aria-live="polite"><FileText size={19} /><div><strong>{item.name}</strong><small>{item.status === "sending" ? (item.progress === 100 ? "Checking file safety and saving..." : `Uploading... ${item.progress || 0}%`) : "Upload not confirmed. Check the document list before retrying."}</small></div>{item.status === "sending" ? <Loader2 className="animate-spin" size={20} aria-label="Uploading" /> : <><span tabIndex={0} className="document-error" title={item.error} aria-label={item.error}><AlertTriangle size={20} /><span role="tooltip">{item.error}</span></span><button type="button" className="ws-link secondary" onClick={() => sendUpload(item)}>Retry</button><button type="button" className="ws-name-link" onClick={() => setUploads((old) => old.filter((entry) => entry.id !== item.id))}>Dismiss</button></>}</div>)}
     {files.map((file) => <div className="ws-row room-document-row" key={file.id}>{file.type.startsWith("image/") ? <DocumentImage file={file} onPreview={() => setPreview(file)} /> : <FileText size={18} />}<div className="flex-1 min-w-0"><h3 className="break-words"><button type="button" className="ws-name-link" onClick={() => setPreview(file)}>{file.name}</button></h3><p>{file.private ? "Private professional attachment" : "Shared attachment"} · {Math.round(file.size / 1024)} KB</p><small>Sent by {file.uploaderName || (file.uploaderId === booking.patientId ? booking.patientName : s.professionals.find((person) => person.id === file.uploaderId)?.name) || "Participant"}</small><div className="ws-actions"><button type="button" className="ws-link secondary" disabled={downloading !== null} onClick={async () => { setDownloading(file.id); try { await downloadFile(file.id, file.name); } catch (failure) { setError(failure.message); } finally { setDownloading(null); } }}>{downloading === file.id && <Loader2 className="animate-spin" size={15} />}Download</button>{s.role !== "user" && file.uploaderId === s.professionalId && booking.status === "IN CONSULTATION" && <button type="button" className="ws-name-link" onClick={() => setPrivacyTarget(file)}>{file.private ? "Share with patient" : "Make private"}</button>}</div></div></div>)}
     {s.role !== "user" && ACTIVE.includes(booking.status) && <label className="room-privacy"><input type="checkbox" checked={privateNote} disabled={busy} onChange={(event) => setPrivateNote(event.target.checked)} /><ShieldCheck size={20} /><span><strong>Keep this attachment private</strong><small>Visible only in your professional notes.</small></span></label>}
-    {ACTIVE.includes(booking.status) && <label className="room-upload"><UploadCloud size={26} /><span>Add a report, image or document</span><small>PDF, JPEG, PNG or WebP</small><input aria-label="Upload consultation document" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={upload} /></label>}
+    {ACTIVE.includes(booking.status) && <label className="room-upload"><UploadCloud size={26} /><span>Add a report, image or document</span><small>PDF, JPEG, PNG or WebP, up to {Math.floor((s.uploadPolicy?.maxBytes || DEFAULT_DOCUMENT_MAX_BYTES) / (1024 * 1024))} MB</small><input aria-label="Upload consultation document" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={upload} /></label>}
     {preview && <DocumentPreview key={preview.id} file={preview} onClose={() => setPreview(null)} />}
     {privacyTarget && <MessageOverlay type="confirm" title={privacyTarget.private ? "Share this document?" : "Make this document private?"} text={privacyTarget.private ? "The patient will be able to view and download it." : "This removes future patient access. Copies already downloaded cannot be recalled."} isProcessing={changingPrivacy} onClose={() => setPrivacyTarget(null)} onConfirm={async () => {
       if (changingPrivacy) return;

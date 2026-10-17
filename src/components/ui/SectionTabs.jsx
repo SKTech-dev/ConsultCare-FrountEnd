@@ -48,11 +48,15 @@ export default function SectionTabs({ children, labels = [], icons = [], ids = [
   return <div className="section-tabs">
     <div className="section-tab-list" role="tablist" aria-label={label} onKeyDown={(event) => {
       if (!["ArrowRight", "ArrowLeft", "Home", "End"].includes(event.key)) return;
+      // Router selection can lag behind focus during a quick click + key press.
+      // Navigate from the button receiving the key, not the previous URL tab.
+      const buttons = [...event.currentTarget.children];
+      const index = buttons.indexOf(event.target.closest('[role="tab"]'));
+      if (index < 0) return;
       event.preventDefault();
-      const index = tabs.findIndex((item) => item.key === active);
       const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
       choose(tabs[next].key);
-      document.getElementById(`${id}-tab-${next}`)?.focus();
+      buttons[next]?.focus();
     }}>{tabs.map((item, index) => <button key={item.key} type="button" role="tab" aria-label={item.name} title={item.name} id={`${id}-tab-${index}`} aria-controls={`${id}-panel-${index}`} aria-selected={active === item.key} tabIndex={active === item.key ? 0 : -1} onClick={() => choose(item.key)}>{item.icon}<span className="section-tab-full">{item.name}</span><span className="section-tab-compact" aria-hidden="true" data-label={compactLabels[item.name] || item.name} /></button>)}</div>
     {items.filter((child) => !tabs.some((item) => item.child === child))}
     {tabs.map((item, index) => <div key={item.key} id={`${id}-panel-${index}`} role="tabpanel" aria-labelledby={`${id}-tab-${index}`} hidden={active !== item.key} tabIndex={0}>{(active === item.key || visited.has(item.key)) && item.child}</div>)}
