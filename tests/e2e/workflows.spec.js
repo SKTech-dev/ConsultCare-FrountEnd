@@ -43,11 +43,28 @@ async function createPatient(page, suffix) {
   await page.getByLabel("Contact number", { exact: true }).fill("0711111111");
   await page.getByLabel("Billing address", { exact: true }).fill("12 Test Road");
   await page.getByLabel("City", { exact: true }).fill("Colombo");
+  const photo = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAADElEQVR4nGNgGB4AAADIAAGtQHYiAAAAAElFTkSuQmCC", "base64");
+  await page.getByLabel("Change profile photo").setInputFiles({ name: "profile.png", mimeType: "image/png", buffer: photo });
   const saved = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/profile" && response.request().method() === "PUT");
   await page.getByRole("button", { name: "Save profile", exact: true }).click();
   expect((await saved).status()).toBe(200);
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.getByRole("dialog").getByRole("button").last().click();
+  await page.reload();
+  await expect(page.getByAltText("Profile preview")).toBeVisible();
+  await expect(page.getByAltText("Profile preview")).toHaveJSProperty("naturalWidth", 8);
+  const state = (await (await page.request.get("/api/workspace")).json()).data;
+  const image = state.patient.image;
+  // Companion backends can return a legacy data URL during a staggered rollout.
+  // Verify the exact saved photo in either format; stored photos must also download.
+  if (image?.startsWith("data:")) {
+    expect(image).toBe("data:image/png;base64," + photo.toString("base64"));
+  } else {
+    expect(image).toMatch(/^\/profile-images\//);
+    const downloaded = await page.request.get("/api" + image);
+    expect(downloaded.status()).toBe(200);
+    expect(await downloaded.body()).toEqual(photo);
+  }
 }
 
 async function reserve(page) {

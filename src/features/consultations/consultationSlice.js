@@ -16,8 +16,8 @@ export const fetchWorkspace = createAsyncThunk("consultations/fetch", async (opt
 function command(name, request) {
   return createAsyncThunk("consultations/" + name, async (payload, context) => {
     try {
-      const [method, url, body] = request(payload, context.getState().consultations);
-      const response = await callApi(method, url, body);
+      const [method, url, body, config] = request(payload, context.getState().consultations);
+      const response = await callApi(method, url, body, null, config);
       // A failed refresh must not report an already-committed write as failed.
       const refresh = await context.dispatch(fetchWorkspace({ live: true }));
       if (refresh.error) context.dispatch(refreshWarning());
@@ -26,7 +26,7 @@ function command(name, request) {
   });
 }
 
-export const saveProfile = command("saveProfile", (p) => ["PUT", "/profile", p]);
+export const saveProfile = command("saveProfile", (p) => ["PUT", "/profile", p, { timeout: 120000 }]);
 export const saveFamily = command("saveFamily", ({ id, saved }) => ["PUT", "/family-professionals/" + id, { saved }]);
 export const saveWeeklyAvailability = command("saveWeeklyAvailability", ({ days, fee }) => ["PUT", "/weekly-availability", { days, fee }]);
 export const book = command("book", (p) => ["POST", "/bookings", { sessionId: p.sessionId, reason: p.reason || "" }]);
