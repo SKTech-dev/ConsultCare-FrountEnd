@@ -19,6 +19,7 @@ export default function AuthForm({ signup = false }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [created, setCreated] = useState(false);
+  const [registrationMessage, setRegistrationMessage] = useState("");
   const [replacement, setReplacement] = useState(null);
   const [googleAttempt, setGoogleAttempt] = useState(0);
   const sessionNotice = useSelector((state) => state.auth.sessionNotice);
@@ -64,7 +65,8 @@ export default function AuthForm({ signup = false }) {
     setBusy(true);
     try {
       if (signup) {
-        await callApi("POST", "/auth/register", { name: form.name.trim(), email: form.email.trim(), password: form.password, role: form.role });
+        const result = await callApi("POST", "/auth/register", { name: form.name.trim(), email: form.email.trim(), password: form.password, role: form.role });
+        setRegistrationMessage(result.message);
         // Registration does not imply a session or an approved professional role.
         markSaved();
         setCreated(true);
@@ -84,14 +86,14 @@ export default function AuthForm({ signup = false }) {
       <section className="border rounded-2xl p-6 sm:p-9 max-w-lg w-full" style={{ borderColor: "var(--cc-border)", background: "var(--cc-background)" }}>
         <h2>{signup ? "Create your account" : "Log in to ConsultCare"}</h2>
         {sessionNotice && <p role="alert" className="my-4 text-sm">{sessionNotice}</p>}
-        {created ? <div role="status"><p className="my-6">Your registration was submitted. You can now sign in. Professional accounts require administrator approval.</p><Link className="cc-button" to={`/login${suffix}`}>Continue to login</Link></div> : <form onSubmit={submit} className="space-y-5 mt-7">
+        {created ? <div role="status"><p className="my-6">{registrationMessage} Professional accounts also require administrator approval.</p><Link className="cc-button" to={`/login${suffix}`}>Continue to login</Link><p className="mt-4"><Link className="underline" to="/verify-email">Request another verification email</Link></p></div> : <form onSubmit={submit} className="space-y-5 mt-7">
           {signup && <><label className="flex flex-col gap-2 text-sm font-semibold">I am joining as<select className="border rounded-lg p-3 bg-transparent" name="role" value={form.role} onChange={change} disabled={locked}>{[["user", "Patient / client"], ["doctor", "Doctor"], ["lawyer", "Lawyer"], ["counsellor", "Counsellor"]].map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>{form.role !== "user" && <p className="text-sm leading-6">Your professional credentials must be verified by an administrator before you can offer consultations.</p>}</>}
           <GoogleSignIn key={googleAttempt} onSessionConflict={requestReplacement} mode={signup ? "signup" : "login"} role={form.role} separator disabled={locked} onBusyChange={setBusy} onError={setError} onSuccess={(user) => { markSaved(); dispatch(setAuthUser(user)); navigate(getDestination(user, next), { replace: true }); }} />
           {signup && <Input label="Full name" name="name" value={form.name} onChange={change} autoComplete="name" maxLength={120} required disabled={locked} />}
           <Input label="Email address" type="email" name="email" value={form.email} onChange={change} autoComplete="email" required disabled={locked} />
           <Input label="Password" type="password" name="password" value={form.password} onChange={change} autoComplete={signup ? "new-password" : "current-password"} minLength={signup ? 12 : undefined} required disabled={locked} />
           {signup && <Input label="Confirm password" type="password" name="confirm" value={form.confirm} onChange={change} autoComplete="new-password" required disabled={locked} />}
-          {!signup && <p className="text-xs">For account recovery, contact your administrator. Automated password reset is not available yet.</p>}
+          {!signup && <p className="text-sm"><Link className="underline" to="/forgot-password">Forgot password?</Link><span className="mx-2">·</span><Link className="underline" to="/verify-email">Verify email</Link></p>}
           <Button type="submit" disabled={locked}>{busy ? "Please wait…" : signup ? "Create account" : "Log in"}</Button>
           <p className="text-sm">{signup ? "Already registered? " : "New to ConsultCare? "}<Link className="underline font-semibold" to={`${signup ? "/login" : "/signup"}${suffix}`}>{signup ? "Log in" : "Sign up"}</Link></p>
           {!signup && <p className="text-xs leading-5">Doctors, lawyers, counsellors, users, and administrators use this same secure login. Administrator accounts are provisioned privately.</p>}
