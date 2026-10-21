@@ -32,7 +32,7 @@ export default function Input({
         id={id || name}
         aria-label={typeof label === "string" ? label : undefined}
         aria-invalid={Boolean(error)}
-        aria-describedby={error ? `${id || name}-error` : undefined}
+        aria-describedby={error ? `${id || name}-error` : props["aria-describedby"]}
         type={type}
         name={name}
         value={value}
