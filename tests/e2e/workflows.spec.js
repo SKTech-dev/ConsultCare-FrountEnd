@@ -34,7 +34,7 @@ async function createPatient(page, suffix) {
   await page.getByLabel("Password", { exact: true }).fill(fixture.password);
   await page.getByLabel("Confirm password", { exact: true }).fill(fixture.password);
   await page.getByRole("button", { name: "Create account", exact: true }).click();
-  await expect(page.getByRole("link", { name: "Continue to login" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Continue to sign in", exact: true })).toBeVisible();
   await login(page, email);
   // Onboarding redirects to the real profile form.
   await expect(page).toHaveURL(/\/app\/profile/);
