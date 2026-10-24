@@ -9,6 +9,7 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import PublicRoute from "./components/auth/PublicRoute";
 import Login from "./pages/authPages/Login";
 import Setup from "./pages/authPages/Setup";
+import EmailAccess from "./pages/authPages/EmailAccess";
 import AccessDenied from "./pages/AccessDenied";
 import Home from "./pages/Home";
 import Workspace, { Empty } from "./components/workspace/Workspace";
@@ -59,6 +60,9 @@ const router = createBrowserRouter(createRoutesFromElements(
     <Route path="/return-policy" element={<Navigate to="/refund-policy" replace />} />
     <Route path="/terms" element={<Policies type="terms" />} />
     <Route path="/access-denied" element={<AccessDenied />} />
+    <Route path="/forgot-password" element={<EmailAccess key="forgot" mode="forgot" />} />
+    <Route path="/reset-password" element={<EmailAccess key="reset" mode="reset" />} />
+    <Route path="/verify-email" element={<EmailAccess key="verify" mode="verify" />} />
     <Route element={<PublicRoute />}>
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Setup />} />
