@@ -162,7 +162,8 @@ test("Google signup verifies a signed provider token and leaves the doctor pendi
   expect(user.email).toBe("google.doctor@gmail.com");
   expect(user.role).toBe("doctor");
   expect(user.verificationStatus).toBe("pending");
-  const unauthorized = await context.request.post("/api/sessions", { headers: await csrf(context), data: { date: "2026-11-01", start: "10:00", end: "11:00", capacity: 1 } });
+  const futureDate = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+  const unauthorized = await context.request.post("/api/sessions", { headers: await csrf(context), data: { date: futureDate, start: "10:00", end: "11:00", capacity: 1 } });
   expect(unauthorized.status()).toBe(403);
   // Sign-in must reuse the same account and its server-owned role without
   // requiring the password fields or asking the user to select a role again.
