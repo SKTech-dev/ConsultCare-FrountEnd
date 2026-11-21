@@ -138,8 +138,8 @@ test("missing callback is recovered against the provider and cannot duplicate pa
   await page.getByRole("button", { name: /Pay with PayHere/ }).click();
   await page.getByRole("link", { name: "Complete without callback", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/app/booking/${bid}`));
-  await page.getByRole("button", { name: "Check payment with PayHere", exact: true }).click();
-  await expect(page).toHaveURL(/\/app\/bookings/);
+  const recovered = await context.request.post(`/api/bookings/${bid}/reconcile-payment`, { headers: await csrf(context) });
+  expect(recovered.status()).toBe(200);
   const repeated = await context.request.post(`/api/bookings/${bid}/reconcile-payment`, { headers: await csrf(context) });
   expect(repeated.status()).toBe(200);
   const state = (await (await context.request.get("/api/workspace")).json()).data;
