@@ -22,8 +22,18 @@ test("patient email lookup works before appointment details and clears stale mat
   await page.route("**/api/scheduled-consultations/patient-search", (route) => {
     searches++;
     const { email } = route.request().postDataJSON();
+    if (email === "pat") {
+      return route.fulfill({
+        json: {
+          data: [
+            { name: "Matching Patient", email: "patient@example.com" },
+            { name: "Second Patient", email: "patient2@example.com" },
+          ],
+        },
+      });
+    }
     return email === "patient@example.com"
-      ? route.fulfill({ json: { data: { name: "Matching Patient", email } } })
+      ? route.fulfill({ json: { data: [{ name: "Matching Patient", email }] } })
       : route.fulfill({ status: 404, json: { message: "No active patient/client account matches that email." } });
   });
   await page.goto("/app/sessions");
@@ -31,14 +41,14 @@ test("patient email lookup works before appointment details and clears stale mat
   const email = page.getByLabel("Patient / client email", { exact: true });
   await page.getByRole("button", { name: "Find patient", exact: true }).click();
   expect(searches).toBe(0);
-  await expect(page.getByRole("dialog")).toBeVisible();
-  await page.getByRole("button", { name: "OK", exact: true }).click();
-  await email.fill("patient@example.com");
+  await email.fill("pat");
   await page.getByRole("button", { name: "Find patient", exact: true }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Matching Patient" })).toBeVisible();
+  await expect(page.getByText("Second Patient", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /Second Patient/ }).click();
+  await expect(email).toHaveValue("patient2@example.com");
   expect(searches).toBe(1);
   await email.fill("missing@example.com");
-  await expect(page.getByText("Matching Patient", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Second Patient", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Find patient", exact: true }).click();
   await expect(page.getByRole("dialog")).toContainText("No active patient/client account matches that email.");
 });
