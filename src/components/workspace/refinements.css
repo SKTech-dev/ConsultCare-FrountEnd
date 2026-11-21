@@ -126,3 +126,18 @@ label:has(> input:required):not(:has(.required-mark))::before, label:has(> selec
   color: var(--ws-primary);
   font-size: 14px;
 }
+.ws-stat-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 12px;
+}
+.ws-stat-link .ws-panel {
+  height: 100%;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.ws-stat-link:hover .ws-panel,
+.ws-stat-link:focus-visible .ws-panel {
+  border-color: var(--ws-accent);
+  transform: translateY(-1px);
+}
