@@ -48,7 +48,7 @@ test("split payment shows only the provider balance on its payment button", asyn
   await expect(page.getByText("Wallet credit applied")).toBeVisible();
   await expect(page.getByText("LKR 2000.00").first()).toBeVisible();
   await expect(page.getByText("Payable via PayHere")).toBeVisible();
-  await expect(page.getByText("LKR 3000.00")).toBeVisible();
+  await expect(page.getByText("LKR 3000.00", { exact: true })).toBeVisible();
 });
 
 test("individual appointment room excludes queue controls and supports repeated ringing", async ({ page }) => {

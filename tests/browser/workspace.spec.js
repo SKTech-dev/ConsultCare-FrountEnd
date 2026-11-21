@@ -41,6 +41,8 @@ test("patient email lookup works before appointment details and clears stale mat
   const email = page.getByLabel("Patient / client email", { exact: true });
   await page.getByRole("button", { name: "Find patient", exact: true }).click();
   expect(searches).toBe(0);
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.getByRole("button", { name: "OK", exact: true }).click();
   await email.fill("pat");
   await page.getByRole("button", { name: "Find patient", exact: true }).click();
   await expect(page.getByText("Second Patient", { exact: true })).toBeVisible();
