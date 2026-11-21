@@ -142,3 +142,6 @@ label:has(> input:required):not(:has(.required-mark))::before, label:has(> selec
   border-color: var(--ws-accent);
   transform: translateY(-1px);
 }
+.ws-space + .patient-queues {
+  margin-top: 22px;
+}
