@@ -60,3 +60,69 @@ label:has(> input:required):not(:has(.required-mark))::before, label:has(> selec
   .ws .activity-row { grid-template-columns: minmax(0, 1fr) auto; }
   .ws .activity-row > div:first-child { grid-column: 1 / -1; }
 }
+
+.booking-discussion-row {
+  align-items: start;
+}
+.booking-discussion-row > span {
+  flex: 0 0 auto;
+  color: var(--ws-textSecondary);
+}
+.booking-discussion-value {
+  text-align: right;
+  overflow-wrap: anywhere;
+  color: var(--ws-textPrimary);
+  font-weight: 600;
+}
+@media (max-width: 760px) {
+  .booking-discussion-value {
+    text-align: left;
+  }
+}
+.booking-payment-notice {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  border-radius: 0 8px 8px 0;
+}
+.booking-payment-deadline {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ws-border);
+  font-size: 12px;
+}
+.booking-payment-deadline span {
+  color: var(--ws-textSecondary);
+}
+.booking-payment-deadline strong {
+  color: var(--ws-primary);
+}
+.payment-checkout {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+.payment-checkout .ws-notice,
+.payment-checkout .ws-actions {
+  margin: 0;
+}
+.payment-breakdown {
+  padding: 2px 16px;
+  border: 1px solid var(--ws-border);
+  border-radius: 9px;
+  background: var(--ws-background);
+}
+.payment-breakdown .ws-row {
+  padding: 12px 0;
+  font-size: 13px;
+}
+.payment-breakdown .ws-row span {
+  color: var(--ws-textSecondary);
+}
+.payment-breakdown-total strong {
+  color: var(--ws-primary);
+  font-size: 14px;
+}

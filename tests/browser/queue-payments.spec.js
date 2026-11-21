@@ -45,7 +45,10 @@ test("split payment shows only the provider balance on its payment button", asyn
   await setup(page, { pending: true, wallet: 2000 });
   await page.goto("/app/booking/booking");
   await expect(page.getByRole("button", { name: "Pay with PayHere · LKR 3000.00" })).toBeVisible();
-  await expect(page.getByText("Total: LKR 5000.00 · Wallet: LKR 2000.00 · PayHere: LKR 3000.00")).toBeVisible();
+  await expect(page.getByText("Wallet credit applied")).toBeVisible();
+  await expect(page.getByText("LKR 2000.00").first()).toBeVisible();
+  await expect(page.getByText("Payable via PayHere")).toBeVisible();
+  await expect(page.getByText("LKR 3000.00")).toBeVisible();
 });
 
 test("individual appointment room excludes queue controls and supports repeated ringing", async ({ page }) => {
