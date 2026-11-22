@@ -45,6 +45,7 @@ export default function Footer() {
               <a href="/#services">Our services</a>
               <a href="/#how-it-works">How it works</a>
               <a href="/#privacy">Our approach</a>
+              <Link to="/contact">Contact us</Link>
             </div>
           </nav>
 
