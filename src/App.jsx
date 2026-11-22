@@ -17,6 +17,7 @@ import Notifications from "./components/workspace/Notifications";
 import IncomingConsultation from "./components/workspace/IncomingConsultation";
 
 const Policies = lazy(() => import("./pages/Policies"));
+const Contact = lazy(() => import("./pages/Contact"));
 const Overview = lazy(() => import("./pages/workspace/Overview"));
 const Directory = lazy(() => import("./pages/workspace/Directory").then((module) => ({ default: module.Directory })));
 const ProfessionalDetails = lazy(() => import("./pages/workspace/Directory").then((module) => ({ default: module.ProfessionalDetails })));
@@ -59,6 +60,7 @@ const router = createBrowserRouter(createRoutesFromElements(
     <Route path="/refund-policy" element={<Policies type="refunds" />} />
     <Route path="/return-policy" element={<Navigate to="/refund-policy" replace />} />
     <Route path="/terms" element={<Policies type="terms" />} />
+    <Route path="/contact" element={<Contact />} />
     <Route path="/access-denied" element={<AccessDenied />} />
     <Route path="/forgot-password" element={<EmailAccess key="forgot" mode="forgot" />} />
     <Route path="/reset-password" element={<EmailAccess key="reset" mode="reset" />} />
