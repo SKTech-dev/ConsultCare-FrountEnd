@@ -52,6 +52,14 @@
 .auth-account-links a:hover { color: var(--cc-primaryHover); }
 .auth-verification-help { border-top: 1px solid var(--cc-border); padding-top: 18px; font-size: 12px; line-height: 1.8; color: var(--cc-textMuted); }
 .auth-verification-help a { display: inline-block; color: var(--cc-accent); font-weight: 600; margin-left: 5px; text-decoration: underline; text-underline-offset: 3px; }
+.auth-google-box { background: #f8fbfb; border: 1px solid #dce5e8; border-radius: 14px; padding: 14px 16px; display: grid; gap: 10px; justify-items: center; }
+.auth-google-caption { font-size: 11px; font-weight: 600; letter-spacing: .3px; color: var(--cc-textMuted); text-align: center; }
+.auth-google-holder { width: 100%; max-width: 380px; min-height: 44px; display: flex; justify-content: center; align-items: center; }
+.auth-google-retry { width: 100%; max-width: 380px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--cc-border); background: #fff; color: var(--cc-primary); border-radius: 999px; padding: 10px 16px; font-size: 13px; font-weight: 600; cursor: pointer; transition: border-color .15s ease, background-color .15s ease; }
+.auth-google-retry:hover:not(:disabled) { border-color: var(--cc-accent); background: #f2f8f7; }
+.auth-google-retry:disabled { opacity: .55; cursor: not-allowed; }
+.auth-google-divider { display: flex; align-items: center; gap: 12px; margin-top: 20px; font-size: 11px; font-weight: 600; letter-spacing: .9px; text-transform: uppercase; color: var(--cc-textMuted); }
+.auth-google-divider span:first-child, .auth-google-divider span:last-child { flex: 1; height: 1px; background: var(--cc-border); }
 @keyframes email-access-spin { to { transform: rotate(360deg); } }
 @media (max-width: 760px) { .email-access { grid-template-columns: 1fr; max-width: 480px; gap: 28px; padding-top: 0; }.email-access-story h2 { font-size: 36px; margin: 16px 0; }.email-access-intro { max-width: none; }.email-access-steps, .email-access-assurance { display: none; }.email-access-card { padding: 28px; }.email-access-icon { margin-bottom: 22px; }.email-access-card h1 { font-size: 29px; } }
 @media (max-width: 380px) { .email-access-card { padding: 24px 20px; }.email-access-story h2 { font-size: 32px; } }

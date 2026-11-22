@@ -1,5 +1,6 @@
 import GlobalLoader from "../ui/GlobalLoader";
 import { useEffect, useRef, useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { callApi } from "../../api/apiClient";
 
 let scriptPromise;
@@ -59,11 +60,11 @@ export default function GoogleSignIn({ mode = "login", role = "user", onSuccess,
         let previousWidth = 0;
         const render = () => {
           if (!active || !holder.current) return;
-          const width = Math.min(400, Math.floor(holder.current.clientWidth));
+          const width = Math.min(380, Math.floor(holder.current.clientWidth));
           if (!width || width === previousWidth) return;
           previousWidth = width;
           holder.current.replaceChildren();
-          window.google.accounts.id.renderButton(holder.current, { type: "standard", theme: "outline", size: "large", shape: "rectangular", text: mode === "signup" ? "signup_with" : mode === "link" ? "continue_with" : "signin_with", width });
+          window.google.accounts.id.renderButton(holder.current, { type: "standard", theme: "outline", size: "large", shape: "pill", logo_alignment: "center", text: mode === "signup" ? "signup_with" : mode === "link" ? "continue_with" : "signin_with", width });
         };
         observer = new ResizeObserver(render);
         observer.observe(holder.current);
@@ -75,10 +76,14 @@ export default function GoogleSignIn({ mode = "login", role = "user", onSuccess,
     const timer = setTimeout(prepare, 0);
     return () => { active = false; clearTimeout(timer); controller.abort(); observer?.disconnect(); };
   }, [mode, role, retry]);
+  const caption = mode === "signup" ? "Instant account setup with Google" : mode === "link" ? "Verify and link your matching Google email" : "Quick, password-free sign-in";
   return <div hidden={!enabled} className="w-full min-w-0" inert={disabled ? "" : undefined}>
-    {loading && <GlobalLoader compact message="Loading Google sign-in..." />}
-    <div ref={holder} className="w-full max-w-[400px] mx-auto min-h-10" />
-    {failed && <button type="button" className="w-full border rounded-lg px-4 py-3 text-sm font-semibold" disabled={disabled} onClick={() => setRetry(retry + 1)}>Retry Google sign-in</button>}
-    {separator && <div className="flex items-center gap-3 mt-6 text-xs"><span className="flex-1 border-t" /><span>{mode === "signup" ? "or sign up with email" : "or sign in with email"}</span><span className="flex-1 border-t" /></div>}
+    <div className="auth-google-box">
+      <p className="auth-google-caption">{caption}</p>
+      {loading && <GlobalLoader compact message="Loading Google sign-in..." />}
+      <div ref={holder} className="auth-google-holder" />
+      {failed && <button type="button" className="auth-google-retry" disabled={disabled} onClick={() => setRetry(retry + 1)}><RefreshCw size={15} aria-hidden="true" />Retry Google sign-in</button>}
+    </div>
+    {separator && <div className="auth-google-divider"><span aria-hidden="true" /><span>{mode === "signup" ? "or sign up with email" : "or sign in with email"}</span><span aria-hidden="true" /></div>}
   </div>;
 }
