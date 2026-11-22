@@ -11,9 +11,11 @@ export default function BookingPayment({ booking: b }) {
   if (state.role !== "user" || b.status !== "PAYMENT PENDING") return null;
   const unavailable = (params.get("payment") === "return" && b.payment === "pending") || expired || state.pending > 0 || professional?.status !== "verified" || state.patient.status !== "active";
   return <div className="ws-space">
-    <p className="ws-notice">{expired ? "The payment deadline has passed. This invitation can no longer be accepted." : b.scheduledById ? "Your professional invited you to this private consultation. Accept and pay before the scheduled start, or cancel if the time does not suit you." : "Complete payment to reserve your queue place. Unpaid reservations expire after 30 minutes or when the session ends."}</p>
-    {b.paymentDueAt && <p>Payment deadline: {new Date(b.paymentDueAt).toLocaleString("en-GB", { timeZone: "Asia/Colombo" })} (Sri Lanka).</p>}
-    <PayHereCheckout endpoint={`/bookings/${b.id}/payhere-checkout`} amount={money(b.fee)} disabled={unavailable} label={state.payhereEnabled ? (b.scheduledById ? "Accept & pay" : "Pay consultation fee") : "Pay using wallet credit"} />
+    <div className="ws-notice booking-payment-notice">
+      <p>{expired ? "The payment deadline has passed. This invitation can no longer be accepted." : b.scheduledById ? "Your professional invited you to this private consultation. Accept and pay before the scheduled start, or cancel if the time does not suit you." : "Complete payment to reserve your queue place. Unpaid reservations expire after 30 minutes or when the session ends."}</p>
+      {b.paymentDueAt && <p className="booking-payment-deadline"><span>Payment deadline</span><strong>{new Date(b.paymentDueAt).toLocaleString("en-GB", { timeZone: "Asia/Colombo" })} (Sri Lanka)</strong></p>}
+    </div>
+    <PayHereCheckout endpoint={`/bookings/${b.id}/payhere-checkout`} amount={money(b.fee)} disabled={unavailable} showTotal={false} label={state.payhereEnabled ? (b.scheduledById ? "Accept & pay" : "Pay consultation fee") : "Pay using wallet credit"} />
     {!state.payhereEnabled && <p className="ws-notice">PayHere is not configured. Only a fully wallet-funded payment can be completed.</p>}
   </div>;
 }

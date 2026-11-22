@@ -6,7 +6,6 @@ import { useWorkspace } from "./Workspace";
 import { callApi } from "../../api/apiClient";
 import { MessageOverlay } from "../ui/MessageBox";
 import { Loader2 } from "lucide-react";
-import { CheckPayment } from "./PaymentRecovery";
 
 // PayHere requires a browser form POST. The backend returns only public, signed
 // checkout fields; the merchant secret never reaches this component.
@@ -26,11 +25,11 @@ function postToPayHere(checkout) {
   form.submit();
 }
 
-export default function PayHereCheckout({ endpoint, disabled = false }) {
-  return <Checkout key={endpoint} endpoint={endpoint} disabled={disabled} />;
+export default function PayHereCheckout({ endpoint, disabled = false, showTotal = true }) {
+  return <Checkout key={endpoint} endpoint={endpoint} disabled={disabled} showTotal={showTotal} />;
 }
 
-function Checkout({ endpoint, disabled }) {
+function Checkout({ endpoint, disabled, showTotal }) {
   const { patient } = useWorkspace();
   const billingReady = (patient.address || "").trim().length >= 3 && (patient.city || "").trim().length >= 2;
   const [busy, setBusy] = useState(false);
@@ -78,25 +77,30 @@ function Checkout({ endpoint, disabled }) {
     }
   }
 
-  return <div className="ws-space">
-    <CheckPayment key={endpoint} endpoint={endpoint.replace("/payhere-checkout", "/reconcile-payment")} />
-    <p className="ws-muted">Wallet credit is used first. Any remaining amount is collected at PayHere’s secure checkout and confirmed by its verified callback.</p>
+  return <div className="ws-space payment-checkout">
+    {wallet && <div className="payment-breakdown">
+      {showTotal && <div className="ws-row"><span>Total amount</span><strong>LKR {wallet.total}</strong></div>}
+      <div className="ws-row"><span>Wallet credit applied{Number(wallet.balance) > 0 ? ` (LKR ${Number(wallet.balance).toFixed(2)} available)` : ""}</span><strong>LKR {wallet.walletUsed}</strong></div>
+      <div className="ws-row payment-breakdown-total"><span>Payable via PayHere</span><strong>LKR {wallet.payhereAmount}</strong></div>
+    </div>}
+    <p className="ws-muted">Wallet credit is applied first. Any remaining balance is paid at PayHere’s secure checkout.</p>
+    {wallet?.frozen && <p className="ws-notice">Your wallet requires administrator review.</p>}
     {!billingReady && <p className="ws-notice">If PayHere payment is needed, add your billing address and city in <Link className="underline" to="/app/profile?tab=details">My profile</Link>. A fully wallet-funded payment does not need these fields.</p>}
-    {wallet && <p className="ws-notice">Available wallet credit: LKR {Number(wallet.balance).toFixed(2)}. Credit is used first; PayHere collects only any remaining amount. {wallet.frozen && "Your wallet requires administrator review."}</p>}
-    {wallet && <p>Total: LKR {wallet.total} · Wallet: LKR {wallet.walletUsed} · PayHere: LKR {wallet.payhereAmount}</p>}
-    {Number(wallet?.reserved) > 0 && <button className="ws-link secondary" disabled={busy} onClick={async () => {
-      setBusy(true);
-      try {
-        await callApi("POST", endpoint + "/cancel");
-        setWallet((await callApi("GET", endpoint)).data);
-        const url = new URL(window.location.href); url.searchParams.delete("payment");
-        navigate(url.pathname + url.search, { replace: true });
-        await dispatch(fetchWorkspace({ live: true }));
-      } catch (failure) { setError(failure.message); }
-      finally { setBusy(false); }
-    }}>Cancel pending checkout & release wallet credit</button>}
-    <button className="ws-link" disabled={disabled || busy || Boolean(success) || !wallet || wallet.frozen} aria-busy={busy} onClick={() => Number(wallet.payhereAmount) === 0 ? setConfirmWallet(true) : pay()}>{busy && <Loader2 className="animate-spin" size={18} />}{busy ? "Preparing payment…" : !wallet ? "Loading payment amount…" : Number(wallet.payhereAmount) === 0 ? `Pay from wallet · LKR ${wallet.walletUsed}` : `Pay with PayHere · LKR ${wallet.payhereAmount}`}</button>
-    {!wallet && error && <button className="ws-link secondary" onClick={async () => { try { setWallet((await callApi("GET", endpoint)).data); setError(""); } catch (failure) { setError(failure.message); } }}>Retry payment details</button>}
+    <div className="ws-actions">
+      <button className="ws-link" disabled={disabled || busy || Boolean(success) || !wallet || wallet.frozen} aria-busy={busy} onClick={() => Number(wallet.payhereAmount) === 0 ? setConfirmWallet(true) : pay()}>{busy && <Loader2 className="animate-spin" size={18} />}{busy ? "Preparing payment…" : !wallet ? "Loading payment amount…" : Number(wallet.payhereAmount) === 0 ? `Pay from wallet · LKR ${wallet.walletUsed}` : `Pay with PayHere · LKR ${wallet.payhereAmount}`}</button>
+      {Number(wallet?.reserved) > 0 && <button className="ws-link secondary" disabled={busy} onClick={async () => {
+        setBusy(true);
+        try {
+          await callApi("POST", endpoint + "/cancel");
+          setWallet((await callApi("GET", endpoint)).data);
+          const url = new URL(window.location.href); url.searchParams.delete("payment");
+          navigate(url.pathname + url.search, { replace: true });
+          await dispatch(fetchWorkspace({ live: true }));
+        } catch (failure) { setError(failure.message); }
+        finally { setBusy(false); }
+      }}>Cancel pending checkout & release wallet credit</button>}
+      {!wallet && error && <button className="ws-link secondary" onClick={async () => { try { setWallet((await callApi("GET", endpoint)).data); setError(""); } catch (failure) { setError(failure.message); } }}>Retry payment details</button>}
+    </div>
     {confirmWallet && <MessageOverlay type="confirm" title="Pay entirely from your wallet?" text={`LKR ${wallet.walletUsed} will be deducted from your wallet to confirm this booking. No PayHere payment is needed.`} confirmText="Confirm wallet payment" onClose={() => setConfirmWallet(false)} onConfirm={pay} />}
     {busy && <p role="status" className="ws-space">Preparing your secure payment. Please keep this page open.</p>}
     {error && <MessageOverlay type="error" text={error} onClose={() => setError("")} />}

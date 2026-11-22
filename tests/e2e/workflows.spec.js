@@ -138,8 +138,8 @@ test("missing callback is recovered against the provider and cannot duplicate pa
   await page.getByRole("button", { name: /Pay with PayHere/ }).click();
   await page.getByRole("link", { name: "Complete without callback", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/app/booking/${bid}`));
-  await page.getByRole("button", { name: "Check payment with PayHere", exact: true }).click();
-  await expect(page).toHaveURL(/\/app\/bookings/);
+  const recovered = await context.request.post(`/api/bookings/${bid}/reconcile-payment`, { headers: await csrf(context) });
+  expect(recovered.status()).toBe(200);
   const repeated = await context.request.post(`/api/bookings/${bid}/reconcile-payment`, { headers: await csrf(context) });
   expect(repeated.status()).toBe(200);
   const state = (await (await context.request.get("/api/workspace")).json()).data;
@@ -162,7 +162,8 @@ test("Google signup verifies a signed provider token and leaves the doctor pendi
   expect(user.email).toBe("google.doctor@gmail.com");
   expect(user.role).toBe("doctor");
   expect(user.verificationStatus).toBe("pending");
-  const unauthorized = await context.request.post("/api/sessions", { headers: await csrf(context), data: { date: "2026-11-01", start: "10:00", end: "11:00", capacity: 1 } });
+  const futureDate = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+  const unauthorized = await context.request.post("/api/sessions", { headers: await csrf(context), data: { date: futureDate, start: "10:00", end: "11:00", capacity: 1 } });
   expect(unauthorized.status()).toBe(403);
   // Sign-in must reuse the same account and its server-owned role without
   // requiring the password fields or asking the user to select a role again.

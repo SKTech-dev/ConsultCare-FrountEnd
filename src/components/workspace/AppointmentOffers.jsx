@@ -63,7 +63,10 @@ export default function AppointmentOffers({ embedded = false, history = false, a
     catch (error) { setNotice({ type: "error", text: error.message }); }
     finally { setBusy(false); }
   }
-  const visible = items?.filter((row) => currentView === "history" ? ["expired", "cancelled"].includes(row.status) : currentView === "all" ? ["open", "expired", "cancelled"].includes(row.status) : row.status === "open");
+  const offerTime = (row) => Math.min(Infinity, ...(row.options || []).map((option) => Date.parse(`${option.date}T${option.start}:00+05:30`) || Infinity));
+  const visible = items?.filter((row) => currentView === "history" ? ["expired", "cancelled"].includes(row.status) : currentView === "all" ? ["open", "expired"].includes(row.status) : row.status === "open")
+    .slice()
+    .sort((a, b) => offerTime(a) - offerTime(b));
   const body = <>
     {!embedded && <label className="ws-field appointment-filter">Invitations<select aria-label="Invitation view" value={view} onChange={(event) => setView(event.target.value)}><option value="upcoming">Available times</option><option value="history">Past invitations</option><option value="all">All invitations</option></select></label>}
     {!items && !error && <GlobalLoader compact message="Loading time choices…" />}
@@ -71,9 +74,10 @@ export default function AppointmentOffers({ embedded = false, history = false, a
     {!embedded && visible?.length === 0 && <Empty title="No appointment time choices">Private consultation invitations with available time choices will appear here.</Empty>}
     {visible?.map((row) => <article className="appointment-card" key={row.id}><div className="ws-row"><div><h3>{row.professionalName}{role !== "user" ? ` → ${row.patientName}` : ""}</h3><p>{money(row.fee)} · {row.reason}</p></div><Status>{row.status}</Status></div>
       {row.status === "expired" && <p className="ws-notice">These times passed before a selection was made. No booking or payment was created. Ask your professional for new times.</p>}
-      {role === "user" && row.status === "open" ? <form onSubmit={(event) => choose(event, row)}><fieldset className="appointment-choice-fieldset" disabled={busy}><legend>Choose your appointment time</legend><p className="ws-muted">Select one time. All times are in Sri Lanka time.</p><AppointmentTimes row={row} selected={choices[row.id]} onChange={(id) => setChoices((current) => ({ ...current, [row.id]: id }))} /><button className="ws-link appointment-choice-continue" disabled={busy || Boolean(error) || !row.options.some((option) => option.id === choices[row.id] && option.available)} aria-busy={busy}>{busy && <Loader2 className="animate-spin" size={18} />}Continue to payment</button></fieldset></form> : row.options.map((option) => <p key={option.id}>{option.date} · {option.start}–{option.end}</p>)}
-      {row.bookingId && <Link className="ws-link secondary" to={`/app/booking/${row.bookingId}`}>View selected booking</Link>}
-      {row.status === "open" && <button className="ws-link secondary mt-3" disabled={busy} onClick={() => setNotice({ type: "confirm", row })}>Cancel</button>}
+      {role === "user" && row.status === "open" ? <form onSubmit={(event) => choose(event, row)}><fieldset className="appointment-choice-fieldset" disabled={busy}><legend>Choose your appointment time</legend><p className="ws-muted">Select one time. All times are in Sri Lanka time.</p><AppointmentTimes row={row} selected={choices[row.id]} onChange={(id) => setChoices((current) => ({ ...current, [row.id]: id }))} /><div className="ws-actions"><button className="ws-link appointment-choice-continue" disabled={busy || Boolean(error) || !row.options.some((option) => option.id === choices[row.id] && option.available)} aria-busy={busy}>{busy && <Loader2 className="animate-spin" size={18} />}Continue to payment</button><button type="button" className="ws-link secondary" disabled={busy} onClick={() => setNotice({ type: "confirm", row })}>Cancel</button></div></fieldset></form> : <>
+        {row.options.map((option) => <p key={option.id}>{option.date} · {option.start}–{option.end}</p>)}
+        {(row.bookingId || row.status === "open") && <div className="ws-actions">{row.bookingId && <Link className="ws-link secondary" to={`/app/booking/${row.bookingId}`}>View selected booking</Link>}{row.status === "open" && <button type="button" className="ws-link secondary" disabled={busy} onClick={() => setNotice({ type: "confirm", row })}>Cancel</button>}</div>}
+      </>}
     </article>)}
     {notice && (notice.type === "confirm" ? <MessageOverlay type="confirm" title="Cancel this invitation?" text="The unselected invitation will close and its reserved times will be released. No payment has been taken." onClose={() => setNotice(null)} onConfirm={async () => {
       setBusy(true); try { await callApi("POST", `/appointment-offers/${notice.row.id}/cancel`); setNotice({ type: "success", text: "Invitation cancelled." }); setVersion(version + 1); } catch (error) { setNotice({ type: "error", text: error.message }); } finally { setBusy(false); }

@@ -1,25 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { useDispatch } from "react-redux";
 import { callApi } from "../../api/apiClient";
-import { fetchWorkspace } from "../../features/consultations/consultationSlice";
 import { Panel, Empty, Status } from "./Workspace";
 import ListPages from "./ListPages";
-
-export function CheckPayment({ endpoint }) {
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
-  const dispatch = useDispatch();
-  return <div className="ws-space">
-    <p>Paid but still awaiting confirmation? Check the payment directly with PayHere before paying again.</p>
-    <button className="ws-link secondary" disabled={busy} onClick={async () => {
-      setBusy(true); setMessage("");
-      try { const result = await callApi("POST", endpoint); setMessage(result.message); await dispatch(fetchWorkspace({ live: true })); }
-      catch (error) { setMessage(error.message); }
-      finally { setBusy(false); }
-    }}>{busy ? "Checking PayHere..." : "Check payment with PayHere"}</button>
-    {message && <p role="status">{message}</p>}
-  </div>;
-}
 
 export default function PaymentRecovery() {
   const [page, setPage] = useState(1);

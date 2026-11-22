@@ -14,8 +14,10 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+const AUTH_EXCLUDED_401_PATHS = ["/auth/login", "/auth/register", "/auth/google", "/auth/replace-session", "/auth/cancel-login"];
+
 apiClient.interceptors.response.use((response) => response, (error) => {
-  if (error.response?.status === 401 && !["/auth/login", "/auth/google", "/auth/replace-session"].includes(error.config?.url)) {
+  if (error.response?.status === 401 && !AUTH_EXCLUDED_401_PATHS.includes(error.config?.url)) {
     window.dispatchEvent(new CustomEvent("auth:expired", { detail: {
       message: error.response?.headers?.["x-session-replaced"] === "1" ? error.response.data?.message : "",
     } }));
@@ -29,6 +31,7 @@ export async function callApi(method, endpoint, data = null, params = null, conf
   } catch (error) {
     const payload = error.response?.data;
     const fields = Array.isArray(payload?.errors) ? payload.errors.slice(0, 3).map((e) => e.field + ": " + e.message).join(" ") : "";
-    throw new Error(fields || payload?.message || (error.response ? "Request failed. Please try again." : navigator.onLine === false ? "You are offline. Connect to the internet and try again." : "Cannot reach the server. Please check your connection and try again."));
+    const detail = typeof payload?.detail === "string" ? payload.detail : "";
+    throw new Error(fields || payload?.message || detail || (error.response ? "Request failed. Please try again." : navigator.onLine === false ? "You are offline. Connect to the internet and try again." : "Cannot reach the server. Please check your connection and try again."));
   }
 }

@@ -12,6 +12,7 @@
 .account-trigger img { width: 100%; height: 100%; object-fit: cover; }
 .account-popover { position: absolute; right: 0; top: 54px; z-index: 45; display: grid; gap: 12px; width: min(300px, calc(100vw - 32px)); padding: 20px; border: 1px solid var(--ws-border); border-radius: 16px; background: var(--ws-cardBg); box-shadow: 0 12px 36px #0002; overflow-wrap: anywhere; }
 .account-popover p { font-size: 13px; color: var(--ws-textSecondary); }
+.account-popover-badges { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .account-popover a, .account-popover button { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-top: 1px solid var(--ws-border); text-align: left; }
 .section-tabs { min-width: 0; }
 .section-tab-list { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px; margin-bottom: 22px; border: 1px solid var(--ws-border); border-radius: 14px; background: var(--ws-cardBg); scrollbar-width: thin; }
@@ -59,4 +60,124 @@ label:has(> input:required):not(:has(.required-mark))::before, label:has(> selec
 @media (max-width: 600px) {
   .ws .activity-row { grid-template-columns: minmax(0, 1fr) auto; }
   .ws .activity-row > div:first-child { grid-column: 1 / -1; }
+}
+
+.booking-discussion-row {
+  display: grid;
+  gap: 8px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--ws-border);
+}
+.booking-discussion-row > span {
+  color: var(--ws-textSecondary);
+  font-size: 13px;
+}
+.booking-discussion-value {
+  width: 100%;
+  min-width: 0;
+  text-align: justify;
+  line-height: 1.65;
+  overflow-wrap: break-word;
+  color: var(--ws-textPrimary);
+  font-weight: 400;
+}
+.booking-payment-notice {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  border-radius: 0 8px 8px 0;
+}
+.booking-payment-deadline {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ws-border);
+  font-size: 12px;
+}
+.booking-payment-deadline span {
+  color: var(--ws-textSecondary);
+}
+.booking-payment-deadline strong {
+  color: var(--ws-primary);
+}
+.payment-checkout {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+.payment-checkout .ws-notice,
+.payment-checkout .ws-actions {
+  margin: 0;
+}
+.payment-breakdown {
+  padding: 2px 16px;
+  border: 1px solid var(--ws-border);
+  border-radius: 9px;
+  background: var(--ws-background);
+}
+.payment-breakdown .ws-row {
+  padding: 12px 0;
+  font-size: 13px;
+}
+.payment-breakdown .ws-row span {
+  color: var(--ws-textSecondary);
+}
+.payment-breakdown-total strong {
+  color: var(--ws-primary);
+  font-size: 14px;
+}
+.ws-stat-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 12px;
+}
+.ws-stat-link .ws-panel {
+  height: 100%;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.ws-stat-link:hover .ws-panel,
+.ws-stat-link:focus-visible .ws-panel {
+  border-color: var(--ws-accent);
+  transform: translateY(-1px);
+}
+.ws-space + .patient-queues {
+  margin-top: 22px;
+}
+.patient-consultation-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+.patient-consultation-details > div {
+  padding: 11px 14px;
+  border: 1px solid var(--ws-border);
+  border-radius: 8px;
+  background: var(--ws-background);
+}
+.patient-consultation-details span {
+  display: block;
+  color: var(--ws-textSecondary);
+  font-size: 11px;
+  margin-bottom: 3px;
+}
+.patient-consultation-details strong {
+  display: block;
+  font-size: 13px;
+  color: var(--ws-textPrimary);
+  overflow-wrap: anywhere;
+}
+.patient-consultation-note {
+  grid-column: 1 / -1;
+}
+.patient-consultation-note p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ws-textPrimary);
+  text-align: justify;
+  overflow-wrap: break-word;
 }
