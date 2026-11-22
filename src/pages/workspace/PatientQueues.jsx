@@ -24,7 +24,7 @@ export default function PatientQueues() {
     .map((booking) => ({ booking, session: state.sessions.find((s) => s.id === booking.sessionId) }))
     .filter(({ booking, session }) => isUpcomingBooking(booking, session, now))
     .sort((a, b) => {
-      const timeDiff = (b.session ? sessionStartsAt(b.session) : -Infinity) - (a.session ? sessionStartsAt(a.session) : -Infinity);
+      const timeDiff = (a.session ? sessionStartsAt(a.session) : Infinity) - (b.session ? sessionStartsAt(b.session) : Infinity);
       if (timeDiff !== 0) return timeDiff;
       return Date.parse(b.booking.createdAt || 0) - Date.parse(a.booking.createdAt || 0);
     });
@@ -46,7 +46,6 @@ export default function PatientQueues() {
           <div><span>Consultation fee</span><strong>{money(b.fee)} · {b.payment}</strong></div>
           <div><span>Type</span><strong>{b.scheduledById ? "Private scheduled appointment" : "Queue booking"}</strong></div>
           {b.status === "PAYMENT PENDING" && b.paymentDueAt && <div><span>Payment deadline</span><strong>{new Date(b.paymentDueAt).toLocaleString("en-GB", { timeZone: "Asia/Colombo" })} (Sri Lanka)</strong></div>}
-          {b.reason && <div className="patient-consultation-note"><span>What you’d like to discuss</span><p className="whitespace-pre-wrap">{b.reason}</p></div>}
         </div>
         {ACTIVE.includes(b.status) && !ended && position > 0 && <div aria-live="polite">
           <p className="ws-space">{b.status === "IN CONSULTATION" ? "It is your turn." : position === 1 ? "You are next." : (position - 1) + " ahead of you."}</p>
