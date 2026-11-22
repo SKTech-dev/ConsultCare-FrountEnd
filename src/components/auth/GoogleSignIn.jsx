@@ -63,7 +63,7 @@ export default function GoogleSignIn({ mode = "login", role = "user", onSuccess,
           if (!width || width === previousWidth) return;
           previousWidth = width;
           holder.current.replaceChildren();
-          window.google.accounts.id.renderButton(holder.current, { type: "standard", theme: "outline", size: "large", shape: "rectangular", text: mode === "signup" ? "signup_with" : "signin_with", width });
+          window.google.accounts.id.renderButton(holder.current, { type: "standard", theme: "outline", size: "large", shape: "rectangular", text: mode === "signup" ? "signup_with" : mode === "link" ? "continue_with" : "signin_with", width });
         };
         observer = new ResizeObserver(render);
         observer.observe(holder.current);

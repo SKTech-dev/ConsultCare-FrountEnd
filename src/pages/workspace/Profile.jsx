@@ -3,9 +3,11 @@ import GlobalLoader from "../../components/ui/GlobalLoader";
 import SectionTabs from "../../components/ui/SectionTabs";
 import { useState } from "react";
 import { Camera } from "lucide-react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useWorkspace, PageHeading, Panel, Status, Empty } from "../../components/workspace/Workspace";
 import { saveProfile } from "../../features/consultations/consultationSlice";
+import { setAuthUser } from "../../features/auth/authSlice";
+import GoogleSignIn from "../../components/auth/GoogleSignIn";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import "./profile.css";
@@ -26,6 +28,8 @@ function ProfileForm({ source, patient }) {
   const [saving, setSaving] = useState(false);
   const [readingImage, setReadingImage] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
+  const [googleFeedback, setGoogleFeedback] = useState("");
+  const authUser = useSelector((state) => state.auth.user);
   const dispatch = useDispatch();
   async function selectImage(event) {
     const file = event.target.files[0];
@@ -89,6 +93,25 @@ function ProfileForm({ source, patient }) {
           </fieldset>
           {feedback && <MessageOverlay type="error" text={feedback} onClose={() => setFeedback("")} />}
         </form>
+        <div className="mt-6 pt-6 border-t" style={{ borderColor: "var(--cc-border)" }}>
+          <h3 className="text-base font-semibold mb-2">Connected Google account</h3>
+          {authUser?.googleLinked ? (
+            <p className="text-sm">Google account connected ({authUser.email}).</p>
+          ) : (
+            <div className="space-y-3 max-w-sm">
+              <p className="text-sm">Connect the Google account matching <strong>{authUser?.email}</strong> to sign in with Google as well.</p>
+              <GoogleSignIn
+                mode="link"
+                onError={(message) => setFeedback(message)}
+                onSuccess={(updatedUser) => {
+                  dispatch(setAuthUser(updatedUser));
+                  setGoogleFeedback("Your Google account is now connected.");
+                }}
+              />
+            </div>
+          )}
+          {googleFeedback && <p role="status" className="text-sm mt-2">{googleFeedback}</p>}
+        </div>
       </Panel>
       <Panel title={patient ? "Your information, with context." : "Professional verification"}>
         {patient ? <p>Only your own profile appears in this workspace. Relevant reports can be attached directly to a consultation.</p> : <>
