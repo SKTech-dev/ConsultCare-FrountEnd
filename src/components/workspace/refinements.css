@@ -63,22 +63,23 @@ label:has(> input:required):not(:has(.required-mark))::before, label:has(> selec
 }
 
 .booking-discussion-row {
-  align-items: start;
+  display: grid;
+  gap: 8px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--ws-border);
 }
 .booking-discussion-row > span {
-  flex: 0 0 auto;
   color: var(--ws-textSecondary);
+  font-size: 13px;
 }
 .booking-discussion-value {
-  text-align: right;
-  overflow-wrap: anywhere;
+  width: 100%;
+  min-width: 0;
+  text-align: justify;
+  line-height: 1.65;
+  overflow-wrap: break-word;
   color: var(--ws-textPrimary);
-  font-weight: 600;
-}
-@media (max-width: 760px) {
-  .booking-discussion-value {
-    text-align: left;
-  }
+  font-weight: 400;
 }
 .booking-payment-notice {
   display: grid;
