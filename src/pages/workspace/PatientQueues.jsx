@@ -23,20 +23,31 @@ export default function PatientQueues() {
   const bookings = state.bookings.filter((b) => b.patientId === state.patient.id && !["COMPLETED", "CANCELLED", "NO-SHOW"].includes(b.status))
     .map((booking) => ({ booking, session: state.sessions.find((s) => s.id === booking.sessionId) }))
     .filter(({ booking, session }) => isUpcomingBooking(booking, session, now))
-    .sort((a, b) => (a.session ? sessionStartsAt(a.session) : Infinity) - (b.session ? sessionStartsAt(b.session) : Infinity));
+    .sort((a, b) => {
+      const timeDiff = (b.session ? sessionStartsAt(b.session) : -Infinity) - (a.session ? sessionStartsAt(a.session) : -Infinity);
+      if (timeDiff !== 0) return timeDiff;
+      return Date.parse(b.booking.createdAt || 0) - Date.parse(a.booking.createdAt || 0);
+    });
   return <>
     <PageHeading title="Your consultations.">Each booking has its own queue. {state.liveConnected ? "Live updates connected." : "Reconnecting live updates; checking periodically."}</PageHeading>
     <SectionTabs ids={["clinics", "consultations"]} order={["consultations", "clinics"]} labels={["Your upcoming group clinics", "Your private consultations"]}><ClinicList embedded title="Your upcoming group clinics" />
     <Panel title="Your private consultations">
     <AppointmentOffers embedded all />
     <div className="patient-queues">{bookings.map(({ booking: b, session }) => {
+      const professional = state.professionals.find((p) => p.id === b.professionalId);
       const position = b.position || 0;
       const ended = session && sessionEndsAt(session) <= Date.now() && !(session.startedAt && !session.closedAt);
       const slot = session ? (sessionEndsAt(session) - sessionStartsAt(session)) / session.capacity : 0;
       const estimate = session ? Math.max(sessionStartsAt(session), Date.now()) + Math.max(0, position - 1) * slot : 0;
-      return <Panel key={b.id} title={state.professionals.find((p) => p.id === b.professionalId)?.name || "Consultation"}>
+      return <Panel key={b.id} title={professional?.name || "Consultation"}>
         <div className="ws-row"><p>{session ? sessionLabel(session) : "Session details unavailable"}</p><Status>{b.status}</Status></div>
-        {b.scheduledById && <p className="ws-space"><strong>Private appointment scheduled by your professional</strong> · {money(b.fee)}</p>}
+        <div className="patient-consultation-details">
+          {professional?.speciality && <div><span>Speciality</span><strong>{professional.speciality}{professional.role ? ` · ${professional.role}` : ""}</strong></div>}
+          <div><span>Consultation fee</span><strong>{money(b.fee)} · {b.payment}</strong></div>
+          <div><span>Type</span><strong>{b.scheduledById ? "Private scheduled appointment" : "Queue booking"}</strong></div>
+          {b.status === "PAYMENT PENDING" && b.paymentDueAt && <div><span>Payment deadline</span><strong>{new Date(b.paymentDueAt).toLocaleString("en-GB", { timeZone: "Asia/Colombo" })} (Sri Lanka)</strong></div>}
+          {b.reason && <div className="patient-consultation-note"><span>What you’d like to discuss</span><p className="whitespace-pre-wrap">{b.reason}</p></div>}
+        </div>
         {ACTIVE.includes(b.status) && !ended && position > 0 && <div aria-live="polite">
           <p className="ws-space">{b.status === "IN CONSULTATION" ? "It is your turn." : position === 1 ? "You are next." : (position - 1) + " ahead of you."}</p>
           <ol className="patient-queue-track" aria-label="Your queue position">{Array.from({ length: Math.min(position + 1, b.queueSize || position) }, (_, i) => <li key={i} className={i + 1 === position ? "patient-queue-you" : ""} aria-current={i + 1 === position ? "step" : undefined}>{i + 1 === position ? "You" : i + 1}</li>)}</ol>
