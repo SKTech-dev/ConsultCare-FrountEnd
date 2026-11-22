@@ -63,22 +63,23 @@ label:has(> input:required):not(:has(.required-mark))::before, label:has(> selec
 }
 
 .booking-discussion-row {
-  align-items: start;
+  display: grid;
+  gap: 8px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--ws-border);
 }
 .booking-discussion-row > span {
-  flex: 0 0 auto;
   color: var(--ws-textSecondary);
+  font-size: 13px;
 }
 .booking-discussion-value {
-  text-align: right;
-  overflow-wrap: anywhere;
+  width: 100%;
+  min-width: 0;
+  text-align: justify;
+  line-height: 1.65;
+  overflow-wrap: break-word;
   color: var(--ws-textPrimary);
-  font-weight: 600;
-}
-@media (max-width: 760px) {
-  .booking-discussion-value {
-    text-align: left;
-  }
+  font-weight: 400;
 }
 .booking-payment-notice {
   display: grid;
@@ -144,4 +145,39 @@ label:has(> input:required):not(:has(.required-mark))::before, label:has(> selec
 }
 .ws-space + .patient-queues {
   margin-top: 22px;
+}
+.patient-consultation-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+.patient-consultation-details > div {
+  padding: 11px 14px;
+  border: 1px solid var(--ws-border);
+  border-radius: 8px;
+  background: var(--ws-background);
+}
+.patient-consultation-details span {
+  display: block;
+  color: var(--ws-textSecondary);
+  font-size: 11px;
+  margin-bottom: 3px;
+}
+.patient-consultation-details strong {
+  display: block;
+  font-size: 13px;
+  color: var(--ws-textPrimary);
+  overflow-wrap: anywhere;
+}
+.patient-consultation-note {
+  grid-column: 1 / -1;
+}
+.patient-consultation-note p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ws-textPrimary);
+  text-align: justify;
+  overflow-wrap: break-word;
 }

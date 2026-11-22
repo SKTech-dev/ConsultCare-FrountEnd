@@ -63,7 +63,10 @@ export default function AppointmentOffers({ embedded = false, history = false, a
     catch (error) { setNotice({ type: "error", text: error.message }); }
     finally { setBusy(false); }
   }
-  const visible = items?.filter((row) => currentView === "history" ? ["expired", "cancelled"].includes(row.status) : currentView === "all" ? ["open", "expired", "cancelled"].includes(row.status) : row.status === "open");
+  const offerTime = (row) => Math.max(0, ...(row.options || []).map((option) => Date.parse(`${option.date}T${option.start}:00+05:30`) || 0));
+  const visible = items?.filter((row) => currentView === "history" ? ["expired", "cancelled"].includes(row.status) : currentView === "all" ? ["open", "expired"].includes(row.status) : row.status === "open")
+    .slice()
+    .sort((a, b) => offerTime(b) - offerTime(a));
   const body = <>
     {!embedded && <label className="ws-field appointment-filter">Invitations<select aria-label="Invitation view" value={view} onChange={(event) => setView(event.target.value)}><option value="upcoming">Available times</option><option value="history">Past invitations</option><option value="all">All invitations</option></select></label>}
     {!items && !error && <GlobalLoader compact message="Loading time choices…" />}
