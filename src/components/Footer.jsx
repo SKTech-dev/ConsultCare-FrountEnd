@@ -1,19 +1,110 @@
 import { Link } from "react-router-dom";
-import { ShieldCheck } from "lucide-react";
+import { Lock, ShieldCheck } from "lucide-react";
 import { useSelector } from "react-redux";
+import googlePlayLogo from "../assets/google-play.png";
+import "./footer.css";
+
+const ANDROID_APP_URL =
+  import.meta.env?.VITE_ANDROID_APP_URL ||
+  "https://play.google.com/store/apps/details?id=lk.econsult.app";
 
 export default function Footer() {
   const colors = useSelector((state) => state.theme.colors);
   return (
-    <footer className="border-t px-5 py-10 sm:px-8 lg:px-10" style={{ background: colors.footerBg, borderColor: colors.border }}>
-      <div className="mx-auto flex max-w-7xl flex-col gap-8 md:flex-row md:items-start md:justify-between">
-        <div className="max-w-sm">
-          <Link to="/" className="flex items-center gap-2 text-lg font-bold" style={{ color: colors.primary }}><span className="flex h-8 w-8 items-center justify-center rounded-lg text-white" style={{ background: colors.accent }}><ShieldCheck size={18} /></span>ConsultCare</Link>
-          <p className="mt-3 text-sm leading-6" style={{ color: colors.footerText }}>A secure place to find, book, and attend professional consultations online.</p>
+    <footer
+      className="cc-footer"
+      style={{ background: colors.footerBg, borderColor: colors.border }}
+    >
+      <div className="cc-footer-inner">
+        <div className="cc-footer-grid">
+          <div>
+            <Link
+              to="/"
+              className="cc-footer-brand"
+              style={{ color: colors.primary }}
+            >
+              <span
+                className="cc-footer-brand-icon"
+                style={{ background: colors.accent }}
+              >
+                <ShieldCheck size={18} />
+              </span>
+              ConsultCare
+            </Link>
+            <p className="cc-footer-tagline" style={{ color: colors.footerText }}>
+              A secure place to find, book, and attend medical, legal, and
+              counselling consultations online.
+            </p>
+          </div>
+
+          <nav aria-label="Explore ConsultCare">
+            <h3 className="cc-footer-heading" style={{ color: colors.primary }}>
+              Explore
+            </h3>
+            <div className="cc-footer-links" style={{ color: colors.footerText }}>
+              <a href="/#services">Our services</a>
+              <a href="/#how-it-works">How it works</a>
+              <a href="/#privacy">Our approach</a>
+            </div>
+          </nav>
+
+          <nav aria-label="Legal and policies">
+            <h3 className="cc-footer-heading" style={{ color: colors.primary }}>
+              Policies
+            </h3>
+            <div className="cc-footer-links" style={{ color: colors.footerText }}>
+              <Link to="/privacy-policy">Privacy policy</Link>
+              <Link to="/refund-policy">Cancellation &amp; refund policy</Link>
+              <Link to="/terms">Terms of use</Link>
+            </div>
+          </nav>
+
+          <div>
+            <h3 className="cc-footer-heading" style={{ color: colors.primary }}>
+              Mobile App
+            </h3>
+            <p className="cc-footer-app-copy" style={{ color: colors.footerText }}>
+              Manage bookings, join video consultations, and view records on the go.
+            </p>
+            <a
+              href={ANDROID_APP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Get ConsultCare for Android on Google Play"
+              className="cc-footer-android-btn"
+              style={{ borderColor: colors.border, color: colors.primary }}
+            >
+              <img
+                src={googlePlayLogo}
+                alt="Google Play"
+                className="cc-footer-google-play-logo"
+              />
+            </a>
+          </div>
         </div>
-        <nav aria-label="Footer navigation" className="flex max-w-xl flex-wrap gap-x-8 gap-y-3 text-sm font-semibold" style={{ color: colors.footerText }}><a href="/#services">Our services</a><a href="/#how-it-works">How it works</a><a href="/#privacy">Our approach</a><Link to="/privacy-policy">Privacy policy</Link><Link to="/refund-policy">Cancellation & refund policy</Link><Link to="/terms">Terms of use</Link></nav>
+
+        <div
+          className="cc-footer-bottom"
+          style={{ color: colors.footerText, borderColor: colors.border }}
+        >
+          <span>
+            © {new Date().getFullYear()} ConsultCare. All rights reserved. · Developed by{" "}
+            <a
+              href="https://sktech.lk/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="cc-footer-credit"
+              style={{ color: colors.primary }}
+            >
+              S.K. Tech
+            </a>
+          </span>
+          <span className="cc-footer-trust" style={{ color: colors.primary }}>
+            <Lock size={14} aria-hidden="true" />
+            Private &amp; encrypted consultations
+          </span>
+        </div>
       </div>
-      <div className="mx-auto mt-8 max-w-7xl border-t pt-6 text-sm" style={{ color: colors.footerText, borderColor: colors.border }}>© {new Date().getFullYear()} ConsultCare. All rights reserved.</div>
     </footer>
   );
 }
