@@ -32,7 +32,7 @@ export default function PatientQueues() {
     <PageHeading title="Your consultations.">Each booking has its own queue. {state.liveConnected ? "Live updates connected." : "Reconnecting live updates; checking periodically."}</PageHeading>
     <SectionTabs ids={["clinics", "consultations"]} order={["consultations", "clinics"]} labels={["Your upcoming group clinics", "Your private consultations"]}><ClinicList embedded title="Your upcoming group clinics" />
     <Panel title="Your private consultations">
-    <AppointmentOffers embedded all />
+    <AppointmentOffers embedded />
     <div className="patient-queues">{bookings.map(({ booking: b, session }) => {
       const professional = state.professionals.find((p) => p.id === b.professionalId);
       const position = b.position || 0;

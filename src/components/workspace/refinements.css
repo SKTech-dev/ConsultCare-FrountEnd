@@ -143,7 +143,7 @@ label:has(> input:required):not(:has(.required-mark))::before, label:has(> selec
   border-color: var(--ws-accent);
   transform: translateY(-1px);
 }
-.ws-space + .patient-queues {
+.ws-space + .patient-queues, .ws-space + .past-bookings {
   margin-top: 22px;
 }
 .patient-consultation-details {

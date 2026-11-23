@@ -54,7 +54,8 @@ export default function AppointmentOffers({ embedded = false, history = false, a
       finally { fetching = false; }
     }
     load(); const timer = setInterval(() => { if (!document.hidden) load(); }, 15000);
-    return () => { active = false; controller.abort(); clearInterval(timer); };
+    window.addEventListener("focus", load);
+    return () => { active = false; controller.abort(); clearInterval(timer); window.removeEventListener("focus", load); };
   }, [version, page, currentView]);
   async function choose(event, row) {
     event.preventDefault(); if (busy) return;
@@ -63,16 +64,17 @@ export default function AppointmentOffers({ embedded = false, history = false, a
     catch (error) { setNotice({ type: "error", text: error.message }); }
     finally { setBusy(false); }
   }
-  const offerTime = (row) => Math.min(Infinity, ...(row.options || []).map((option) => Date.parse(`${option.date}T${option.start}:00+05:30`) || Infinity));
+  const earliestOfferTime = (row) => Math.min(Infinity, ...(row.options || []).map((option) => Date.parse(`${option.date}T${option.start}:00+05:30`) || Infinity));
+  const latestOfferTime = (row) => Math.max(0, ...(row.options || []).map((option) => Date.parse(`${option.date}T${option.start}:00+05:30`) || 0));
   const visible = items?.filter((row) => currentView === "history" ? ["expired", "cancelled"].includes(row.status) : currentView === "all" ? ["open", "expired"].includes(row.status) : row.status === "open")
     .slice()
-    .sort((a, b) => offerTime(a) - offerTime(b));
+    .sort((a, b) => currentView === "history" ? latestOfferTime(b) - latestOfferTime(a) : earliestOfferTime(a) - earliestOfferTime(b));
   const body = <>
     {!embedded && <label className="ws-field appointment-filter">Invitations<select aria-label="Invitation view" value={view} onChange={(event) => setView(event.target.value)}><option value="upcoming">Available times</option><option value="history">Past invitations</option><option value="all">All invitations</option></select></label>}
     {!items && !error && <GlobalLoader compact message="Loading time choices…" />}
     {error && <p role="alert">{error}<button className="ws-name-link" onClick={() => setVersion(version + 1)}>Retry</button></p>}
     {!embedded && visible?.length === 0 && <Empty title="No appointment time choices">Private consultation invitations with available time choices will appear here.</Empty>}
-    {visible?.map((row) => <article className="appointment-card" key={row.id}><div className="ws-row"><div><h3>{row.professionalName}{role !== "user" ? ` → ${row.patientName}` : ""}</h3><p>{money(row.fee)} · {row.reason}</p></div><Status>{row.status}</Status></div>
+    {visible?.map((row) => <article className="appointment-card" key={row.id}><div className="ws-row"><div><h3>{row.professionalName}{role !== "user" ? ` → ${row.patientName}` : ""}</h3><p>{money(row.fee)}{row.reason ? ` · ${row.reason}` : ""}</p></div><Status>{row.status}</Status></div>
       {row.status === "expired" && <p className="ws-notice">These times passed before a selection was made. No booking or payment was created. Ask your professional for new times.</p>}
       {role === "user" && row.status === "open" ? <form onSubmit={(event) => choose(event, row)}><fieldset className="appointment-choice-fieldset" disabled={busy}><legend>Choose your appointment time</legend><p className="ws-muted">Select one time. All times are in Sri Lanka time.</p><AppointmentTimes row={row} selected={choices[row.id]} onChange={(id) => setChoices((current) => ({ ...current, [row.id]: id }))} /><div className="ws-actions"><button className="ws-link appointment-choice-continue" disabled={busy || Boolean(error) || !row.options.some((option) => option.id === choices[row.id] && option.available)} aria-busy={busy}>{busy && <Loader2 className="animate-spin" size={18} />}Continue to payment</button><button type="button" className="ws-link secondary" disabled={busy} onClick={() => setNotice({ type: "confirm", row })}>Cancel</button></div></fieldset></form> : <>
         {row.options.map((option) => <p key={option.id}>{option.date} · {option.start}–{option.end}</p>)}
@@ -85,5 +87,5 @@ export default function AppointmentOffers({ embedded = false, history = false, a
   </>;
   const pages = <ListPages page={page} setPage={setPage} hasMore={hasMore} busy={busy || !items} label="Invitations" />;
   if (embedded && items && !visible.length && !error && page === 1 && !hasMore) return null;
-  return embedded ? <div className="ws-space"><h3>{history ? "Past appointment invitations" : all ? "Appointment invitations" : "Unselected appointment invitations"}</h3>{body}{pages}</div> : <Panel title="Choose appointment time">{body}{pages}</Panel>;
+  return embedded ? <div className="ws-space"><h3>{history ? "Past appointment invitations" : all || role === "user" ? "Appointment invitations" : "Unselected appointment invitations"}</h3>{body}{pages}</div> : <Panel title="Choose appointment time">{body}{pages}</Panel>;
 }
