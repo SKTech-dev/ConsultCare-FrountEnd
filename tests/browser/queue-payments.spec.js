@@ -132,7 +132,7 @@ test("expired invitations move out of upcoming consultations and into patient hi
   await page.goto("/app/bookings");
   await expect.poll(() => views).toContain("upcoming");
   expect(views).not.toContain("all");
-  await expect(page.getByRole("heading", { name: "Appointment invitations", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Appointment invitations", exact: true })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Dr Open", exact: true })).toBeVisible();
   await expect(page.getByText("These times passed before a selection was made.", { exact: false })).toHaveCount(0);
 
