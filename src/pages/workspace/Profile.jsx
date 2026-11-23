@@ -55,6 +55,10 @@ function ProfileForm({ source, patient }) {
       setFeedback("Enter your NIC or Passport number.");
       return;
     }
+    if (!patient && !form.scopeConfirmed) {
+      setFeedback("Confirm your Sri Lankan qualification and professional scope declaration.");
+      return;
+    }
     setSaving(true);
     setFeedback("");
     try {
@@ -94,6 +98,7 @@ function ProfileForm({ source, patient }) {
               <label className="flex items-start gap-2 text-sm mt-2">
                 <input
                   type="checkbox"
+                  required
                   checked={Boolean(form.scopeConfirmed)}
                   onChange={(event) => setForm({ ...form, scopeConfirmed: event.target.checked })}
                 />
