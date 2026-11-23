@@ -112,13 +112,37 @@ test("patient selects an available time card before continuing", async ({ page }
   await page.screenshot({ path: "test-results/patient-time-choices.png", fullPage: true });
 });
 
-test("patient can find expired invitations instead of losing them from the list", async ({ page }) => {
+test("expired invitations move out of upcoming consultations and into patient history", async ({ page }) => {
   await setup(page, { pending: true });
-  await page.route(/\/api\/appointment-offers(?:\?.*)?$/, (route) => route.fulfill({ json: { data: [{ id: "expired", professionalName: "Dr Test", fee: "5000", status: "expired", options: [{ id: "old", date: "2026-10-08", start: "00:00", end: "00:05", available: false }] }] } }));
-  await page.goto("/app/bookings?tab=offers");
+  const views = [];
+  await page.route(/\/api\/appointment-offers(?:\?.*)?$/, (route) => {
+    const view = new URL(route.request().url()).searchParams.get("view");
+    views.push(view);
+    if (view === "history") {
+      return route.fulfill({ json: { data: [
+        { id: "older", professionalName: "Dr Older", fee: "3000", reason: "", status: "expired", options: [{ id: "old1", date: "2026-10-01", start: "09:00", end: "09:30", available: false }] },
+        { id: "newer", professionalName: "Dr Newer", fee: "5000", reason: "Follow up", status: "expired", options: [{ id: "old2", date: "2026-10-05", start: "14:00", end: "14:30", available: false }] },
+      ] } });
+    }
+    return route.fulfill({ json: { data: [
+      { id: "open", professionalName: "Dr Open", fee: "4000", reason: "", status: "open", options: [{ id: "future", date: "2026-10-08", start: "14:00", end: "14:30", available: true }] },
+      { id: "expired", professionalName: "Dr Expired", fee: "5000", reason: "", status: "expired", options: [{ id: "old", date: "2026-10-01", start: "09:00", end: "09:30", available: false }] },
+    ] } });
+  });
+  await page.goto("/app/bookings");
+  await expect.poll(() => views).toContain("upcoming");
+  expect(views).not.toContain("all");
   await expect(page.getByRole("heading", { name: "Appointment invitations", exact: true })).toBeVisible();
-  await expect(page.getByText("These times passed before a selection was made.", { exact: false })).toBeVisible();
-  await expect(page.getByText("2026-10-08 · 00:00–00:05")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Dr Open", exact: true })).toBeVisible();
+  await expect(page.getByText("These times passed before a selection was made.", { exact: false })).toHaveCount(0);
+
+  await page.goto("/app/history");
+  await expect.poll(() => views).toContain("history");
+  await expect(page.getByRole("heading", { name: "Past appointment invitations", exact: true })).toBeVisible();
+  await expect(page.getByText("These times passed before a selection was made.", { exact: false })).toHaveCount(2);
+  await expect(page.getByText("2026-10-05 · 14:00–14:30")).toBeVisible();
+  await expect(page.getByText("2026-10-01 · 09:00–09:30")).toBeVisible();
+  await expect(page.locator(".appointment-card h3")).toHaveText(["Dr Newer", "Dr Older"]);
   await expect(page.getByRole("button", { name: "Continue to payment" })).toHaveCount(0);
 });
 
