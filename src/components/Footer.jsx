@@ -57,6 +57,7 @@ export default function Footer() {
               <Link to="/privacy-policy">Privacy policy</Link>
               <Link to="/refund-policy">Cancellation &amp; refund policy</Link>
               <Link to="/terms">Terms of use</Link>
+              <Link to="/account-deletion">Account deletion</Link>
             </div>
           </nav>
 

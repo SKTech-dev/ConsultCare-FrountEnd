@@ -6,13 +6,14 @@ import { Camera } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { useWorkspace, PageHeading, Panel, Status, Empty } from "../../components/workspace/Workspace";
 import { saveProfile } from "../../features/consultations/consultationSlice";
-import { setAuthUser } from "../../features/auth/authSlice";
+import { deleteAccount, setAuthUser } from "../../features/auth/authSlice";
 import GoogleSignIn from "../../components/auth/GoogleSignIn";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import "./profile.css";
 import { useUnsavedChanges } from "../../components/ui/UnsavedChanges";
 import { MessageOverlay } from "../../components/ui/MessageBox";
+import Modal from "../../components/ui/Modal";
 import RefundWallet from "../../components/workspace/RefundWallet";
 
 export default function Profile() {
@@ -29,6 +30,8 @@ function ProfileForm({ source, patient }) {
   const [readingImage, setReadingImage] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
   const [googleFeedback, setGoogleFeedback] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const authUser = useSelector((state) => state.auth.user);
   const dispatch = useDispatch();
   async function selectImage(event) {
@@ -111,6 +114,64 @@ function ProfileForm({ source, patient }) {
             </div>
           )}
           {googleFeedback && <p role="status" className="text-sm mt-2">{googleFeedback}</p>}
+        </div>
+        <div className="mt-6 pt-6 border-t" style={{ borderColor: "var(--cc-border)" }}>
+          <h3 className="text-base font-semibold mb-2">Delete account</h3>
+          <div className="space-y-2 max-w-lg">
+            <p className="text-sm">Permanently delete your ConsultCare account.</p>
+            <button
+              type="button"
+              className="px-4 py-2 rounded-lg text-white text-sm font-semibold"
+              style={{ backgroundColor: "#b91c1c" }}
+              onClick={() => setConfirmDelete(true)}
+            >
+              Delete account
+            </button>
+          </div>
+          {confirmDelete && (
+            <Modal title="Delete your ConsultCare account?" busy={deleting} onClose={() => setConfirmDelete(false)}>
+              <div className="space-y-4">
+                <p className="text-sm">
+                  If you have no consultations or payments, your account and personal data will be permanently deleted.
+                  If you have consultations or payments, your sign-in access will be permanently removed while consultation, payment, and contact records are retained as required by law.
+                </p>
+                <p className="text-sm font-semibold" style={{ color: "#b91c1c" }}>
+                  Any upcoming paid bookings or remaining wallet balance cannot be recovered or refunded after deleting your account. Cancel bookings or cash out your wallet first if needed.
+                </p>
+                <div className="flex flex-wrap gap-3 justify-end">
+                  <button
+                    type="button"
+                    disabled={deleting}
+                    className="px-4 py-2 rounded-lg border text-sm font-semibold disabled:opacity-50"
+                    style={{ borderColor: "var(--cc-border)" }}
+                    onClick={() => setConfirmDelete(false)}
+                  >
+                    Keep my account
+                  </button>
+                  <button
+                    type="button"
+                    disabled={deleting}
+                    className="px-4 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50"
+                    style={{ backgroundColor: "#b91c1c" }}
+                    onClick={async () => {
+                      if (deleting) return;
+                      setDeleting(true);
+                      setFeedback("");
+                      try {
+                        await dispatch(deleteAccount()).unwrap();
+                      } catch (err) {
+                        setConfirmDelete(false);
+                        setFeedback(typeof err === "string" ? err : err?.message || "Could not delete account.");
+                        setDeleting(false);
+                      }
+                    }}
+                  >
+                    {deleting ? "Deleting account…" : "Permanently delete account"}
+                  </button>
+                </div>
+              </div>
+            </Modal>
+          )}
         </div>
       </Panel>
       <Panel title={patient ? "Your information, with context." : "Professional verification"}>

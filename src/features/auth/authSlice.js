@@ -25,6 +25,17 @@ export const logoutUser = createAsyncThunk(
   }
 );
 
+export const deleteAccount = createAsyncThunk(
+  "auth/deleteAccount",
+  async (_, { rejectWithValue }) => {
+    try {
+      return await callApi("DELETE", "/auth/account");
+    } catch (error) {
+      return rejectWithValue(error?.message || error?.error || "Account deletion failed");
+    }
+  }
+);
+
 const initialState = {
   user: null,
   loading: true,
@@ -72,6 +83,12 @@ const authSlice = createSlice({
       })
       .addCase(logoutUser.rejected, (state) => {
         // Keep the current session visible so the user can retry logout.
+        state.loading = false;
+      })
+      .addCase(deleteAccount.fulfilled, (state, action) => {
+        state.sessionNotice = action.payload?.message || "Your account has been deleted.";
+        state.user = null;
+        state.isAuthenticated = false;
         state.loading = false;
       });
   },
