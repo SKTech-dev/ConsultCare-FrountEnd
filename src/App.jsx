@@ -60,6 +60,7 @@ const router = createBrowserRouter(createRoutesFromElements(
     <Route path="/refund-policy" element={<Policies type="refunds" />} />
     <Route path="/return-policy" element={<Navigate to="/refund-policy" replace />} />
     <Route path="/terms" element={<Policies type="terms" />} />
+    <Route path="/account-deletion" element={<Policies type="accountDeletion" />} />
     <Route path="/contact" element={<Contact />} />
     <Route path="/access-denied" element={<AccessDenied />} />
     <Route path="/forgot-password" element={<EmailAccess key="forgot" mode="forgot" />} />
