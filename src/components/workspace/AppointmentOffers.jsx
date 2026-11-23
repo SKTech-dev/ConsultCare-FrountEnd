@@ -29,7 +29,7 @@ function AppointmentTimes({ row, selected, onChange }) {
   })}</div>;
 }
 
-export default function AppointmentOffers({ embedded = false, history = false, all = false }) {
+export default function AppointmentOffers({ embedded = false, history = false, all = false, showHeading = true }) {
   const { role } = useWorkspace();
   const [items, setItems] = useState(null);
   const [error, setError] = useState("");
@@ -87,5 +87,5 @@ export default function AppointmentOffers({ embedded = false, history = false, a
   </>;
   const pages = <ListPages page={page} setPage={setPage} hasMore={hasMore} busy={busy || !items} label="Invitations" />;
   if (embedded && items && !visible.length && !error && page === 1 && !hasMore) return null;
-  return embedded ? <div className="ws-space"><h3>{history ? "Past appointment invitations" : all || role === "user" ? "Appointment invitations" : "Unselected appointment invitations"}</h3>{body}{pages}</div> : <Panel title="Choose appointment time">{body}{pages}</Panel>;
+  return embedded ? <div className="ws-space">{showHeading && <h3>{history ? "Past appointment invitations" : all || role === "user" ? "Appointment invitations" : "Unselected appointment invitations"}</h3>}{body}{pages}</div> : <Panel title="Choose appointment time">{body}{pages}</Panel>;
 }
