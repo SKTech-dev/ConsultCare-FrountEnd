@@ -68,6 +68,10 @@ function Checkout({ endpoint, disabled, showTotal }) {
         setBusy(false);
         return;
       }
+      if (checkout?.provider === "payments_lk" && checkout?.checkoutUrl) {
+        window.location.assign(checkout.checkoutUrl);
+        return;
+      }
       if (!checkout?.checkoutUrl || !checkout?.fields) throw new Error("Payment checkout could not be prepared. Please try again.");
       postToPayHere(checkout);
     } catch (requestError) {
